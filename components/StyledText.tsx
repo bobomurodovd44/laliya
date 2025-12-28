@@ -11,17 +11,17 @@ export function StyledText({ variant = 'body', style, ...props }: StyledTextProp
 const styles = StyleSheet.create({
   title: {
     fontFamily: 'FredokaOne',
-    fontSize: 32, // Increased size
+    fontSize: 36, // Increased size
     color: '#333',
   },
   subtitle: {
-    fontFamily: 'PatrickHand',
-    fontSize: 24, // Increased size
+    fontFamily: 'BalsamiqSans',
+    fontSize: 28, // Increased size
     color: '#555',
   },
   body: {
-    fontFamily: 'PatrickHand',
-    fontSize: 20, // Increased size
+    fontFamily: 'BalsamiqSans',
+    fontSize: 24, // Increased size
     color: '#333',
   },
 });

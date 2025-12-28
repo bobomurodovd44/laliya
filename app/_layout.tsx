@@ -1,5 +1,5 @@
+import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
 import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
-import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { Drawer } from 'expo-router/drawer';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -11,7 +11,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     FredokaOne: FredokaOne_400Regular,
-    PatrickHand: PatrickHand_400Regular,
+    BalsamiqSans: BalsamiqSans_400Regular,
   });
 
   useEffect(() => {
@@ -30,13 +30,13 @@ export default function RootLayout() {
         headerStyle: { backgroundColor: Colors.primary }, 
         headerTintColor: '#fff',
         headerTitleStyle: {
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: 'bold', // Note: FredokaOne might not support 'bold' weight synthesis well, but we'll leave it or remove it if it looks off.
           fontFamily: 'FredokaOne',
         },
         drawerLabelStyle: {
-          fontFamily: 'PatrickHand',
-          fontSize: 18,
+          fontFamily: 'BalsamiqSans',
+          fontSize: 24,
         }
       }}>
         <Drawer.Screen

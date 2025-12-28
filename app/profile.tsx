@@ -1,4 +1,5 @@
-import { Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Image, ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
 import { StyledText } from '../components/StyledText';
 
@@ -32,7 +33,7 @@ export default function Profile() {
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.editIconButton} onPress={() => {}}>
-              <Text style={styles.editIcon}>✏️</Text>
+              <Ionicons name="pencil" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           
@@ -53,18 +54,18 @@ export default function Profile() {
         {/* Account Settings Section */}
         <View style={styles.section}>
           <StyledText variant="subtitle" style={styles.sectionTitle}>
-            ⚙️ Account Settings
+            Account Settings
           </StyledText>
           
           <ProfileMenuItem 
-            icon="🗑️"
+            iconName="trash-outline"
             title="Delete Account"
             variant="danger"
             onPress={() => {}}
           />
           
           <ProfileMenuItem 
-            icon="🚪"
+            iconName="log-out-outline"
             title="Logout"
             onPress={() => {}}
           />
@@ -73,23 +74,23 @@ export default function Profile() {
         {/* More Section */}
         <View style={styles.section}>
           <StyledText variant="subtitle" style={styles.sectionTitle}>
-            ✨ More
+            More
           </StyledText>
           
           <ProfileMenuItem 
-            icon="📤"
+            iconName="share-social-outline"
             title="Share the App"
             onPress={() => {}}
           />
           
           <ProfileMenuItem 
-            icon="⭐"
+            iconName="star-outline"
             title="Rate Us"
             onPress={() => {}}
           />
           
           <ProfileMenuItem 
-            icon="📜"
+            iconName="document-text-outline"
             title="Terms of Use"
             onPress={() => {}}
           />
@@ -143,21 +144,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: '#58CC02',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  editIcon: {
-    fontSize: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
   name: {
     marginBottom: 8,

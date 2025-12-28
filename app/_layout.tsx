@@ -1,5 +1,6 @@
 import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
 import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Colors } from '../constants/Colors';
 
 SplashScreen.preventAutoHideAsync();
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphMap; focused: boolean }) {
   return (
     <View style={[
       styles.iconContainer,
@@ -19,12 +20,12 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
       {focused && (
         <View style={styles.activeBackground} />
       )}
-      <Text style={[
-        styles.icon,
-        focused && styles.iconActive
-      ]}>
-        {emoji}
-      </Text>
+      <Ionicons 
+        name={iconName} 
+        size={focused ? 30 : 28} 
+        color={focused ? '#FFFFFF' : '#999'}
+        style={{ zIndex: 1 }}
+      />
     </View>
   );
 }
@@ -102,7 +103,7 @@ function RootLayoutNav() {
             </Text>
           ),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" focused={focused} />
+            <TabIcon iconName="home" focused={focused} />
           ),
         }}
       />
@@ -125,7 +126,7 @@ function RootLayoutNav() {
             </Text>
           ),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🎉" focused={focused} />
+            <TabIcon iconName="sparkles" focused={focused} />
           ),
         }}
       />
@@ -148,7 +149,7 @@ function RootLayoutNav() {
             </Text>
           ),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="👤" focused={focused} />
+            <TabIcon iconName="person" focused={focused} />
           ),
         }}
       />
@@ -208,13 +209,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 28,
     backgroundColor: Colors.primary,
-  },
-  icon: {
-    fontSize: 28,
-    zIndex: 1,
-  },
-  iconActive: {
-    fontSize: 30,
   },
 });
 

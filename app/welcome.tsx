@@ -73,7 +73,7 @@ export default function Welcome() {
           ]}
         >
           <StyledText variant="title" style={styles.title}>
-            🎉 Welcome to Laliya! 🎉
+            Welcome to Laliya!
           </StyledText>
           <StyledText variant="subtitle" style={styles.subtitle}>
             Let's have fun learning together!

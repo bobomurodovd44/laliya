@@ -29,7 +29,7 @@ export default function Welcome() {
             title="🚀 Start Learning" 
             color="green" 
             size="large"
-            onPress={() => console.log('Start Learning pressed')}
+            onPress={() => {}}
             style={styles.button}
           />
         </View>

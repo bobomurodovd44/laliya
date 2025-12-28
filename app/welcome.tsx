@@ -1,8 +1,57 @@
-import { ImageBackground, StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
 import { DuoButton } from '../components/DuoButton';
 import { StyledText } from '../components/StyledText';
 
 export default function Welcome() {
+  // Animation values
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
+  const footerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Sequential entrance animations
+    Animated.sequence([
+      // Header appears first
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 12,
+        bounciness: 8,
+      }),
+      // Button appears with bounce
+      Animated.spring(buttonAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 10,
+        bounciness: 12,
+      }),
+      // Footer fades in last
+      Animated.spring(footerAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 12,
+        bounciness: 6,
+      }),
+    ]).start();
+  }, []);
+
+  // Interpolate animations
+  const headerTranslateY = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-30, 0],
+  });
+
+  const buttonTranslateY = buttonAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [50, 0],
+  });
+
+  const footerTranslateY = footerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+
   return (
     <ImageBackground 
       source={require('../assets/background.jpg')} 
@@ -14,17 +63,33 @@ export default function Welcome() {
       
       <View style={styles.content}>
         {/* Header Section */}
-        <View style={styles.header}>
+        <Animated.View 
+          style={[
+            styles.header,
+            {
+              opacity: headerAnim,
+              transform: [{ translateY: headerTranslateY }],
+            }
+          ]}
+        >
           <StyledText variant="title" style={styles.title}>
             🎉 Welcome to Laliya! 🎉
           </StyledText>
           <StyledText variant="subtitle" style={styles.subtitle}>
             Let's have fun learning together!
           </StyledText>
-        </View>
+        </Animated.View>
         
         {/* Main Action Buttons */}
-        <View style={styles.buttonContainer}>
+        <Animated.View 
+          style={[
+            styles.buttonContainer,
+            {
+              opacity: buttonAnim,
+              transform: [{ translateY: buttonTranslateY }],
+            }
+          ]}
+        >
           <DuoButton 
             title="🚀 Start Learning" 
             color="green" 
@@ -32,14 +97,22 @@ export default function Welcome() {
             onPress={() => {}}
             style={styles.button}
           />
-        </View>
+        </Animated.View>
         
         {/* Footer Message */}
-        <View style={styles.footer}>
+        <Animated.View 
+          style={[
+            styles.footer,
+            {
+              opacity: footerAnim,
+              transform: [{ translateY: footerTranslateY }],
+            }
+          ]}
+        >
           <StyledText variant="body" style={styles.footerText}>
             Practice speaking, learn new words, and have fun! 🌟
           </StyledText>
-        </View>
+        </Animated.View>
       </View>
     </ImageBackground>
   );

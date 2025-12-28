@@ -1,4 +1,13 @@
-import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { useRef } from 'react';
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  ViewStyle
+} from 'react-native';
 
 interface DuoButtonProps {
   title: string;
@@ -6,54 +15,53 @@ interface DuoButtonProps {
   color?: 'green' | 'blue' | 'red' | 'yellow' | 'purple';
   size?: 'small' | 'medium' | 'large';
   style?: ViewStyle;
+  disabled?: boolean;
 }
 
 const colorSchemes = {
   green: {
-    top: '#58CC02',
-    bottom: '#46A302',
-    border: '#3D8C02',
+    main: '#58CC02',
+    shadow: '#46A302',
   },
   blue: {
-    top: '#1CB0F6',
-    bottom: '#1899D6',
-    border: '#1577B3',
+    main: '#1CB0F6',
+    shadow: '#1899D6',
   },
   red: {
-    top: '#FF4B4B',
-    bottom: '#E03E3E',
-    border: '#C43535',
+    main: '#FF4B4B',
+    shadow: '#E03E3E',
   },
   yellow: {
-    top: '#FFC800',
-    bottom: '#FFAB00',
-    border: '#E09600',
+    main: '#FFC800',
+    shadow: '#FFAB00',
   },
   purple: {
-    top: '#CE82FF',
-    bottom: '#B565E0',
-    border: '#9D52C4',
+    main: '#CE82FF',
+    shadow: '#B565E0',
   },
 };
 
 const sizes = {
   small: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    borderRadius: 16,
-  },
-  medium: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     fontSize: 18,
     borderRadius: 20,
+    shadowDepth: 6,
+  },
+  medium: {
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    fontSize: 22,
+    borderRadius: 26,
+    shadowDepth: 8,
   },
   large: {
-    paddingVertical: 18,
-    paddingHorizontal: 48,
-    fontSize: 22,
-    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 56,
+    fontSize: 26,
+    borderRadius: 32,
+    shadowDepth: 10,
   },
 };
 
@@ -62,53 +70,133 @@ export function DuoButton({
   onPress, 
   color = 'green', 
   size = 'medium',
-  style 
+  style,
+  disabled = false,
 }: DuoButtonProps) {
   const colors = colorSchemes[color];
   const sizeStyle = sizes[size];
+  
+  // Animation values
+  const pressAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (disabled) return;
+    
+    // Haptic feedback
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    // Animate press down
+    Animated.parallel([
+      Animated.spring(pressAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 0,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 0,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    if (disabled) return;
+
+    // Animate press up with bounce
+    Animated.parallel([
+      Animated.spring(pressAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 12,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 12,
+      }),
+    ]).start();
+  };
+
+  const handlePress = () => {
+    if (disabled) return;
+    
+    // Light haptic on release
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    onPress?.();
+  };
+
+  // Interpolate press animation
+  const translateY = pressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, sizeStyle.shadowDepth - 2],
+  });
 
   return (
-    <TouchableOpacity 
-      onPress={onPress} 
-      activeOpacity={0.8}
-      style={[styles.container, style]}
+    <Animated.View 
+      style={[
+        styles.container, 
+        style,
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: disabled ? 0.6 : 1,
+        }
+      ]}
     >
-      {/* Shadow/Bottom layer */}
-      <View 
-        style={[
-          styles.shadowLayer,
-          {
-            backgroundColor: colors.border,
-            borderRadius: sizeStyle.borderRadius,
-            paddingBottom: 8,
-          }
-        ]} 
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={handlePress}
+        disabled={disabled}
+        style={styles.pressable}
       >
-        {/* Main button layer */}
-        <View 
+        {/* Shadow layer */}
+        <Animated.View 
           style={[
-            styles.buttonLayer,
+            styles.shadowLayer,
             {
-              backgroundColor: colors.top,
+              backgroundColor: colors.shadow,
               borderRadius: sizeStyle.borderRadius,
-              paddingVertical: sizeStyle.paddingVertical,
-              paddingHorizontal: sizeStyle.paddingHorizontal,
-              borderBottomWidth: 4,
-              borderBottomColor: colors.bottom,
+              paddingBottom: sizeStyle.shadowDepth,
             }
-          ]}
+          ]} 
         >
-          <Text 
+          {/* Main button */}
+          <Animated.View
             style={[
-              styles.text,
-              { fontSize: sizeStyle.fontSize }
+              styles.buttonLayer,
+              {
+                backgroundColor: colors.main,
+                borderRadius: sizeStyle.borderRadius,
+                paddingVertical: sizeStyle.paddingVertical,
+                paddingHorizontal: sizeStyle.paddingHorizontal,
+                transform: [{ translateY }],
+              }
             ]}
           >
-            {title}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+            {/* Button text */}
+            <Text 
+              style={[
+                styles.text,
+                { fontSize: sizeStyle.fontSize }
+              ]}
+            >
+              {title}
+            </Text>
+          </Animated.View>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -116,8 +204,11 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'transparent',
   },
+  pressable: {
+    width: '100%',
+  },
   shadowLayer: {
-    // This creates the 3D depth effect
+    width: '100%',
   },
   buttonLayer: {
     alignItems: 'center',
@@ -128,5 +219,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'BalsamiqSans',
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2,
+    zIndex: 1,
   },
 });

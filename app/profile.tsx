@@ -8,7 +8,7 @@ export default function Profile() {
   const user = {
     name: 'Sarah Johnson',
     email: 'sarah.johnson@example.com',
-    profilePicture: 'https://via.placeholder.com/120/58CC02/FFFFFF?text=SJ',
+    profilePicture: 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg',
   };
 
   return (

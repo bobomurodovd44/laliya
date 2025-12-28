@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { StyledText } from "../components/StyledText";
 
 export default function Index() {
   return (
@@ -9,7 +10,10 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      <StyledText variant="title">Hello World!</StyledText>
+      <StyledText variant="body" style={{ marginTop: 20 }}>
+        Edit app/index.tsx to edit this screen.
+      </StyledText>
     </View>
   );
 }

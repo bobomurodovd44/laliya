@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 120, // Adjusted for transparent header
     paddingHorizontal: 20,
   },
   header: {

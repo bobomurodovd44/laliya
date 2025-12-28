@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 120, // Adjusted for transparent header
     paddingBottom: 20,
   },
   header: {

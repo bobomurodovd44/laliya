@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 120, // Adjusted for transparent header
   },
   profileHeader: {
     alignItems: 'center',

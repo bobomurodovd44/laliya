@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CustomHeader } from '../components/CustomHeader';
 import { Colors } from '../constants/Colors';
 
 SplashScreen.preventAutoHideAsync();
@@ -36,18 +37,8 @@ function RootLayoutNav() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { 
-          backgroundColor: Colors.primary,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        headerTintColor: '#fff',
-        headerTitleAlign: 'center',
-        headerTitleStyle: {
-          fontSize: 28,
-          fontWeight: 'bold',
-          fontFamily: 'FredokaOne',
-        },
+        header: (props) => <CustomHeader {...props} />,
+        headerTransparent: true,
         tabBarStyle: {
           position: 'absolute',
           bottom: insets.bottom + 12,

@@ -53,9 +53,12 @@ export default function Profile() {
 
         {/* Account Settings Section */}
         <View style={styles.section}>
-          <StyledText variant="subtitle" style={styles.sectionTitle}>
-            Account Settings
-          </StyledText>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="settings" size={32} color="#007AFF" />
+            <StyledText variant="subtitle" style={styles.sectionTitle}>
+              Account Settings
+            </StyledText>
+          </View>
           
           <ProfileMenuItem 
             iconName="trash-outline"
@@ -73,9 +76,12 @@ export default function Profile() {
 
         {/* More Section */}
         <View style={styles.section}>
-          <StyledText variant="subtitle" style={styles.sectionTitle}>
-            More
-          </StyledText>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="apps" size={32} color="#8E44AD" />
+            <StyledText variant="subtitle" style={styles.sectionTitle}>
+              More
+            </StyledText>
+          </View>
           
           <ProfileMenuItem 
             iconName="share-social-outline"
@@ -175,8 +181,13 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 30,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 16,
+    gap: 10,
+  },
+  sectionTitle: {
     color: '#333',
     textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 1, height: 1 },

@@ -33,24 +33,28 @@ export default function Index() {
             title="🐾 Animals"
             image={require('../assets/animals.jpg')}
             onPress={() => {}}
+            delay={0}
           />
           
           <CategoryCard 
             title="🍎 Foods"
             image={require('../assets/foods.jpg')}
             onPress={() => {}}
+            delay={150}
           />
           
           <CategoryCard 
             title="👨‍👩‍👧 Family"
             image={require('../assets/family.jpg')}
             onPress={() => {}}
+            delay={300}
           />
           
           <CategoryCard 
             title="🏠 Home & Pets"
             image={require('../assets/home_animals.jpg')}
             onPress={() => {}}
+            delay={450}
           />
         </View>
         

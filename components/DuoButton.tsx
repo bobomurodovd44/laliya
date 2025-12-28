@@ -80,9 +80,7 @@ export function DuoButton({
           {
             backgroundColor: colors.border,
             borderRadius: sizeStyle.borderRadius,
-            paddingVertical: sizeStyle.paddingVertical,
-            paddingHorizontal: sizeStyle.paddingHorizontal,
-            paddingBottom: sizeStyle.paddingVertical + 8,
+            paddingBottom: 8,
           }
         ]} 
       >
@@ -116,7 +114,7 @@ export function DuoButton({
 
 const styles = StyleSheet.create({
   container: {
-    // Container for the button
+    backgroundColor: 'transparent',
   },
   shadowLayer: {
     // This creates the 3D depth effect

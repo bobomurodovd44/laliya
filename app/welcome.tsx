@@ -1,87 +1,103 @@
-import { StyleSheet, View } from 'react-native';
+import { ImageBackground, StyleSheet, View } from 'react-native';
 import { DuoButton } from '../components/DuoButton';
 import { StyledText } from '../components/StyledText';
 
 export default function Welcome() {
   return (
-    <View style={styles.container}>
-      <StyledText variant="title" style={styles.title}>Welcome to Laliya!</StyledText>
-      <StyledText variant="subtitle" style={styles.subtitle}>Check out our 3D buttons!</StyledText>
+    <ImageBackground 
+      source={require('../assets/background.jpg')} 
+      style={styles.container}
+      resizeMode="cover"
+    >
+      {/* Semi-transparent overlay for better readability */}
+      <View style={styles.overlay} />
       
-      <View style={styles.buttonContainer}>
-        <DuoButton 
-          title="Get Started" 
-          color="green" 
-          size="large"
-          onPress={() => console.log('Get Started pressed')}
-          style={styles.button}
-        />
+      <View style={styles.content}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <StyledText variant="title" style={styles.title}>
+            🎉 Welcome to Laliya! 🎉
+          </StyledText>
+          <StyledText variant="subtitle" style={styles.subtitle}>
+            Let's have fun learning together!
+          </StyledText>
+        </View>
         
-        <DuoButton 
-          title="Learn More" 
-          color="blue" 
-          size="medium"
-          onPress={() => console.log('Learn More pressed')}
-          style={styles.button}
-        />
-        
-        <DuoButton 
-          title="Try It" 
-          color="purple" 
-          size="small"
-          onPress={() => console.log('Try It pressed')}
-          style={styles.button}
-        />
-        
-        <View style={styles.row}>
+        {/* Main Action Buttons */}
+        <View style={styles.buttonContainer}>
           <DuoButton 
-            title="Yes" 
-            color="yellow" 
-            size="small"
-            onPress={() => console.log('Yes pressed')}
-            style={styles.smallButton}
-          />
-          
-          <DuoButton 
-            title="No" 
-            color="red" 
-            size="small"
-            onPress={() => console.log('No pressed')}
-            style={styles.smallButton}
+            title="🚀 Start Learning" 
+            color="green" 
+            size="large"
+            onPress={() => console.log('Start Learning pressed')}
+            style={styles.button}
           />
         </View>
+        
+        {/* Footer Message */}
+        <View style={styles.footer}>
+          <StyledText variant="body" style={styles.footerText}>
+            Practice speaking, learn new words, and have fun! 🌟
+          </StyledText>
+        </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginTop: 20,
   },
   title: {
-    marginBottom: 10,
+    marginBottom: 15,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
-    marginBottom: 30,
+    textAlign: 'center',
+    color: '#444',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   buttonContainer: {
     width: '100%',
+    maxWidth: 400,
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
   },
   button: {
-    marginBottom: 12,
+    width: '100%',
   },
-  row: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
+  footer: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginBottom: 20,
   },
-  smallButton: {
-    marginHorizontal: 8,
+  footerText: {
+    textAlign: 'center',
+    color: '#555',
+    fontSize: 20,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });

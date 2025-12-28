@@ -29,6 +29,7 @@ export default function RootLayout() {
       <Drawer screenOptions={{ 
         headerStyle: { backgroundColor: Colors.primary }, 
         headerTintColor: '#fff',
+        headerTitleAlign: 'center',
         headerTitleStyle: {
           fontSize: 32,
           fontWeight: 'bold', // Note: FredokaOne might not support 'bold' weight synthesis well, but we'll leave it or remove it if it looks off.

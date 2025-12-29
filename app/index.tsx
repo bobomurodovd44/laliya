@@ -424,7 +424,7 @@ export default function Index() {
                   styles.lessonCard,
                   lesson.isActive && styles.lessonCardActive
                 ]}
-                onPress={() => router.push('/welcome')}
+                onPress={() => router.push('/record-audio')}
                 activeOpacity={0.8}
               >
                 {/* Card inner glow for active state */}
@@ -461,7 +461,7 @@ export default function Index() {
               {lesson.isActive && (
                 <TouchableOpacity 
                   style={styles.playButtonContainer}
-                  onPress={() => router.push('/welcome')}
+                  onPress={() => router.push('/record-audio')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.playButton}>

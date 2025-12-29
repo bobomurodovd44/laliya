@@ -426,7 +426,7 @@ export default function Welcome() {
 
             <DuoButton 
               title="Start Learning" 
-              color="green" 
+              color="orange" 
               size="large"
               onPress={() => router.push('/')}
               style={styles.button}

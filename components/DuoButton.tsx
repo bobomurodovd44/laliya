@@ -1,18 +1,18 @@
 import * as Haptics from 'expo-haptics';
 import { useRef } from 'react';
 import {
-  Animated,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  ViewStyle
+    Animated,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    ViewStyle
 } from 'react-native';
 
 interface DuoButtonProps {
   title: string;
   onPress?: () => void;
-  color?: 'green' | 'blue' | 'red' | 'yellow' | 'purple';
+  color?: 'green' | 'blue' | 'red' | 'yellow' | 'purple' | 'orange';
   size?: 'small' | 'medium' | 'large';
   style?: ViewStyle;
   disabled?: boolean;
@@ -38,6 +38,10 @@ const colorSchemes = {
   purple: {
     main: '#CE82FF',
     shadow: '#B565E0',
+  },
+  orange: {
+    main: '#FF9600',
+    shadow: '#CC6D00',
   },
 };
 

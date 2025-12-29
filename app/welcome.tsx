@@ -8,6 +8,14 @@ export default function Welcome() {
   const headerAnim = useRef(new Animated.Value(0)).current;
   const buttonAnim = useRef(new Animated.Value(0)).current;
   const footerAnim = useRef(new Animated.Value(0)).current;
+  
+  // Shape animation values
+  const shape1Anim = useRef(new Animated.Value(0)).current;
+  const shape2Anim = useRef(new Animated.Value(0)).current;
+  const shape3Anim = useRef(new Animated.Value(0)).current;
+  const shape4Anim = useRef(new Animated.Value(0)).current;
+  const shape5Anim = useRef(new Animated.Value(0)).current;
+  const shape6Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Sequential entrance animations
@@ -34,6 +42,32 @@ export default function Welcome() {
         bounciness: 6,
       }),
     ]).start();
+
+    // Continuous floating animations for shapes
+    const createFloatingAnimation = (animValue: Animated.Value, duration: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    // Start floating animations with different speeds
+    createFloatingAnimation(shape1Anim, 3000).start();
+    createFloatingAnimation(shape2Anim, 2500).start();
+    createFloatingAnimation(shape3Anim, 3500).start();
+    createFloatingAnimation(shape4Anim, 2800).start();
+    createFloatingAnimation(shape5Anim, 3200).start();
+    createFloatingAnimation(shape6Anim, 2700).start();
   }, []);
 
   // Interpolate animations
@@ -50,6 +84,58 @@ export default function Welcome() {
   const footerTranslateY = footerAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [20, 0],
+  });
+
+  // Shape floating animations
+  const shape1TranslateY = shape1Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -15],
+  });
+
+  const shape2TranslateY = shape2Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 12],
+  });
+
+  const shape3TranslateY = shape3Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -10],
+  });
+
+  const shape4TranslateY = shape4Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
+
+  const shape5TranslateY = shape5Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -12],
+  });
+
+  const shape6TranslateY = shape6Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 10],
+  });
+
+  // Rotation animations for some shapes
+  const shape1Rotate = shape1Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '5deg'],
+  });
+
+  const shape2Rotate = shape2Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['20deg', '25deg'],
+  });
+
+  const shape4Rotate = shape4Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['45deg', '50deg'],
+  });
+
+  const shape6Rotate = shape6Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-15deg', '-10deg'],
   });
 
   return (
@@ -72,6 +158,52 @@ export default function Welcome() {
             }
           ]}
         >
+          {/* Decorative Shapes */}
+          <View style={styles.decorativeShapes}>
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeCircle1,
+                { transform: [{ translateY: shape1TranslateY }, { rotate: shape1Rotate }] }
+              ]} 
+            />
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeSquare1,
+                { transform: [{ translateY: shape2TranslateY }, { rotate: shape2Rotate }] }
+              ]} 
+            />
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeCircle2,
+                { transform: [{ translateY: shape3TranslateY }] }
+              ]} 
+            />
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeStar1,
+                { transform: [{ translateY: shape4TranslateY }, { rotate: shape4Rotate }] }
+              ]} 
+            />
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeCircle3,
+                { transform: [{ translateY: shape5TranslateY }] }
+              ]} 
+            />
+            <Animated.View 
+              style={[
+                styles.shape, 
+                styles.shapeSquare2,
+                { transform: [{ translateY: shape6TranslateY }, { rotate: shape6Rotate }] }
+              ]} 
+            />
+          </View>
+
           <StyledText variant="title" style={styles.title}>
             Welcome to Laliya!
           </StyledText>
@@ -136,6 +268,71 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginTop: 20,
+    position: 'relative',
+    paddingVertical: 30,
+  },
+  decorativeShapes: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  shape: {
+    position: 'absolute',
+    opacity: 0.3,
+  },
+  shapeCircle1: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFD700',
+    top: -10,
+    left: '8%',
+  },
+  shapeSquare1: {
+    width: 60,
+    height: 60,
+    borderRadius: 15,
+    backgroundColor: '#FF6B9D',
+    top: -5,
+    right: '8%',
+    transform: [{ rotate: '20deg' }],
+  },
+  shapeCircle2: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#4ECDC4',
+    bottom: 0,
+    left: '10%',
+  },
+  shapeStar1: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFA502',
+    top: '40%',
+    right: '5%',
+    transform: [{ rotate: '45deg' }],
+  },
+  shapeCircle3: {
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#A8E6CF',
+    bottom: -5,
+    right: '12%',
+  },
+  shapeSquare2: {
+    width: 55,
+    height: 55,
+    borderRadius: 14,
+    backgroundColor: '#CE82FF',
+    top: '42%',
+    left: '4%',
+    transform: [{ rotate: '-15deg' }],
   },
   title: {
     marginBottom: 15,

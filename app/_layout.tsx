@@ -8,7 +8,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
-import { Colors } from '../constants/Colors';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,7 +16,7 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
     <View style={[
       styles.iconContainer,
       focused && styles.iconContainerActive,
-      focused && { marginTop: 8, transform: [{ scale: 1.05 }] }
+      focused && { marginTop: 10, transform: [{ scale: 1.05 }] }
     ]}>
       {focused && (
         <>
@@ -27,8 +26,8 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
       )}
       <Ionicons 
         name={iconName} 
-        size={focused ? 32 : 26} 
-        color={focused ? '#FFFFFF' : '#7C7C7C'}
+        size={focused ? 26 : 26} 
+        color={focused ? '#FFFFFF' : '#B8B8B8'}
         style={{ zIndex: 1 }}
       />
     </View>
@@ -45,28 +44,27 @@ function RootLayoutNav() {
         headerTransparent: true,
         tabBarStyle: {
           position: 'absolute',
-          bottom: insets.bottom + 12,
-          marginHorizontal: 16,
+          bottom: insets.bottom + 20,
+          marginHorizontal: 20,
           backgroundColor: '#FFFFFF',
-          borderRadius: 32,
+          borderRadius: 24,
           borderTopWidth: 0,
-          borderWidth: 1.5,
-          borderColor: 'rgba(0, 0, 0, 0.06)',
-          elevation: 30,
+          borderWidth: 0,
+          elevation: 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 16 },
-          shadowOpacity: 0.20,
-          shadowRadius: 24,
-          height: 78,
-          paddingBottom: 10,
-          paddingTop: 10,
-          paddingHorizontal: 16,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          height: 70,
+          paddingBottom: 8,
+          paddingTop: 8,
+          paddingHorizontal: 12,
         },
         sceneStyle: {
-          paddingBottom: 100,
+          backgroundColor: 'transparent',
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: '#7C7C7C',
+        tabBarActiveTintColor: '#FF1493',
+        tabBarInactiveTintColor: '#B8B8B8',
         tabBarLabelStyle: {
           fontFamily: 'BalsamiqSans',
           fontSize: 13,
@@ -77,6 +75,10 @@ function RootLayoutNav() {
         tabBarIconStyle: {
           marginTop: 0,
         },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
         tabBarShowLabel: true,
       }}
     >
@@ -84,6 +86,7 @@ function RootLayoutNav() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarLabel: ({ focused }) => (
             <Text style={{ 
               fontFamily: 'BalsamiqSans', 
@@ -91,7 +94,7 @@ function RootLayoutNav() {
               fontWeight: '700', 
               marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? Colors.primary : '#7C7C7C',
+              color: focused ? '#FF1493' : '#B8B8B8',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -123,7 +126,7 @@ function RootLayoutNav() {
               fontWeight: '700', 
               marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? Colors.primary : '#7C7C7C',
+              color: focused ? '#FF1493' : '#B8B8B8',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -174,16 +177,16 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'transparent',
     position: 'relative',
   },
   iconContainerActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FF1493',
     elevation: 8,
-    shadowColor: Colors.primary,
+    shadowColor: '#FF1493',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -194,8 +197,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 30,
-    backgroundColor: Colors.primary,
+    borderRadius: 24,
+    backgroundColor: '#FF1493',
   },
   glowEffect: {
     position: 'absolute',
@@ -203,8 +206,8 @@ const styles = StyleSheet.create({
     left: -3,
     right: -3,
     bottom: -3,
-    borderRadius: 33,
-    backgroundColor: Colors.primary,
+    borderRadius: 27,
+    backgroundColor: '#FF1493',
     opacity: 0.2,
     zIndex: -1,
   },

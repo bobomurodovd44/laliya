@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { DuoButton } from '../components/DuoButton';
 import { StyledText } from '../components/StyledText';
 
@@ -250,13 +250,9 @@ export default function Welcome() {
   });
 
   return (
-    <ImageBackground 
-      source={require('../assets/background.jpg')} 
-      style={styles.container}
-      resizeMode="cover"
-    >
-      {/* Semi-transparent overlay for better readability */}
-      <View style={styles.overlay} />
+    <View style={styles.container}>
+      {/* Light background layer */}
+      <View style={styles.backgroundLayer} />
       
       <View style={styles.content}>
         {/* Header Section */}
@@ -453,17 +449,18 @@ export default function Welcome() {
           </StyledText>
         </Animated.View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFBF5',
   },
-  overlay: {
+  backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: '#FFFBF5',
   },
   content: {
     flex: 1,

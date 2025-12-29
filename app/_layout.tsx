@@ -63,7 +63,7 @@ function RootLayoutNav() {
         sceneStyle: {
           backgroundColor: 'transparent',
         },
-        tabBarActiveTintColor: '#FF1493',
+        tabBarActiveTintColor: '#4DA6FF',
         tabBarInactiveTintColor: '#B8B8B8',
         tabBarLabelStyle: {
           fontFamily: 'BalsamiqSans',
@@ -94,7 +94,7 @@ function RootLayoutNav() {
               fontWeight: '700', 
               marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? '#FF1493' : '#B8B8B8',
+              color: focused ? '#4DA6FF' : '#B8B8B8',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -126,7 +126,7 @@ function RootLayoutNav() {
               fontWeight: '700', 
               marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? '#FF1493' : '#B8B8B8',
+              color: focused ? '#4DA6FF' : '#B8B8B8',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -184,9 +184,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   iconContainerActive: {
-    backgroundColor: '#FF1493',
+    backgroundColor: '#4DA6FF',
     elevation: 8,
-    shadowColor: '#FF1493',
+    shadowColor: '#4DA6FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 24,
-    backgroundColor: '#FF1493',
+    backgroundColor: '#4DA6FF',
   },
   glowEffect: {
     position: 'absolute',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     right: -3,
     bottom: -3,
     borderRadius: 27,
-    backgroundColor: '#FF1493',
+    backgroundColor: '#4DA6FF',
     opacity: 0.2,
     zIndex: -1,
   },

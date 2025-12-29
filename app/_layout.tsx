@@ -16,7 +16,8 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
   return (
     <View style={[
       styles.iconContainer,
-      focused && styles.iconContainerActive
+      focused && styles.iconContainerActive,
+      focused && { marginTop: 8 } // Add margin to center when label is hidden
     ]}>
       {focused && (
         <View style={styles.activeBackground} />
@@ -88,7 +89,7 @@ function RootLayoutNav() {
               marginBottom: 2, 
               color: focused ? Colors.primary : '#999',
               opacity: focused ? 0 : 1,
-              height: focused ? 0 : undefined,
+              position: focused ? 'absolute' : 'relative',
             }}>
               Home
             </Text>
@@ -111,7 +112,7 @@ function RootLayoutNav() {
               marginBottom: 2, 
               color: focused ? Colors.primary : '#999',
               opacity: focused ? 0 : 1,
-              height: focused ? 0 : undefined,
+              position: focused ? 'absolute' : 'relative',
             }}>
               Welcome
             </Text>
@@ -134,7 +135,7 @@ function RootLayoutNav() {
               marginBottom: 2, 
               color: focused ? Colors.primary : '#999',
               opacity: focused ? 0 : 1,
-              height: focused ? 0 : undefined,
+              position: focused ? 'absolute' : 'relative',
             }}>
               Profile
             </Text>

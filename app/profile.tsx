@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // Add this import
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
 
 export default function Profile() {
+  const router = useRouter(); // Add router hook
   const insets = useSafeAreaInsets();
   
   // Mock user data - replace with actual user data later
@@ -101,7 +103,7 @@ export default function Profile() {
       </View>
       {/* Fixed Header */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={{ width: 32 }} /> {/* Placeholder for balance */}
+        <View style={{ width: 32 }} />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.settingsButton} onPress={() => {}}>
           <Ionicons name="settings-sharp" size={24} color="#4B4B4B" />
@@ -164,7 +166,7 @@ export default function Profile() {
           <ProfileMenuItem 
             iconName="log-out-outline"
             title="Logout"
-            onPress={() => {}}
+            onPress={() => router.push('/login')}
           />
           <ProfileMenuItem 
             iconName="trash-outline"

@@ -1,17 +1,16 @@
 import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
 import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
 
 SplashScreen.preventAutoHideAsync();
 
-function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphMap; focused: boolean }) {
+function TabIcon({ iconSource, focused }: { iconSource: ImageSourcePropType; focused: boolean }) {
   return (
     <View style={[
       styles.iconContainer,
@@ -24,11 +23,14 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
           <View style={styles.glowEffect} />
         </>
       )}
-      <Ionicons 
-        name={iconName} 
-        size={focused ? 28 : 28} 
-        color={focused ? '#FFFFFF' : '#B8B8B8'}
-        style={{ zIndex: 1 }}
+      <Image 
+        source={iconSource}
+        style={{ 
+          width: 40, 
+          height: 40, 
+          zIndex: 1,
+        }}
+        resizeMode="contain"
       />
     </View>
   );
@@ -70,7 +72,7 @@ function RootLayoutNav() {
           title: 'Home',
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon iconName="home" focused={focused} />
+            <TabIcon iconSource={require('../assets/home.png')} focused={focused} />
           ),
         }}
       />
@@ -89,8 +91,26 @@ function RootLayoutNav() {
           title: 'Profile',
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon iconName="person" focused={focused} />
+            <TabIcon iconSource={require('../assets/profile.png')} focused={focused} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="login"
+        options={{
+          href: null,
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          sceneStyle: { paddingBottom: 0 },
+        }}
+      />
+      <Tabs.Screen
+        name="signup"
+        options={{
+          href: null,
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          sceneStyle: { paddingBottom: 0 },
         }}
       />
       <Tabs.Screen
@@ -132,9 +152,9 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: 'transparent',
     position: 'relative',
   },
@@ -147,7 +167,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 25,
+    borderRadius: 22.5,
     backgroundColor: '#4DA6FF',
   },
   glowEffect: {
@@ -156,7 +176,7 @@ const styles = StyleSheet.create({
     left: -2,
     right: -2,
     bottom: -2,
-    borderRadius: 27,
+    borderRadius: 24.5,
     backgroundColor: '#4DA6FF',
     opacity: 0.2,
     zIndex: -1,

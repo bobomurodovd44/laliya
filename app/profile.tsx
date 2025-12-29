@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
-import { StyledText } from '../components/StyledText';
 
 export default function Profile() {
+  const insets = useSafeAreaInsets();
+  
   // Mock user data - replace with actual user data later
   const user = {
     name: 'Laliya',
@@ -13,95 +16,163 @@ export default function Profile() {
     profilePicture: 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg',
   };
 
+  // Animated shapes
+  const shape1Anim = useRef(new Animated.Value(0)).current;
+  const shape2Anim = useRef(new Animated.Value(0)).current;
+  const shape3Anim = useRef(new Animated.Value(0)).current;
+  const shape4Anim = useRef(new Animated.Value(0)).current;
+  const shape5Anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animate floating shapes
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shape1Anim, { toValue: 1, duration: 4000, useNativeDriver: true }),
+        Animated.timing(shape1Anim, { toValue: 0, duration: 4000, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shape2Anim, { toValue: 1, duration: 5000, useNativeDriver: true }),
+        Animated.timing(shape2Anim, { toValue: 0, duration: 5000, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shape3Anim, { toValue: 1, duration: 6000, useNativeDriver: true }),
+        Animated.timing(shape3Anim, { toValue: 0, duration: 6000, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shape4Anim, { toValue: 1, duration: 4500, useNativeDriver: true }),
+        Animated.timing(shape4Anim, { toValue: 0, duration: 4500, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shape5Anim, { toValue: 1, duration: 5500, useNativeDriver: true }),
+        Animated.timing(shape5Anim, { toValue: 0, duration: 5500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Background Layer */}
       <View style={styles.backgroundLayer} />
-      
-      {/* Custom Title Header */}
-      <View style={styles.headerContainer}>
-        <StyledText variant="title" style={styles.headerTitle}>My Profile</StyledText>
+
+      {/* Animated Floating Shapes */}
+      <View style={styles.animatedShapesContainer}>
+        <Animated.View style={[styles.floatingShape, styles.circle1, {
+          transform: [
+            { translateY: shape1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -30] }) },
+            { translateX: shape1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }
+          ]
+        }]} />
+        <Animated.View style={[styles.floatingShape, styles.square1, {
+          transform: [
+            { translateY: shape2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
+            { rotate: shape2Anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+          ]
+        }]} />
+        <Animated.View style={[styles.floatingShape, styles.circle2, {
+          transform: [
+            { translateY: shape3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -50] }) },
+            { scale: shape3Anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.1, 1] }) }
+          ]
+        }]} />
+        <Animated.View style={[styles.floatingShape, styles.square2, {
+          transform: [
+            { translateY: shape4Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 35] }) },
+            { translateX: shape4Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -25] }) }
+          ]
+        }]} />
+        <Animated.View style={[styles.floatingShape, styles.circle3, {
+          transform: [
+            { translateY: shape5Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -45] }) },
+            { rotate: shape5Anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-180deg'] }) }
+          ]
+        }]} />
+      </View>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
+        <View style={{ width: 32 }} /> {/* Placeholder for balance */}
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => {}}>
+          <Ionicons name="settings-sharp" size={24} color="#4B4B4B" />
+        </TouchableOpacity>
       </View>
 
-      
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Header Section */}
-        {/* 3D Profile Card */}
-        <View style={styles.profileCard}>
+        {/* Profile Info Section - Simplified */}
+        <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             <Image 
               source={{ uri: user.profilePicture }}
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.editIconButton} onPress={() => {}}>
-              <Ionicons name="pencil-sharp" size={24} color="#FFFFFF" />
+              <Ionicons name="pencil" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.childName}>
             {user.name}
           </Text>
-          
-          <View style={styles.subtitleContainer}>
-            <Text style={styles.subtitleText}>{user.age} years old</Text>
-            <View style={styles.subtitleDot} />
-            <Text style={styles.subtitleText}>{user.gender}</Text>
-          </View>
+          <Text style={styles.subtitleText}>{user.age} years old • {user.gender}</Text>
         </View>
 
-        {/* Stats Row (Two 3D Cards) */}
+        {/* Stats Row - Duolingo Style Widgets */}
         <View style={styles.statsRow}>
           {/* Stars Card */}
-          <View style={[styles.statCard, { backgroundColor: '#FFFDE7' }]}>
-            <View style={[styles.iconCircle, { backgroundColor: '#FFF9C4' }]}>
-              <Ionicons name="star" size={32} color="#FFD700" />
-            </View>
-            <View style={{ flex: 1, alignItems: 'center', marginTop: 12 }}>
-              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>1,240</Text>
-              <Text style={styles.statTitle}>Stars</Text>
+          <View style={[styles.statCard, { borderColor: '#FFD700' }]}>
+            <Text style={styles.statTitle}>Stars</Text>
+            <View style={styles.statValueContainer}>
+              <Ionicons name="star" size={24} color="#FFD700" style={{ marginBottom: 4 }} />
+              <Text style={styles.statValue}>1,240</Text>
             </View>
           </View>
 
           {/* Level Card */}
-          <View style={[styles.statCard, { backgroundColor: '#F0F4FF' }]}>
-            <View style={[styles.iconCircle, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="trophy" size={32} color="#4DA6FF" />
-            </View>
-            <View style={{ flex: 1, alignItems: 'center', marginTop: 12 }}>
-              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{user.level}</Text>
-              <Text style={styles.statTitle}>Level</Text>
+          <View style={[styles.statCard, { borderColor: '#4DA6FF' }]}>
+            <Text style={styles.statTitle}>Level</Text>
+            <View style={styles.statValueContainer}>
+              <Ionicons name="trophy" size={24} color="#4DA6FF" style={{ marginBottom: 4 }} />
+              <Text style={styles.statValue}>{user.level}</Text>
             </View>
           </View>
         </View>
 
-        {/* Account Settings Section */}
+        <View style={styles.divider} />
+
+        {/* Account Actions */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="settings" size={32} color="#007AFF" />
-            <StyledText variant="subtitle" style={styles.sectionTitle}>
-              Account Settings
-            </StyledText>
-          </View>
-          
+          <ProfileMenuItem 
+            iconName="share-social-outline"
+            title="Share Profile"
+            onPress={() => {}}
+          />
+          <ProfileMenuItem 
+            iconName="log-out-outline"
+            title="Logout"
+            onPress={() => {}}
+          />
           <ProfileMenuItem 
             iconName="trash-outline"
             title="Delete Account"
             variant="danger"
             onPress={() => {}}
           />
-          
-          <ProfileMenuItem 
-            iconName="log-out-outline"
-            title="Logout"
-            onPress={() => {}}
-          />
         </View>
-
-
 
         {/* Bottom spacing */}
         <View style={styles.bottomSpacer} />
@@ -119,150 +190,170 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#FFF5E8',
   },
-  headerContainer: {
-    paddingTop: 60,
+  animatedShapesContainer: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+  },
+  floatingShape: {
+    position: 'absolute',
+  },
+  circle1: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFD7E5',
+    opacity: 0.3,
+    top: 100,
+    left: '10%',
+  },
+  square1: {
+    width: 60,
+    height: 60,
+    borderRadius: 15,
+    backgroundColor: '#D4E4FF',
+    opacity: 0.25,
+    top: 200,
+    right: '15%',
+  },
+  circle2: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFE4B8',
+    opacity: 0.2,
+    top: 450,
+    left: '60%',
+  },
+  square2: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: '#B8E6B8',
+    opacity: 0.25,
+    top: 600,
+    left: '8%',
+  },
+  circle3: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E8D4FF',
+    opacity: 0.2,
+    top: 500,
+    right: '12%',
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E5E5E5',
   },
   headerTitle: {
-    fontSize: 28,
+    fontFamily: 'FredokaOne',
+    fontSize: 20,
     color: '#333',
-    textAlign: 'left',
+    textAlign: 'center',
+  },
+  settingsButton: {
+    padding: 4,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 140, // Space for floating tab bar
+    paddingBottom: 100,
   },
-  profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
+  profileSection: {
     alignItems: 'center',
     marginBottom: 30,
-    // 3D Shadow Effect
-    shadowColor: '#E0C0A0', // Warm shadow
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-    borderBottomWidth: 6,
-    borderRightWidth: 2,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   profileImageContainer: {
     position: 'relative',
     marginBottom: 16,
   },
   profileImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 5,
-    borderColor: '#FFF5E8', // Matches background
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F0F0F0',
   },
   editIconButton: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: '#FF1493', // Index accent color
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#4DA6FF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
   childName: {
     fontFamily: 'FredokaOne',
-    fontSize: 34,
-    color: '#1A1A1A', // Dark Black
-    marginBottom: 6,
+    fontSize: 32,
+    color: '#333',
+    marginBottom: 4,
     textAlign: 'center',
-  },
-  subtitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
   },
   subtitleText: {
     fontFamily: 'BalsamiqSans',
     fontSize: 16,
-    color: '#AAAAAA', // Light Gray
-  },
-  subtitleDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D1D6',
+    color: '#999',
   },
   statsRow: {
     flexDirection: 'row',
     marginBottom: 30,
-    gap: 16, // Consistent gap between cards
+    gap: 16,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // 3D Shadow
-    shadowColor: '#E0C0A0',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
     borderBottomWidth: 5,
-    borderRightWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-  },
-  iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    fontFamily: 'FredokaOne',
-    fontSize: 28,
-    color: '#333',
-    lineHeight: 32,
+    borderColor: '#E5E5E5', // Default fallback
+    alignItems: 'flex-start',
   },
   statTitle: {
     fontFamily: 'BalsamiqSans',
     fontSize: 16,
-    color: '#888',
-    marginTop: 2,
+    color: '#777',
+    marginBottom: 8,
+    fontWeight: '700',
   },
-  section: {
-    marginBottom: 30,
-  },
-  sectionHeader: {
+  statValueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 8,
+  },
+  statValue: {
+    fontFamily: 'FredokaOne',
+    fontSize: 24,
+    color: '#333',
+  },
+  divider: {
+    height: 2,
+    backgroundColor: '#E5E5E5',
+    marginBottom: 20,
+    borderRadius: 1,
+  },
+  section: {
     gap: 10,
   },
-  sectionTitle: {
-    color: '#333',
-    textShadowColor: 'rgba(255, 255, 255, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
   bottomSpacer: {
-    height: 20,
+    height: 50,
   },
 });

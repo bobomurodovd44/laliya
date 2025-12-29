@@ -102,24 +102,10 @@ function RootLayoutNav() {
       <Tabs.Screen
         name="welcome"
         options={{
-          title: 'Welcome',
-          tabBarLabel: ({ focused }) => (
-            <Text style={{ 
-              fontFamily: 'BalsamiqSans', 
-              fontSize: 12, 
-              fontWeight: '700', 
-              marginTop: 2, 
-              marginBottom: 2, 
-              color: focused ? Colors.primary : '#999',
-              opacity: focused ? 0 : 1,
-              position: focused ? 'absolute' : 'relative',
-            }}>
-              Welcome
-            </Text>
-          ),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon iconName="sparkles" focused={focused} />
-          ),
+          href: null,
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          sceneStyle: { paddingBottom: 0 },
         }}
       />
       <Tabs.Screen

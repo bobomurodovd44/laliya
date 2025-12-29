@@ -1,8 +1,11 @@
+import { useRouter } from 'expo-router';
 import { ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
 import { CategoryCard } from '../components/CategoryCard';
 import { StyledText } from '../components/StyledText';
 
 export default function Index() {
+  const router = useRouter();
+
   return (
     <ImageBackground 
       source={require('../assets/background.jpg')} 
@@ -40,7 +43,7 @@ export default function Index() {
           <CategoryCard 
             title="🐾 Animals"
             image={require('../assets/animals.jpg')}
-            onPress={() => {}}
+            onPress={() => router.push('/welcome')}
           />
           
           <CategoryCard 

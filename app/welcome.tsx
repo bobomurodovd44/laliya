@@ -1,9 +1,12 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, ImageBackground, StyleSheet, View } from 'react-native';
 import { DuoButton } from '../components/DuoButton';
 import { StyledText } from '../components/StyledText';
 
 export default function Welcome() {
+  const router = useRouter();
+  
   // Animation values
   const headerAnim = useRef(new Animated.Value(0)).current;
   const buttonAnim = useRef(new Animated.Value(0)).current;
@@ -16,6 +19,15 @@ export default function Welcome() {
   const shape4Anim = useRef(new Animated.Value(0)).current;
   const shape5Anim = useRef(new Animated.Value(0)).current;
   const shape6Anim = useRef(new Animated.Value(0)).current;
+  
+  // Parrot animation
+  const parrotAnim = useRef(new Animated.Value(0)).current;
+  
+  // Sparkle animations
+  const sparkle1Anim = useRef(new Animated.Value(0)).current;
+  const sparkle2Anim = useRef(new Animated.Value(0)).current;
+  const sparkle3Anim = useRef(new Animated.Value(0)).current;
+  const sparkle4Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Sequential entrance animations
@@ -68,6 +80,48 @@ export default function Welcome() {
     createFloatingAnimation(shape4Anim, 2800).start();
     createFloatingAnimation(shape5Anim, 3200).start();
     createFloatingAnimation(shape6Anim, 2700).start();
+
+    // Parrot bouncing animation - very slow and smooth
+    Animated.loop(
+      Animated.sequence([
+        Animated.spring(parrotAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 7,
+          tension: 10,
+        }),
+        Animated.spring(parrotAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          friction: 7,
+          tension: 10,
+        }),
+      ])
+    ).start();
+
+    // Sparkle animations with different timings
+    const createSparkleAnimation = (animValue: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    createSparkleAnimation(sparkle1Anim, 0).start();
+    createSparkleAnimation(sparkle2Anim, 400).start();
+    createSparkleAnimation(sparkle3Anim, 200).start();
+    createSparkleAnimation(sparkle4Anim, 600).start();
   }, []);
 
   // Interpolate animations
@@ -136,6 +190,63 @@ export default function Welcome() {
   const shape6Rotate = shape6Anim.interpolate({
     inputRange: [0, 1],
     outputRange: ['-15deg', '-10deg'],
+  });
+
+  // Parrot animation interpolations - very gentle and subtle
+  const parrotTranslateY = parrotAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -12],
+  });
+
+  const parrotRotate = parrotAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-2deg', '2deg'],
+  });
+
+  const parrotScale = parrotAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.02, 1],
+  });
+
+  // Sparkle interpolations
+  const sparkle1Opacity = sparkle1Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 1, 0],
+  });
+
+  const sparkle1Scale = sparkle1Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 1.2, 0.5],
+  });
+
+  const sparkle2Opacity = sparkle2Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 1, 0],
+  });
+
+  const sparkle2Scale = sparkle2Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 1.2, 0.5],
+  });
+
+  const sparkle3Opacity = sparkle3Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 1, 0],
+  });
+
+  const sparkle3Scale = sparkle3Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 1.2, 0.5],
+  });
+
+  const sparkle4Opacity = sparkle4Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 1, 0],
+  });
+
+  const sparkle4Scale = sparkle4Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 1.2, 0.5],
   });
 
   return (
@@ -222,13 +333,109 @@ export default function Welcome() {
             }
           ]}
         >
-          <DuoButton 
-            title="🚀 Start Learning" 
-            color="green" 
-            size="large"
-            onPress={() => {}}
-            style={styles.button}
-          />
+          {/* Parrot with Sparkles Container */}
+          <View style={styles.parrotContainer}>
+            {/* Sparkle Stars */}
+            <Animated.Text
+              style={[
+                styles.sparkle,
+                styles.sparkle1,
+                {
+                  opacity: sparkle1Opacity,
+                  transform: [{ scale: sparkle1Scale }],
+                }
+              ]}
+            >
+              ✨
+            </Animated.Text>
+            
+            <Animated.Text
+              style={[
+                styles.sparkle,
+                styles.sparkle2,
+                {
+                  opacity: sparkle2Opacity,
+                  transform: [{ scale: sparkle2Scale }],
+                }
+              ]}
+            >
+              ⭐
+            </Animated.Text>
+            
+            <Animated.Text
+              style={[
+                styles.sparkle,
+                styles.sparkle3,
+                {
+                  opacity: sparkle3Opacity,
+                  transform: [{ scale: sparkle3Scale }],
+                }
+              ]}
+            >
+              ✨
+            </Animated.Text>
+            
+            <Animated.Text
+              style={[
+                styles.sparkle,
+                styles.sparkle4,
+                {
+                  opacity: sparkle4Opacity,
+                  transform: [{ scale: sparkle4Scale }],
+                }
+              ]}
+            >
+              ⭐
+            </Animated.Text>
+
+            {/* Parrot Image */}
+            <Animated.Image
+              source={require('../assets/parrot.png')}
+              style={[
+                styles.parrotImage,
+                {
+                  transform: [
+                    { 
+                      scale: Animated.multiply(
+                        buttonAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 1],
+                        }),
+                        parrotScale
+                      )
+                    },
+                    { translateY: parrotTranslateY },
+                    { rotate: parrotRotate }
+                  ]
+                }
+              ]}
+              resizeMode="contain"
+            />
+          </View>
+          
+          {/* Button with Sparkle */}
+          <View style={styles.buttonWrapper}>
+            {/* Single Button Sparkle */}
+            <Animated.Text
+              style={[
+                styles.buttonSparkle,
+                {
+                  opacity: sparkle2Opacity,
+                  transform: [{ scale: sparkle2Scale }],
+                }
+              ]}
+            >
+              ⭐
+            </Animated.Text>
+
+            <DuoButton 
+              title="Start Learning" 
+              color="green" 
+              size="large"
+              onPress={() => router.push('/')}
+              style={styles.button}
+            />
+          </View>
         </Animated.View>
         
         {/* Footer Message */}
@@ -354,8 +561,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 20,
   },
+  parrotContainer: {
+    position: 'relative',
+    width: 280,
+    height: 280,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  sparkle: {
+    position: 'absolute',
+    fontSize: 32,
+  },
+  sparkle1: {
+    top: 20,
+    left: 20,
+  },
+  sparkle2: {
+    top: 30,
+    right: 15,
+  },
+  sparkle3: {
+    bottom: 30,
+    left: 15,
+  },
+  sparkle4: {
+    bottom: 20,
+    right: 20,
+  },
+  parrotImage: {
+    width: 240,
+    height: 240,
+    marginBottom: 20,
+  },
+  buttonWrapper: {
+    position: 'relative',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonSparkle: {
+    position: 'absolute',
+    fontSize: 28,
+    top: -8,
+    right: '10%',
+  },
   button: {
     width: '100%',
+    marginBottom: 30,
   },
   footer: {
     alignItems: 'center',

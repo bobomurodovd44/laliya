@@ -142,19 +142,19 @@ export default function Index() {
     {
       id: 4,
       title: 'Numbers',
-      stars: 1,
+      stars: 0,
       positionStyle: { top: 440, left: '5%' },
     },
     {
       id: 5,
       title: 'Shapes',
-      stars: 3,
+      stars: 0,
       positionStyle: { top: 580, right: '8%' },
     },
     {
       id: 6,
       title: 'Body Parts',
-      stars: 2,
+      stars: 0,
       positionStyle: { top: 720, left: '10%' },
     },
     {

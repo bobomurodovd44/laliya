@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 interface LessonCard {
   id: number;
@@ -177,6 +178,76 @@ export default function Index() {
     </View>
   );
 
+  const { width: screenWidth } = useWindowDimensions();
+  const cardSize = 110;
+  const halfCard = cardSize / 2;
+
+  // Helper to get coordinates
+  const getCardCoordinates = (lesson: LessonCard) => {
+    let x = 0;
+    const y = (lesson.positionStyle.top as number) + halfCard;
+
+    if ('left' in lesson.positionStyle) {
+      const leftVal = lesson.positionStyle.left;
+      if (typeof leftVal === 'string' && leftVal.includes('%')) {
+        const pct = parseFloat(leftVal) / 100;
+        x = (screenWidth * pct) + halfCard;
+      } else {
+        x = (leftVal as number) + halfCard;
+      }
+    } else if ('right' in lesson.positionStyle) {
+      const rightVal = lesson.positionStyle.right;
+      if (typeof rightVal === 'string' && rightVal.includes('%')) {
+        const pct = parseFloat(rightVal) / 100;
+        x = screenWidth - (screenWidth * pct) - halfCard;
+      } else {
+        x = screenWidth - (rightVal as number) - halfCard;
+      }
+    } else if (lesson.positionStyle.alignSelf === 'center') {
+      x = screenWidth / 2;
+    }
+
+    return { x, y };
+  };
+
+  // Generate Path
+  const generatePath = () => {
+    if (lessons.length < 2) return '';
+    
+    let d = '';
+    const coords = lessons.map(getCardCoordinates);
+    const offset = 65; // Distance from center to start/end drawing (55 radius + 10 gap)
+
+    for (let i = 0; i < coords.length - 1; i++) {
+      const current = coords[i];
+      const next = coords[i + 1];
+      
+      // Calculate direction vector
+      const dx = next.x - current.x;
+      const dy = next.y - current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist === 0) continue;
+
+      const ux = dx / dist;
+      const uy = dy / dist;
+      
+      // Start/End points offset from center
+      const sx = current.x + ux * offset;
+      const sy = current.y + uy * offset;
+      const ex = next.x - ux * offset;
+      const ey = next.y - uy * offset;
+      
+      // Control points for smooth curve between new start/end
+      const cp1y = sy + (ey - sy) / 2;
+      const cp2y = ey - (ey - sy) / 2;
+      
+      d += `M ${sx} ${sy} C ${sx} ${cp1y}, ${ex} ${cp2y}, ${ex} ${ey} `;
+    }
+
+    return d;
+  };
+
   return (
     <View style={styles.container}>
       {/* Simple Light Background */}
@@ -328,8 +399,23 @@ export default function Index() {
       >
         {/* Lesson Cards in Path Layout */}
         <View style={styles.pathContainer}>
+          {/* Svg Dotted Path */}
+          <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Path
+              d={generatePath()}
+              stroke="#E0E0E0" // Light gray
+              strokeWidth="22" // Even bigger dots
+              strokeDasharray="0.1, 40" // Circle segments with more spacing
+              strokeLinecap="round"
+              fill="none"
+              opacity={0.8}
+            />
+          </Svg>
+
           {lessons.map((lesson) => (
             <View key={lesson.id} style={[styles.cardWrapper, lesson.positionStyle]}>
+
+
               {/* Lesson Card with enhanced design */}
               <TouchableOpacity 
                 style={[
@@ -500,7 +586,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 120,
-    paddingBottom: 40,
+    paddingBottom: 140,
   },
   fixedHeader: {
     position: 'absolute',

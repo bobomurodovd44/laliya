@@ -17,15 +17,18 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
     <View style={[
       styles.iconContainer,
       focused && styles.iconContainerActive,
-      focused && { marginTop: 8 } // Add margin to center when label is hidden
+      focused && { marginTop: 8, transform: [{ scale: 1.05 }] }
     ]}>
       {focused && (
-        <View style={styles.activeBackground} />
+        <>
+          <View style={styles.activeBackground} />
+          <View style={styles.glowEffect} />
+        </>
       )}
       <Ionicons 
         name={iconName} 
-        size={focused ? 30 : 28} 
-        color={focused ? '#FFFFFF' : '#999'}
+        size={focused ? 32 : 26} 
+        color={focused ? '#FFFFFF' : '#7C7C7C'}
         style={{ zIndex: 1 }}
       />
     </View>
@@ -45,29 +48,30 @@ function RootLayoutNav() {
           bottom: insets.bottom + 12,
           marginHorizontal: 16,
           backgroundColor: '#FFFFFF',
-          borderRadius: 28,
+          borderRadius: 32,
           borderTopWidth: 0,
-          borderWidth: 0,
-          elevation: 25,
+          borderWidth: 1.5,
+          borderColor: 'rgba(0, 0, 0, 0.06)',
+          elevation: 30,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.18,
-          shadowRadius: 20,
-          height: 72,
+          shadowOffset: { width: 0, height: 16 },
+          shadowOpacity: 0.20,
+          shadowRadius: 24,
+          height: 78,
           paddingBottom: 10,
           paddingTop: 10,
-          paddingHorizontal: 12,
+          paddingHorizontal: 16,
         },
         sceneStyle: {
           paddingBottom: 100,
         },
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: '#999',
+        tabBarInactiveTintColor: '#7C7C7C',
         tabBarLabelStyle: {
           fontFamily: 'BalsamiqSans',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: '700',
-          marginTop: 2,
+          marginTop: 3,
           marginBottom: 2,
         },
         tabBarIconStyle: {
@@ -83,11 +87,11 @@ function RootLayoutNav() {
           tabBarLabel: ({ focused }) => (
             <Text style={{ 
               fontFamily: 'BalsamiqSans', 
-              fontSize: 12, 
+              fontSize: 13, 
               fontWeight: '700', 
-              marginTop: 2, 
+              marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? Colors.primary : '#999',
+              color: focused ? Colors.primary : '#7C7C7C',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -115,11 +119,11 @@ function RootLayoutNav() {
           tabBarLabel: ({ focused }) => (
             <Text style={{ 
               fontFamily: 'BalsamiqSans', 
-              fontSize: 12, 
+              fontSize: 13, 
               fontWeight: '700', 
-              marginTop: 2, 
+              marginTop: 3, 
               marginBottom: 2, 
-              color: focused ? Colors.primary : '#999',
+              color: focused ? Colors.primary : '#7C7C7C',
               opacity: focused ? 0 : 1,
               position: focused ? 'absolute' : 'relative',
             }}>
@@ -170,14 +174,19 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'transparent',
     position: 'relative',
   },
   iconContainerActive: {
     backgroundColor: Colors.primary,
+    elevation: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
   },
   activeBackground: {
     position: 'absolute',
@@ -185,8 +194,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 28,
+    borderRadius: 30,
     backgroundColor: Colors.primary,
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 33,
+    backgroundColor: Colors.primary,
+    opacity: 0.2,
+    zIndex: -1,
   },
 });
 

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
@@ -16,7 +16,7 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
     <View style={[
       styles.iconContainer,
       focused && styles.iconContainerActive,
-      focused && { marginTop: 10, transform: [{ scale: 1.05 }] }
+      focused && { transform: [{ scale: 1.05 }] }
     ]}>
       {focused && (
         <>
@@ -26,7 +26,7 @@ function TabIcon({ iconName, focused }: { iconName: keyof typeof Ionicons.glyphM
       )}
       <Ionicons 
         name={iconName} 
-        size={focused ? 26 : 26} 
+        size={focused ? 28 : 28} 
         color={focused ? '#FFFFFF' : '#B8B8B8'}
         style={{ zIndex: 1 }}
       />
@@ -43,43 +43,24 @@ function RootLayoutNav() {
         header: (props) => <CustomHeader {...props} />,
         headerTransparent: true,
         tabBarStyle: {
-          position: 'absolute',
-          bottom: insets.bottom + 20,
-          marginHorizontal: 20,
           backgroundColor: '#FFFFFF',
-          borderRadius: 24,
           borderTopWidth: 0,
-          borderWidth: 0,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.15,
-          shadowRadius: 16,
-          height: 70,
-          paddingBottom: 8,
-          paddingTop: 8,
-          paddingHorizontal: 12,
+          elevation: 0,
+          shadowOpacity: 0,
+          height: 70 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 10,
         },
         sceneStyle: {
           backgroundColor: 'transparent',
         },
         tabBarActiveTintColor: '#4DA6FF',
         tabBarInactiveTintColor: '#B8B8B8',
-        tabBarLabelStyle: {
-          fontFamily: 'BalsamiqSans',
-          fontSize: 13,
-          fontWeight: '700',
-          marginTop: 3,
-          marginBottom: 2,
-        },
-        tabBarIconStyle: {
-          marginTop: 0,
-        },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
         },
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
@@ -87,20 +68,6 @@ function RootLayoutNav() {
         options={{
           title: 'Home',
           headerShown: false,
-          tabBarLabel: ({ focused }) => (
-            <Text style={{ 
-              fontFamily: 'BalsamiqSans', 
-              fontSize: 13, 
-              fontWeight: '700', 
-              marginTop: 3, 
-              marginBottom: 2, 
-              color: focused ? '#4DA6FF' : '#B8B8B8',
-              opacity: focused ? 0 : 1,
-              position: focused ? 'absolute' : 'relative',
-            }}>
-              Home
-            </Text>
-          ),
           tabBarIcon: ({ focused }) => (
             <TabIcon iconName="home" focused={focused} />
           ),
@@ -120,20 +87,6 @@ function RootLayoutNav() {
         options={{
           title: 'Profile',
           headerShown: false,
-          tabBarLabel: ({ focused }) => (
-            <Text style={{ 
-              fontFamily: 'BalsamiqSans', 
-              fontSize: 13, 
-              fontWeight: '700', 
-              marginTop: 3, 
-              marginBottom: 2, 
-              color: focused ? '#4DA6FF' : '#B8B8B8',
-              opacity: focused ? 0 : 1,
-              position: focused ? 'absolute' : 'relative',
-            }}>
-              Profile
-            </Text>
-          ),
           tabBarIcon: ({ focused }) => (
             <TabIcon iconName="person" focused={focused} />
           ),
@@ -178,19 +131,14 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'transparent',
     position: 'relative',
   },
   iconContainerActive: {
     backgroundColor: '#4DA6FF',
-    elevation: 8,
-    shadowColor: '#4DA6FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
   },
   activeBackground: {
     position: 'absolute',
@@ -198,15 +146,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 24,
+    borderRadius: 25,
     backgroundColor: '#4DA6FF',
   },
   glowEffect: {
     position: 'absolute',
-    top: -3,
-    left: -3,
-    right: -3,
-    bottom: -3,
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
     borderRadius: 27,
     backgroundColor: '#4DA6FF',
     opacity: 0.2,

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 interface LessonCard {
@@ -14,6 +15,7 @@ interface LessonCard {
 
 export default function Index() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const mascotAnim = useRef(new Animated.Value(0)).current;
   
   // Animated shapes
@@ -380,10 +382,10 @@ export default function Index() {
       </View>
 
       {/* Fixed Header at Top */}
-      <View style={styles.fixedHeader}>
+      <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerStarsContainer}>
           <View style={styles.starBadge}>
-            <Ionicons name="star" size={24} color="#FFD700" />
+            <Ionicons name="star" size={28} color="#FFD700" />
             <Text style={styles.starCount}>1,240</Text>
           </View>
         </View>
@@ -593,22 +595,18 @@ const styles = StyleSheet.create({
   },
   fixedHeader: {
     position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
     zIndex: 100,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   headerStarsContainer: {
     flexDirection: 'row',
@@ -618,26 +616,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF9E6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
   },
   starCount: {
     fontFamily: 'BalsamiqSans',
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FF8C00',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   levelBadge: {
     backgroundColor: '#E6F2FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   levelText: {
     fontFamily: 'BalsamiqSans',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
     color: '#4A90E2',
   },

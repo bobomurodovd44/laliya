@@ -119,6 +119,7 @@ function RootLayoutNav() {
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,
           tabBarLabel: ({ focused }) => (
             <Text style={{ 
               fontFamily: 'BalsamiqSans', 

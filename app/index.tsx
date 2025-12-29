@@ -429,7 +429,10 @@ export default function Index() {
                 {lesson.isActive && <View style={styles.cardInnerGlow} />}
                 
                 {!lesson.isActive ? (
-                  <Text style={styles.lessonNumber}>{lesson.id}</Text>
+                  <Text style={[
+                    styles.lessonNumber,
+                    lesson.stars > 0 && { color: '#FF8C00' } // Orange for started lessons
+                  ]}>{lesson.id}</Text>
                 ) : (
                   <Animated.View 
                     style={[

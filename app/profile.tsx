@@ -161,7 +161,7 @@ export default function Profile() {
           <ProfileMenuItem 
             iconName="share-social-outline"
             title="Share Profile"
-            onPress={() => {}}
+            onPress={() => router.push('/add-child')}
           />
           <ProfileMenuItem 
             iconName="log-out-outline"

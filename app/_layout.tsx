@@ -119,6 +119,15 @@ function RootLayoutNav() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="add-child"
+        options={{
+          href: null,
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          sceneStyle: { paddingBottom: 0 },
+        }}
+      />
     </Tabs>
   );
 }

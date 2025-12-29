@@ -7,11 +7,11 @@ import {
     Platform,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Input } from '../components/Input';
 
 export default function Login() {
   const router = useRouter();
@@ -19,7 +19,6 @@ export default function Login() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   // Animated shapes (Consistent with other pages)
   const shape1Anim = useRef(new Animated.Value(0)).current;
@@ -104,40 +103,22 @@ export default function Login() {
           <Text style={styles.subtitle}>Welcome back, friend!</Text>
 
           <View style={styles.inputGroup}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={24} color="#CCC" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor="#CCC"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={24} color="#CCC" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#CCC"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={32} 
-                  color="#FF8C00" 
-                />
-              </TouchableOpacity>
-            </View>
+            <Input
+              icon="mail"
+              placeholder="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            
+            <Input
+              icon="lock-closed"
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              isPassword
+            />
           </View>
 
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
@@ -253,34 +234,6 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 16,
     marginBottom: 30,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 75,
-    borderWidth: 2,
-    borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    color: '#333',
-    height: '100%',
-  },
-  eyeIcon: {
-    padding: 8,
   },
   loginButton: {
     width: '100%',

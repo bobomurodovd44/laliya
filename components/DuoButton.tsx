@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
   ViewStyle
 } from 'react-native';
 
@@ -49,8 +50,8 @@ const colorSchemes = {
     shadow: '#CC6D00',
   },
   gray: {
-    main: '#C0C0C0', 
-    shadow: '#A0A0A0',
+    main: '#B0B0B0', 
+    shadow: '#808080',
   },
 };
 
@@ -60,21 +61,21 @@ const sizes = {
     paddingHorizontal: 24,
     fontSize: 18,
     borderRadius: 20,
-    shadowDepth: 6,
+    shadowDepth: 7,
   },
   medium: {
     paddingVertical: 16,
     paddingHorizontal: 40,
     fontSize: 22,
     borderRadius: 26,
-    shadowDepth: 8,
+    shadowDepth: 9,
   },
   large: {
     paddingVertical: 20,
     paddingHorizontal: 56,
     fontSize: 26,
     borderRadius: 32,
-    shadowDepth: 10,
+    shadowDepth: 11,
   },
 };
 
@@ -102,10 +103,17 @@ export function DuoButton({
   // For circles, height of the top face is customSize.
   // The container will be taller by shadowDepth.
   const faceHeight = customSize && shape === 'circle' ? customSize : undefined;
+  
+  // For circles, ensure shadow depth is proportional
+  const circleShadowDepth = shape === 'circle' && customSize 
+    ? Math.max(6, Math.min(customSize * 0.12, 12)) 
+    : sizeStyle.shadowDepth;
 
   // Animation values
   const pressAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const shadowScaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     if (disabled) return;
@@ -115,19 +123,30 @@ export function DuoButton({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    // Animate press down
+    // Animate press down with smooth, responsive feel
     Animated.parallel([
       Animated.spring(pressAnim, {
         toValue: 1,
         useNativeDriver: true,
-        speed: 50,
+        speed: 80,
         bounciness: 0,
       }),
       Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+        speed: 80,
+        bounciness: 0,
+      }),
+      Animated.spring(shadowScaleAnim, {
         toValue: 0.98,
         useNativeDriver: true,
-        speed: 50,
+        speed: 80,
         bounciness: 0,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
       }),
     ]).start();
   };
@@ -135,19 +154,30 @@ export function DuoButton({
   const handlePressOut = () => {
     if (disabled) return;
 
-    // Animate press up with bounce
+    // Animate press up with satisfying bounce
     Animated.parallel([
       Animated.spring(pressAnim, {
         toValue: 0,
         useNativeDriver: true,
-        speed: 20,
-        bounciness: 12,
+        speed: 25,
+        bounciness: 15,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
-        speed: 20,
-        bounciness: 12,
+        speed: 25,
+        bounciness: 15,
+      }),
+      Animated.spring(shadowScaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 25,
+        bounciness: 15,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
       }),
     ]).start();
   };
@@ -163,10 +193,13 @@ export function DuoButton({
     onPress?.();
   };
 
-  // Interpolate press animation
+  // Interpolate press animation with smoother curve
+  const shadowDepth = shape === 'circle' ? circleShadowDepth : sizeStyle.shadowDepth;
+  // For circles, start slightly above center to account for shadow, then press down
+  const initialOffset = shape === 'circle' ? -(shadowDepth * 0.5) : 0;
   const translateY = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, sizeStyle.shadowDepth - 2],
+    outputRange: [initialOffset, initialOffset + shadowDepth - 1],
   });
 
   return (
@@ -178,7 +211,7 @@ export function DuoButton({
         style,
         {
           transform: [{ scale: scaleAnim }],
-          opacity: disabled ? 0.6 : 1,
+          opacity: disabled ? 0.7 : opacityAnim,
         }
       ]}
     >
@@ -189,37 +222,42 @@ export function DuoButton({
         disabled={disabled}
         style={styles.pressable}
       >
-        {/* Shadow layer */}
+        {/* Shadow layer - creates the 3D depth */}
         <Animated.View 
           style={[
             styles.shadowLayer,
+            shape === 'circle' && styles.circleShadowLayer,
             {
               backgroundColor: colors.shadow,
               borderRadius: borderRadius,
-              paddingBottom: sizeStyle.shadowDepth,
               width: buttonWidth,
+              height: shape === 'circle' && customSize ? customSize + shadowDepth : undefined,
+              paddingBottom: shape === 'circle' ? shadowDepth : sizeStyle.shadowDepth,
+              borderWidth: 0,
+              transform: [{ scale: shadowScaleAnim }],
             }
           ]} 
         >
-          {/* Main button */}
+          {/* Main button face */}
           <Animated.View
             style={[
               styles.buttonLayer,
+              shape === 'circle' && styles.circleButtonLayer,
               {
                 backgroundColor: colors.main,
                 borderRadius: borderRadius,
-                // For circles, we don't want vertical padding from sizeStyle affecting the shape
-                // We rely on flex layout to center content
                 paddingVertical: shape === 'circle' ? 0 : sizeStyle.paddingVertical,
                 paddingHorizontal: shape === 'circle' ? 0 : sizeStyle.paddingHorizontal,
                 transform: [{ translateY }],
-                flexDirection: 'row', 
+                flexDirection: shape === 'circle' && !title ? 'column' : 'row', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                gap: 8,
-                width: buttonWidth || (shape === 'circle' ? '100%' : undefined), // Fallback
-                height: faceHeight, // Explicit height if circle
-                aspectRatio: shape === 'circle' && !customSize ? 1 : undefined, // Fallback ratio
+                gap: shape === 'circle' && !title ? 0 : 8,
+                width: buttonWidth || (shape === 'circle' ? '100%' : undefined),
+                height: faceHeight,
+                aspectRatio: shape === 'circle' && !customSize ? 1 : undefined,
+                minWidth: shape === 'circle' && customSize ? customSize : undefined,
+                minHeight: shape === 'circle' && customSize ? customSize : undefined,
               }
             ]}
           >
@@ -228,6 +266,7 @@ export function DuoButton({
                 name={icon} 
                 size={iconSize || (size === 'large' ? 32 : size === 'medium' ? 24 : 20)} 
                 color="white" 
+                style={shape === 'circle' && !title ? styles.circleIcon : undefined}
               />
             )}
             {title ? (
@@ -256,19 +295,33 @@ const styles = StyleSheet.create({
   },
   shadowLayer: {
     width: '100%',
+    overflow: 'hidden',
+  },
+  circleShadowLayer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonLayer: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  circleButtonLayer: {
+    margin: 0,
+    padding: 0,
+  },
+  circleIcon: {
+    margin: 0,
+    padding: 0,
   },
   text: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontFamily: 'BalsamiqSans',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
     zIndex: 1,
   },
 });

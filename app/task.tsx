@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +23,7 @@ export default function Task() {
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [resetKey, setResetKey] = useState(0); // Key to force component remount
   const confettiRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
@@ -44,6 +45,14 @@ export default function Task() {
     // Reset completion state when exercise changes
     setIsCompleted(false);
   }, [stageId, exerciseOrder]);
+
+  // Reset exercise every time screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Increment reset key to force component remount
+      setResetKey(prev => prev + 1);
+    }, [])
+  );
 
   const getExerciseTypeText = (type: ExerciseType): string => {
     switch (type) {
@@ -78,7 +87,7 @@ export default function Task() {
       case ExerciseType.LOOK_AND_SAY:
         return <LookAndSay exercise={currentExercise} onComplete={handleComplete} />;
       case ExerciseType.SHAPE_MATCH:
-        return <ShapeMatch exercise={currentExercise} onComplete={handleComplete} />;
+        return <ShapeMatch key={resetKey} exercise={currentExercise} onComplete={handleComplete} />;
       case ExerciseType.PICTURE_PUZZLE:
         return <PicturePuzzle exercise={currentExercise} onComplete={handleComplete} />;
       default:

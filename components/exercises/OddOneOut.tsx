@@ -1,12 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Exercise } from '../../data/data';
 
 interface OddOneOutProps {
   exercise: Exercise;
+  onComplete: () => void;
 }
 
-export default function OddOneOut({ exercise }: OddOneOutProps) {
+export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Odd One Out</Text>
@@ -16,7 +17,15 @@ export default function OddOneOut({ exercise }: OddOneOutProps) {
         <Text style={styles.placeholder}>
           Find the item that doesn't belong!
         </Text>
-        {/* TODO: Add interactive options grid */}
+        
+        {/* Test button to mark as complete */}
+        <TouchableOpacity 
+          style={styles.testButton}
+          onPress={onComplete}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.testButtonText}>Complete Exercise (Test)</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -45,11 +54,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 24,
   },
   placeholder: {
     fontFamily: 'BalsamiqSans',
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
+  },
+  testButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  testButtonText: {
+    fontFamily: 'BalsamiqSans',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

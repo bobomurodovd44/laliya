@@ -1,12 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Exercise } from '../../data/data';
 
 interface ShapeMatchProps {
   exercise: Exercise;
+  onComplete: () => void;
 }
 
-export default function ShapeMatch({ exercise }: ShapeMatchProps) {
+export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Shape Match</Text>
@@ -16,7 +17,14 @@ export default function ShapeMatch({ exercise }: ShapeMatchProps) {
         <Text style={styles.placeholder}>
           Match the shapes to the pictures!
         </Text>
-        {/* TODO: Add drag and drop matching interface */}
+        
+        <TouchableOpacity 
+          style={styles.testButton}
+          onPress={onComplete}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.testButtonText}>Complete Exercise (Test)</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -45,11 +53,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 24,
   },
   placeholder: {
     fontFamily: 'BalsamiqSans',
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
+  },
+  testButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  testButtonText: {
+    fontFamily: 'BalsamiqSans',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

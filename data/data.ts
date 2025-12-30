@@ -80,27 +80,27 @@ export interface Item {
 export const items: Item[] = [
   {
     word: 'Cat',
-    imageUrl: 'https://example.com/images/cat.png',
+    imageUrl: 'https://i.pinimg.com/736x/a0/d3/f5/a0d3f5479c6b5a589aeca0d76b631c85.jpg',
     audioUrl: 'https://example.com/audio/cat.mp3',
     syllablesAudioUrl: 'https://example.com/audio/cat-syllables.mp3',
     categoryId: 1, // Animal Sounds
   },
   {
     word: 'Dog',
-    imageUrl: 'https://example.com/images/dog.png',
+    imageUrl: 'https://i.pinimg.com/1200x/92/eb/e1/92ebe136b670b217dc325517fbbd3864.jpg',
     audioUrl: 'https://example.com/audio/dog.mp3',
     syllablesAudioUrl: 'https://example.com/audio/dog-syllables.mp3',
     categoryId: 1, // Animal Sounds
   },
   {
     word: 'Red',
-    imageUrl: 'https://example.com/images/red.png',
+    imageUrl: 'https://i.pinimg.com/1200x/92/eb/e1/92ebe136b670b217dc325517fbbd3864.jpg',
     audioUrl: 'https://example.com/audio/red.mp3',
     categoryId: 3, // Colors
   },
   {
     word: 'Blue',
-    audioUrl: 'https://example.com/audio/blue.mp3',
+    audioUrl: 'https://i.pinimg.com/736x/59/30/80/59308077a78e27b50a731dc28743a153.jpg',
     syllablesAudioUrl: 'https://example.com/audio/blue-syllables.mp3',
     categoryId: 3, // Colors
   },

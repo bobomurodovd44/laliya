@@ -1,76 +1,329 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Exercise } from '../../data/data';
+import { Image } from 'expo-image';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { Exercise, items } from '../../data/data';
 
 interface PicturePuzzleProps {
   exercise: Exercise;
   onComplete: () => void;
 }
 
+// 2x2 Grid = 4 pieces
+const GRID_SIZE = 2;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CONTAINER_PADDING = 20;
+const BOARD_SIZE = Math.min(SCREEN_WIDTH - CONTAINER_PADDING * 2, 320);
+const PIECE_SIZE = BOARD_SIZE / GRID_SIZE;
+
+const PIECES_CONFIG = [
+  { id: 0, r: 0, c: 0 },
+  { id: 1, r: 0, c: 1 },
+  { id: 2, r: 1, c: 0 },
+  { id: 3, r: 1, c: 1 },
+];
+
 export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzleProps) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Picture Puzzle</Text>
-      <Text style={styles.question}>{exercise.question}</Text>
-      
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>
-          Complete the puzzle!
-        </Text>
-        
-        <TouchableOpacity 
-          style={styles.testButton}
-          onPress={onComplete}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.testButtonText}>Complete Exercise (Test)</Text>
-        </TouchableOpacity>
+  const item = items.find((i) => i.id === exercise.answerId);
+
+  if (!item?.imageUrl) return (
+      <View style={styles.container}>
+          <Text style={styles.question}>Image not found</Text>
       </View>
+  );
+
+  return (
+    <PuzzleLogic 
+      imageUrl={item.imageUrl} 
+      onSolved={onComplete} 
+      question={exercise.question}
+    />
+  );
+}
+
+function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSolved: () => void, question: string }) {
+  // Initialize game state with valid starting positions
+  const [gameState] = useState(() => {
+    // 1. Fisher-Yates Shuffle
+    let slots = [0, 1, 2, 3];
+    
+    const shuffle = (array: number[]) => {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    };
+
+    slots = shuffle(slots);
+
+    // Check if solved (all equal to index)
+    const isSolved = slots.every((val, index) => val === index);
+    if (isSolved) {
+        // Force swap first two
+        [slots[0], slots[1]] = [slots[1], slots[0]];
+    }
+
+    // 2. Map pieces to these slots
+    const offsets = PIECES_CONFIG.map((_, i) => {
+        const slotIndex = slots[i];
+        const row = Math.floor(slotIndex / 2);
+        const col = slotIndex % 2;
+        return {
+            x: col * PIECE_SIZE,
+            y: row * PIECE_SIZE
+        };
+    });
+
+    return {
+        initialOffsets: offsets,
+        initialPlacement: slots, 
+    };
+  });
+
+  const [piecesPlacement, setPiecesPlacement] = useState<number[]>(
+    gameState ? gameState.initialPlacement : []
+  );
+
+  const isSolved = useMemo(() => {
+     if (piecesPlacement.length === 0) return false;
+     return piecesPlacement.every((slotIndex, pieceId) => slotIndex === pieceId);
+  }, [piecesPlacement]);
+
+  useEffect(() => {
+    if (isSolved) {
+       const timer = setTimeout(onSolved, 800);
+       return () => clearTimeout(timer);
+    }
+  }, [isSolved]);
+
+  const handleDrop = (pieceId: number, slotIndex: number) => {
+      setPiecesPlacement(prev => {
+          const newP = [...prev];
+          newP[pieceId] = slotIndex;
+          return newP;
+      });
+  };
+
+  if (!gameState || !gameState.initialOffsets) return null;
+
+  return (
+    <View style={styles.container} pointerEvents="box-none">
+       <Text style={styles.title}>Picture Puzzle</Text>
+       <Text style={styles.question}>{question}</Text>
+
+       {/* Board Container */}
+       <View style={[
+           styles.board, 
+           { width: BOARD_SIZE, height: BOARD_SIZE },
+           // Clip overflow ONLY when solved, so we get rounded corners on final image
+           // but allow drag shadows during gameplay
+           { overflow: isSolved ? 'hidden' : 'visible' } 
+        ]}>
+          
+             {/* Render Pieces */}
+          {PIECES_CONFIG.map((piece, i) => (
+             <DraggablePiece 
+                key={piece.id}
+                id={piece.id}
+                correctRow={piece.r}
+                correctCol={piece.c}
+                initialX={gameState.initialOffsets[i].x}
+                initialY={gameState.initialOffsets[i].y}
+                imageUrl={imageUrl}
+                onDrop={handleDrop}
+                enabled={!isSolved}
+             />
+          ))}
+
+       </View>
     </View>
   );
 }
 
+const DraggablePiece = ({ 
+    id, correctRow, correctCol, initialX, initialY, imageUrl, onDrop, enabled
+}: {
+    id: number, correctRow: number, correctCol: number, initialX: number, initialY: number, imageUrl: string,
+    onDrop: (pieceId: number, slotIndex: number) => void,
+    enabled: boolean
+}) => {
+    const tx = useSharedValue(initialX);
+    const ty = useSharedValue(initialY);
+    const ctx = useSharedValue({ x: 0, y: 0 });
+    const scale = useSharedValue(1);
+    const z = useSharedValue(10); 
+    const isDragging = useSharedValue(false);
+
+    const gesture = useMemo(() => {
+        return Gesture.Pan()
+            .enabled(enabled)
+            .onStart(() => {
+                ctx.value = { x: tx.value, y: ty.value };
+                scale.value = withSpring(1.08); 
+                z.value = 100;
+                isDragging.value = true;
+            })
+            .onUpdate((e) => {
+                tx.value = e.translationX + ctx.value.x;
+                ty.value = e.translationY + ctx.value.y;
+            })
+            .onEnd(() => {
+                scale.value = withSpring(1);
+                z.value = 10;
+                isDragging.value = false;
+                
+                const currentX = tx.value;
+                const currentY = ty.value;
+                
+                let bestSlot = -1;
+                let minDist = 10000;
+                
+                for(let i=0; i<4; i++) {
+                        const sr = Math.floor(i / 2);
+                        const sc = i % 2;
+                        const sx = sc * PIECE_SIZE;
+                        const sy = sr * PIECE_SIZE;
+                        
+                        const pieceCenterX = currentX + PIECE_SIZE/2;
+                        const pieceCenterY = currentY + PIECE_SIZE/2;
+                        const slotCenterX = sx + PIECE_SIZE/2;
+                        const slotCenterY = sy + PIECE_SIZE/2;
+
+                        const dist = Math.sqrt(Math.pow(pieceCenterX - slotCenterX, 2) + Math.pow(pieceCenterY - slotCenterY, 2));
+
+                        if (dist < PIECE_SIZE * 0.5) { 
+                            if(dist < minDist) {
+                                minDist = dist;
+                                bestSlot = i;
+                            }
+                        }
+                }
+                
+                if (bestSlot !== -1) {
+                    const sr = Math.floor(bestSlot / 2);
+                    const sc = bestSlot % 2;
+                    tx.value = withSpring(sc * PIECE_SIZE, { damping: 15 });
+                    ty.value = withSpring(sr * PIECE_SIZE, { damping: 15 });
+                    runOnJS(onDrop)(id, bestSlot);
+                } else {
+                    tx.value = withSpring(ctx.value.x);
+                    ty.value = withSpring(ctx.value.y);
+                }
+            });
+    }, [enabled, id, onDrop]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [
+                { translateX: tx.value },
+                { translateY: ty.value },
+                { scale: scale.value }
+            ],
+            zIndex: z.value,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: isDragging.value ? 10 : 2,
+            },
+            shadowOpacity: isDragging.value ? 0.4 : 0.15,
+            shadowRadius: isDragging.value ? 12 : 3,
+            elevation: isDragging.value ? 15 : 3,
+        };
+    });
+
+    const innerStyle = {
+        width: BOARD_SIZE,
+        height: BOARD_SIZE,
+        transform: [
+            { translateX: -correctCol * PIECE_SIZE },
+            { translateY: -correctRow * PIECE_SIZE },
+        ],
+    };
+
+    return (
+        <GestureDetector gesture={gesture}>
+            <Animated.View style={[styles.pieceContainer, animatedStyle]}>
+                <View style={enabled ? styles.activePiece : styles.lockedPiece}>
+                    <Image 
+                        source={{ uri: imageUrl }} 
+                        style={innerStyle}
+                        contentFit="cover"
+                        transition={200}
+                    />
+                    {enabled && <View style={styles.borderOverlay} />}
+                </View>
+            </Animated.View>
+        </GestureDetector>
+    );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingTop: 20,
+    alignItems: 'center',
+    width: '100%',
   },
   title: {
     fontFamily: 'FredokaOne',
     fontSize: 28,
     color: '#FF1493',
-    textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   question: {
     fontFamily: 'BalsamiqSans',
     fontSize: 18,
     color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 24,
-  },
-  placeholder: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    color: '#999',
+    marginBottom: 20,
     textAlign: 'center',
   },
-  testButton: {
-    backgroundColor: '#4A90E2',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+  board: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
+    borderWidth: 0,
+    position: 'relative',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  testButtonText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  pieceContainer: {
+    width: PIECE_SIZE,
+    height: PIECE_SIZE,
+    // Removed padding to eliminate gaps
   },
+  activePiece: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    backgroundColor: '#FFF',
+    borderRadius: 8, 
+  },
+  lockedPiece: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: 0, // Zero radius to join seamlessly
+  },
+  borderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 8,
+    zIndex: 10,
+  }
 });

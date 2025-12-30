@@ -85,7 +85,7 @@ export const items: Item[] = [
     imageUrl: "https://i.postimg.cc/7ZXvXj7c/apple.png",
     audioUrl: "https://example.com/audio/cat.mp3",
     syllablesAudioUrl: "https://example.com/audio/cat-syllables.mp3",
-    categoryId: 1, // Animal Sound
+    categoryId: 1, // Animal Sou
   },
   {
     id: 2,
@@ -158,6 +158,15 @@ export const exercises: Exercise[] = [
     answerId: 1, // Red, Blue
     score: 20,
     order: 1,
+    stageId: 3, // Colors
+  },
+  {
+    question: "Look at the picture and say the word",
+    type: ExerciseType.LOOK_AND_SAY,
+    optionIds: [3], // Red
+    answerId: 3,
+    score: 15,
+    order: 2,
     stageId: 3, // Colors
   },
   {

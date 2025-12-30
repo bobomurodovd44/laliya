@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -11,6 +11,16 @@ import { Exercise, Item, items } from '../../data/data';
 import { Body, Title } from '../Typography';
 import TryAgainModal from '../TryAgainModal';
 
+// Fisher-Yates shuffle
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 interface OddOneOutProps {
   exercise: Exercise;
   onComplete: () => void;
@@ -20,9 +30,39 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showTryAgain, setShowTryAgain] = useState(false);
+  const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
   
   // Animation value for shake effect
   const shake = useSharedValue(0);
+
+  // Create stable exercise identifier
+  const exerciseId = `${exercise.stageId}-${exercise.order}`;
+
+  // Shuffle items when exercise changes
+  useEffect(() => {
+    // Get items inside effect to avoid dependency issues
+    const currentExerciseItems = exercise.optionIds
+      .map(id => items.find(item => item.id === id))
+      .filter((item): item is Item => item !== undefined);
+    
+    // Reset state
+    setSelectedId(null);
+    setIsCorrect(null);
+    setShowTryAgain(false);
+    
+    // Shuffle items - ensure different order each time
+    let shuffled = shuffleArray(currentExerciseItems);
+    // Make sure it's actually shuffled (not same order)
+    let attempts = 0;
+    const maxAttempts = 10;
+    while (attempts < maxAttempts && 
+           shuffled.every((item, index) => item.id === currentExerciseItems[index]?.id)) {
+      shuffled = shuffleArray(currentExerciseItems);
+      attempts++;
+    }
+    
+    setShuffledItems(shuffled);
+  }, [exerciseId, exercise.optionIds]);
 
   const handleSelect = (itemId: number) => {
     // If already completed, do nothing
@@ -56,12 +96,6 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     };
   });
 
-  // Get items for this exercise
-  // Safe filtering for items that match the IDs
-  const exerciseItems = exercise.optionIds
-    .map(id => items.find(item => item.id === id))
-    .filter((item): item is Item => item !== undefined);
-
   return (
     <View style={styles.container}>
       <Title size="large" style={styles.title}>Odd One Out</Title>
@@ -74,7 +108,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
       
       <View style={styles.content}>
         <View style={styles.grid}>
-          {exerciseItems.map((item) => {
+          {shuffledItems.map((item) => {
             const isSelected = selectedId === item.id;
             // Only shake the selected wrong item
             const animatedStyle = (isSelected && isCorrect === false) ? shakeStyle : {};

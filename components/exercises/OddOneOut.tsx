@@ -1,6 +1,14 @@
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Exercise, items } from '../../data/data';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming
+} from 'react-native-reanimated';
+import { Exercise, Item, items } from '../../data/data';
+import TryAgainModal from '../TryAgainModal';
 
 interface OddOneOutProps {
   exercise: Exercise;
@@ -10,60 +18,93 @@ interface OddOneOutProps {
 export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-
-  // Get items for this exercise
-  const exerciseItems = exercise.optionIds
-    .map(id => items.find(item => item.id === id))
-    .filter(item => item !== undefined);
+  const [showTryAgain, setShowTryAgain] = useState(false);
+  
+  // Animation value for shake effect
+  const shake = useSharedValue(0);
 
   const handleSelect = (itemId: number) => {
+    // If already completed, do nothing
+    if (isCorrect === true) return;
+
     setSelectedId(itemId);
     
-    // Check if the selected answer is correct
     if (itemId === exercise.answerId) {
       setIsCorrect(true);
-      // Call onComplete to enable Next button
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onComplete();
     } else {
       setIsCorrect(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setShowTryAgain(true); // Show modal
+      
+      // Trigger shake animation
+      shake.value = withSequence(
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
     }
   };
 
+  const shakeStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: shake.value }],
+    };
+  });
+
+  // Get items for this exercise
+  // Safe filtering for items that match the IDs
+  const exerciseItems = exercise.optionIds
+    .map(id => items.find(item => item.id === id))
+    .filter((item): item is Item => item !== undefined);
+
   return (
     <View style={styles.container}>
+      {/* Title and Question added back per user request */}
       <Text style={styles.title}>Odd One Out</Text>
       <Text style={styles.question}>{exercise.question}</Text>
+
+      <TryAgainModal 
+        visible={showTryAgain} 
+        onClose={() => setShowTryAgain(false)} 
+      />
       
       <View style={styles.content}>
         <View style={styles.grid}>
-          {exerciseItems.map((item, index) => {
-            if (!item) return null;
-            
-            const itemId = item.id;
-            const isSelected = selectedId === itemId;
-            const showFeedback = isSelected && isCorrect !== null;
+          {exerciseItems.map((item) => {
+            const isSelected = selectedId === item.id;
+            // Only shake the selected wrong item
+            const animatedStyle = (isSelected && isCorrect === false) ? shakeStyle : {};
             
             return (
-              <TouchableOpacity
-                key={index}
+              <Animated.View
+                key={item.id}
                 style={[
                   styles.imageCard,
                   isSelected && styles.imageCardSelected,
-                  showFeedback && isCorrect && styles.imageCardCorrect,
-                  showFeedback && !isCorrect && styles.imageCardWrong,
+                  isSelected && isCorrect === true && styles.imageCardCorrect,
+                  isSelected && isCorrect === false && styles.imageCardWrong,
+                  animatedStyle
                 ]}
-                onPress={() => !isCorrect && handleSelect(itemId)}
-                activeOpacity={0.7}
-                disabled={isCorrect === true}
               >
-                {item.imageUrl && (
-                  <Image
-                    source={{ uri: item.imageUrl }}
-                    style={styles.image}
-                    resizeMode="cover"
-                  />
-                )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.touchable}
+                  onPress={() => handleSelect(item.id)}
+                  activeOpacity={0.7}
+                  disabled={isCorrect === true}
+                >
+                  {item.imageUrl && (
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={styles.image}
+                      resizeMode="cover"
+                    />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
             );
           })}
         </View>
@@ -76,28 +117,29 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontFamily: 'FredokaOne',
-    fontSize: 28,
+    fontSize: 32, // Big title
     color: '#FF1493',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+    marginTop: -20, // Adjust spacing
   },
   question: {
     fontFamily: 'BalsamiqSans',
-    fontSize: 18,
+    fontSize: 24, // Readable question
     color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    maxWidth: '80%',
   },
   content: {
-    flex: 1,
     width: '100%',
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 40,
   },
   grid: {
     flexDirection: 'row',
@@ -113,13 +155,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+  },
+  touchable: {
+    flex: 1,
   },
   imageCardSelected: {
     borderColor: '#4A90E2',
@@ -139,29 +184,9 @@ const styles = StyleSheet.create({
     borderColor: '#FF4B4B', // Match DuoButton red scheme
     borderWidth: 6,
     backgroundColor: '#FFF0F0',
-    transform: [{ rotate: '3deg' }], // Slight shake effect visually
   },
   image: {
     width: '100%',
-    height: '100%', // Full height since no text
-  },
-  // Removed itemWord style
-  feedbackCorrect: {
-    fontFamily: 'FredokaOne', // More playful font
-    fontSize: 24,
-    color: '#4CAF50',
-    textAlign: 'center',
-    marginTop: 10,
-    textShadowColor: 'rgba(76, 175, 80, 0.2)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  feedbackWrong: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FF5252',
-    textAlign: 'center',
-    marginTop: 10,
+    height: '100%',
   },
 });

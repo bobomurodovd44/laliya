@@ -23,11 +23,7 @@ export default function Task() {
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  
-  const confettiLeftRef = useRef<ConfettiCannon>(null);
-  const confettiRightRef = useRef<ConfettiCannon>(null);
-  const confettiCenterRef = useRef<ConfettiCannon>(null);
-  const confettiRainRef = useRef<ConfettiCannon>(null);
+  const confettiRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
     // Get all exercises for this stage
@@ -66,16 +62,8 @@ export default function Task() {
 
   const handleComplete = () => {
     setIsCompleted(true);
-    
-    // Fire ALL cannons for a mega celebration!
-    confettiLeftRef.current?.start();
-    confettiRightRef.current?.start();
-    setTimeout(() => {
-       confettiCenterRef.current?.start();
-    }, 300);
-    setTimeout(() => {
-       confettiRainRef.current?.start();
-    }, 600);
+    // Fire confetti rain from top
+    confettiRef.current?.start();
   };
 
   const renderExercise = () => {
@@ -155,45 +143,15 @@ export default function Task() {
         )}
       </View>
 
+      {/* Single Rain Confetti from Top */}
       <ConfettiCannon
-        ref={confettiLeftRef}
-        count={50}
-        origin={{x: 0, y: Dimensions.get('window').height}}
-        autoStart={false}
-        fadeOut={true}
-        explosionSpeed={350}
-        fallSpeed={3000}
-      />
-      <ConfettiCannon
-        ref={confettiRightRef}
-        count={50}
-        origin={{x: Dimensions.get('window').width, y: Dimensions.get('window').height}}
-        autoStart={false}
-        fadeOut={true}
-        explosionSpeed={350}
-        fallSpeed={3000}
-      />
-      
-      {/* Center Explosion */}
-      <ConfettiCannon
-        ref={confettiCenterRef}
-        count={100}
-        origin={{x: Dimensions.get('window').width / 2, y: Dimensions.get('window').height / 2}}
-        autoStart={false}
-        fadeOut={true}
-        explosionSpeed={600}
-        fallSpeed={3000}
-      />
-
-      {/* Rain from Top */}
-      <ConfettiCannon
-        ref={confettiRainRef}
-        count={100}
-        origin={{x: Dimensions.get('window').width / 2, y: -20}}
+        ref={confettiRef}
+        count={200}
+        origin={{x: Dimensions.get('window').width / 2, y: -10}}
         autoStart={false}
         fadeOut={true}
         explosionSpeed={0}
-        fallSpeed={4000}
+        fallSpeed={3500}
       />
     </View>
   );

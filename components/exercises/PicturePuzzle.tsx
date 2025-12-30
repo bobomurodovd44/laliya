@@ -5,6 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
@@ -72,19 +73,7 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
         [slots[0], slots[1]] = [slots[1], slots[0]];
     }
 
-    // 2. Map pieces to these slots
-    const offsets = PIECES_CONFIG.map((_, i) => {
-        const slotIndex = slots[i];
-        const row = Math.floor(slotIndex / 2);
-        const col = slotIndex % 2;
-        return {
-            x: col * PIECE_SIZE,
-            y: row * PIECE_SIZE
-        };
-    });
-
     return {
-        initialOffsets: offsets,
         initialPlacement: slots, 
     };
   });
@@ -105,15 +94,27 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
     }
   }, [isSolved]);
 
-  const handleDrop = (pieceId: number, slotIndex: number) => {
+  const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
       setPiecesPlacement(prev => {
-          const newP = [...prev];
-          newP[pieceId] = slotIndex;
-          return newP;
+          const newPlacement = [...prev];
+          
+          // Find if any piece is currently at the target slot
+          const existingPieceId = newPlacement.findIndex(slot => slot === targetSlotIndex);
+          const oldSlotOfDraggedPiece = newPlacement[draggedPieceId];
+
+          if (existingPieceId !== -1 && existingPieceId !== draggedPieceId) {
+             // SWAP: Move the existing piece to the dragged piece's old slot
+             newPlacement[existingPieceId] = oldSlotOfDraggedPiece;
+          }
+          
+          // Move dragged piece to target slot
+          newPlacement[draggedPieceId] = targetSlotIndex;
+          
+          return newPlacement;
       });
   };
 
-  if (!gameState || !gameState.initialOffsets) return null;
+  if (!gameState) return null;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -125,7 +126,6 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
            styles.board, 
            { width: BOARD_SIZE, height: BOARD_SIZE },
            // Clip overflow ONLY when solved, so we get rounded corners on final image
-           // but allow drag shadows during gameplay
            { overflow: isSolved ? 'hidden' : 'visible' } 
         ]}>
           
@@ -136,11 +136,11 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
                 id={piece.id}
                 correctRow={piece.r}
                 correctCol={piece.c}
-                initialX={gameState.initialOffsets[i].x}
-                initialY={gameState.initialOffsets[i].y}
+                currentSlot={piecesPlacement[piece.id]}
                 imageUrl={imageUrl}
                 onDrop={handleDrop}
                 enabled={!isSolved}
+                isCorrect={piecesPlacement[piece.id] === piece.id}
              />
           ))}
 
@@ -150,18 +150,46 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
 }
 
 const DraggablePiece = ({ 
-    id, correctRow, correctCol, initialX, initialY, imageUrl, onDrop, enabled
+    id, correctRow, correctCol, currentSlot, imageUrl, onDrop, enabled, isCorrect
 }: {
-    id: number, correctRow: number, correctCol: number, initialX: number, initialY: number, imageUrl: string,
+    id: number, correctRow: number, correctCol: number, currentSlot: number, imageUrl: string,
     onDrop: (pieceId: number, slotIndex: number) => void,
-    enabled: boolean
+    enabled: boolean,
+    isCorrect: boolean
 }) => {
-    const tx = useSharedValue(initialX);
-    const ty = useSharedValue(initialY);
+    // Calculate target position based on currentSlot
+    const destX = (currentSlot % 2) * PIECE_SIZE;
+    const destY = Math.floor(currentSlot / 2) * PIECE_SIZE;
+
+    const tx = useSharedValue(destX);
+    const ty = useSharedValue(destY);
     const ctx = useSharedValue({ x: 0, y: 0 });
     const scale = useSharedValue(1);
-    const z = useSharedValue(10); 
     const isDragging = useSharedValue(false);
+    const isCorrectSv = useSharedValue(isCorrect);
+
+    useEffect(() => {
+        isCorrectSv.value = isCorrect;
+    }, [isCorrect]);
+
+    // Reactive Position: If parent moves us (e.g. swap), animate to new spot
+    // checking !isDragging to avoid fighting the user
+    useEffect(() => {
+         // We use requestAnimationFrame or just plain calls, but we need to check shared value.
+         // Since isDragging is modified on UI thread, there's a slight async gap, 
+         // but logic flow ensures we only get new props AFTER drop (drag end).
+         tx.value = withSpring(destX, { damping: 15 });
+         ty.value = withSpring(destY, { damping: 15 });
+    }, [destX, destY]);
+
+    // Dynamic Z-Index: 
+    // - Dragging: 100 
+    // - Incorrect: 10 (Float above correctly placed ones)
+    // - Correct: 1 (Sits at the bottom)
+    const z = useDerivedValue(() => {
+        if (isDragging.value) return 100;
+        return isCorrectSv.value ? 1 : 10;
+    });
 
     const gesture = useMemo(() => {
         return Gesture.Pan()
@@ -169,7 +197,6 @@ const DraggablePiece = ({
             .onStart(() => {
                 ctx.value = { x: tx.value, y: ty.value };
                 scale.value = withSpring(1.08); 
-                z.value = 100;
                 isDragging.value = true;
             })
             .onUpdate((e) => {
@@ -178,7 +205,6 @@ const DraggablePiece = ({
             })
             .onEnd(() => {
                 scale.value = withSpring(1);
-                z.value = 10;
                 isDragging.value = false;
                 
                 const currentX = tx.value;
@@ -211,10 +237,12 @@ const DraggablePiece = ({
                 if (bestSlot !== -1) {
                     const sr = Math.floor(bestSlot / 2);
                     const sc = bestSlot % 2;
+                    // Snap visually immediately for better feeling
                     tx.value = withSpring(sc * PIECE_SIZE, { damping: 15 });
                     ty.value = withSpring(sr * PIECE_SIZE, { damping: 15 });
                     runOnJS(onDrop)(id, bestSlot);
                 } else {
+                    // Snap back to START if no valid drop
                     tx.value = withSpring(ctx.value.x);
                     ty.value = withSpring(ctx.value.y);
                 }
@@ -239,7 +267,7 @@ const DraggablePiece = ({
             },
             shadowOpacity: isDragging.value ? 0.4 : 0.15,
             shadowRadius: isDragging.value ? 12 : 3,
-            elevation: isDragging.value ? 15 : 3,
+            elevation: isDragging.value ? 15 : (z.value === 1 ? 1 : 5), 
         };
     });
 

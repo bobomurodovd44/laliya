@@ -1,12 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRef } from 'react';
 import {
-    Animated,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    ViewStyle
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  ViewStyle
 } from 'react-native';
 
 interface DuoButtonProps {
@@ -16,6 +17,10 @@ interface DuoButtonProps {
   size?: 'small' | 'medium' | 'large';
   style?: ViewStyle;
   disabled?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
+  iconSize?: number;
+  shape?: 'rectangle' | 'circle';
+  customSize?: number; // New prop for explicit size (diameter for circles)
 }
 
 const colorSchemes = {
@@ -44,7 +49,7 @@ const colorSchemes = {
     shadow: '#CC6D00',
   },
   gray: {
-    main: '#C0C0C0', // Darker gray for better contrast with white text
+    main: '#C0C0C0', 
     shadow: '#A0A0A0',
   },
 };
@@ -80,10 +85,24 @@ export function DuoButton({
   size = 'medium',
   style,
   disabled = false,
+  icon,
+  iconSize,
+  shape = 'rectangle',
+  customSize,
 }: DuoButtonProps) {
   const colors = disabled ? colorSchemes.gray : colorSchemes[color];
   const sizeStyle = sizes[size];
   
+  // Calculate border radius based on shape
+  const borderRadius = shape === 'circle' ? 999 : sizeStyle.borderRadius;
+
+  // Determine dimensions if customSize is provided
+  // For circles, customSize = diameter of the TOP FACE
+  const buttonWidth = customSize ? customSize : (shape === 'circle' ? undefined : '100%');
+  // For circles, height of the top face is customSize.
+  // The container will be taller by shadowDepth.
+  const faceHeight = customSize && shape === 'circle' ? customSize : undefined;
+
   // Animation values
   const pressAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -154,6 +173,8 @@ export function DuoButton({
     <Animated.View 
       style={[
         styles.container, 
+        // If customSize provided, apply width to container
+        customSize ? { width: customSize } : {},
         style,
         {
           transform: [{ scale: scaleAnim }],
@@ -174,8 +195,9 @@ export function DuoButton({
             styles.shadowLayer,
             {
               backgroundColor: colors.shadow,
-              borderRadius: sizeStyle.borderRadius,
+              borderRadius: borderRadius,
               paddingBottom: sizeStyle.shadowDepth,
+              width: buttonWidth,
             }
           ]} 
         >
@@ -185,22 +207,39 @@ export function DuoButton({
               styles.buttonLayer,
               {
                 backgroundColor: colors.main,
-                borderRadius: sizeStyle.borderRadius,
-                paddingVertical: sizeStyle.paddingVertical,
-                paddingHorizontal: sizeStyle.paddingHorizontal,
+                borderRadius: borderRadius,
+                // For circles, we don't want vertical padding from sizeStyle affecting the shape
+                // We rely on flex layout to center content
+                paddingVertical: shape === 'circle' ? 0 : sizeStyle.paddingVertical,
+                paddingHorizontal: shape === 'circle' ? 0 : sizeStyle.paddingHorizontal,
                 transform: [{ translateY }],
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: 8,
+                width: buttonWidth || (shape === 'circle' ? '100%' : undefined), // Fallback
+                height: faceHeight, // Explicit height if circle
+                aspectRatio: shape === 'circle' && !customSize ? 1 : undefined, // Fallback ratio
               }
             ]}
           >
-            {/* Button text */}
-            <Text 
-              style={[
-                styles.text,
-                { fontSize: sizeStyle.fontSize }
-              ]}
-            >
-              {title}
-            </Text>
+            {icon && (
+              <Ionicons 
+                name={icon} 
+                size={iconSize || (size === 'large' ? 32 : size === 'medium' ? 24 : 20)} 
+                color="white" 
+              />
+            )}
+            {title ? (
+              <Text 
+                style={[
+                  styles.text,
+                  { fontSize: sizeStyle.fontSize }
+                ]}
+              >
+                {title}
+              </Text>
+            ) : null}
           </Animated.View>
         </Animated.View>
       </Pressable>

@@ -62,8 +62,11 @@ export default function Task() {
 
   const handleComplete = () => {
     setIsCompleted(true);
-    // Fire confetti rain from top
-    confettiRef.current?.start();
+    
+    // Only fire confetti if NOT LookAndSay (as per user request)
+    if (currentExercise?.type !== ExerciseType.LOOK_AND_SAY) {
+      confettiRef.current?.start();
+    }
   };
 
   const renderExercise = () => {

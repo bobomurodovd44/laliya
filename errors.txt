@@ -1,0 +1,9 @@
+components/exercises/LookAndSay.tsx(20,46): error TS2503: Cannot find namespace 'Audio'.
+components/exercises/LookAndSay.tsx(23,38): error TS2503: Cannot find namespace 'Audio'.
+components/exercises/LookAndSay.tsx(44,40): error TS2339: Property 'requestPermissionsAsync' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.
+components/exercises/LookAndSay.tsx(54,19): error TS2339: Property 'setAudioModeAsync' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.
+components/exercises/LookAndSay.tsx(59,41): error TS2339: Property 'Recording' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.
+components/exercises/LookAndSay.tsx(60,15): error TS2339: Property 'RecordingOptionsPresets' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.
+components/exercises/LookAndSay.tsx(96,37): error TS2339: Property 'Sound' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.
+components/exercises/LookAndSay.tsx(102,48): error TS2304: Cannot find name 'AVPlaybackStatus'.
+components/exercises/LookAndSay.tsx(117,37): error TS2339: Property 'Sound' does not exist on type 'new (src?: string | undefined) => HTMLAudioElement'.

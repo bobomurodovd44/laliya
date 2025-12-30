@@ -1,8 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AnimatedBackground from '../components/AnimatedBackground';
+import { DuoButton } from '../components/DuoButton';
 import LookAndSay from '../components/exercises/LookAndSay';
 import OddOneOut from '../components/exercises/OddOneOut';
 import PicturePuzzle from '../components/exercises/PicturePuzzle';
@@ -21,6 +23,11 @@ export default function Task() {
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  
+  const confettiLeftRef = useRef<ConfettiCannon>(null);
+  const confettiRightRef = useRef<ConfettiCannon>(null);
+  const confettiCenterRef = useRef<ConfettiCannon>(null);
+  const confettiRainRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
     // Get all exercises for this stage
@@ -59,6 +66,16 @@ export default function Task() {
 
   const handleComplete = () => {
     setIsCompleted(true);
+    
+    // Fire ALL cannons for a mega celebration!
+    confettiLeftRef.current?.start();
+    confettiRightRef.current?.start();
+    setTimeout(() => {
+       confettiCenterRef.current?.start();
+    }, 300);
+    setTimeout(() => {
+       confettiRainRef.current?.start();
+    }, 600);
   };
 
   const renderExercise = () => {
@@ -98,10 +115,9 @@ export default function Task() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header} />
-
-      {/* Progress Bar */}
+      <AnimatedBackground />
+      
+      {/* Progress Bar (Header removed) */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View 
@@ -121,27 +137,64 @@ export default function Task() {
       {/* Navigation Button */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {isLastExercise ? (
-          <TouchableOpacity 
-            style={[styles.button, styles.submitButton, !isCompleted && styles.buttonDisabled]} 
+          <DuoButton
+            title="Submit"
             onPress={handleSubmit}
-            activeOpacity={0.8}
+            color="green"
+            size="medium"
             disabled={!isCompleted}
-          >
-            <Text style={[styles.buttonText, !isCompleted && styles.buttonTextDisabled]}>Submit</Text>
-            <Ionicons name="checkmark-circle" size={24} color={isCompleted ? "#FFFFFF" : "#999"} />
-          </TouchableOpacity>
+          />
         ) : (
-          <TouchableOpacity 
-            style={[styles.button, styles.nextButton, !isCompleted && styles.buttonDisabled]} 
+          <DuoButton
+            title="Next"
             onPress={handleNext}
-            activeOpacity={0.8}
+            color="green" 
+            size="medium"
             disabled={!isCompleted}
-          >
-            <Text style={[styles.buttonText, !isCompleted && styles.buttonTextDisabled]}>Next</Text>
-            <Ionicons name="arrow-forward" size={24} color={isCompleted ? "#FFFFFF" : "#999"} />
-          </TouchableOpacity>
+          />
         )}
       </View>
+
+      <ConfettiCannon
+        ref={confettiLeftRef}
+        count={50}
+        origin={{x: 0, y: Dimensions.get('window').height}}
+        autoStart={false}
+        fadeOut={true}
+        explosionSpeed={350}
+        fallSpeed={3000}
+      />
+      <ConfettiCannon
+        ref={confettiRightRef}
+        count={50}
+        origin={{x: Dimensions.get('window').width, y: Dimensions.get('window').height}}
+        autoStart={false}
+        fadeOut={true}
+        explosionSpeed={350}
+        fallSpeed={3000}
+      />
+      
+      {/* Center Explosion */}
+      <ConfettiCannon
+        ref={confettiCenterRef}
+        count={100}
+        origin={{x: Dimensions.get('window').width / 2, y: Dimensions.get('window').height / 2}}
+        autoStart={false}
+        fadeOut={true}
+        explosionSpeed={600}
+        fallSpeed={3000}
+      />
+
+      {/* Rain from Top */}
+      <ConfettiCannon
+        ref={confettiRainRef}
+        count={100}
+        origin={{x: Dimensions.get('window').width / 2, y: -20}}
+        autoStart={false}
+        fadeOut={true}
+        explosionSpeed={0}
+        fallSpeed={4000}
+      />
     </View>
   );
 }
@@ -149,32 +202,14 @@ export default function Task() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF5E8',
+    backgroundColor: 'transparent', // Make transparent so background shows
   },
-  header: {
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
+  // Header style removed
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  exerciseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 32,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    alignItems: 'center',
   },
   exerciseType: {
     fontFamily: 'FredokaOne',
@@ -185,85 +220,38 @@ const styles = StyleSheet.create({
   },
   question: {
     fontFamily: 'BalsamiqSans',
-    fontSize: 18,
+    fontSize: 24, // Increased from 18
     color: '#666',
     textAlign: 'center',
     marginBottom: 24,
-  },
-  infoContainer: {
-    width: '100%',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 16,
-    gap: 8,
-  },
-  infoText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-  },
-  scoreText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FF8C00',
-    textAlign: 'center',
   },
   footer: {
     padding: 20,
     paddingBottom: 32,
   },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  nextButton: {
-    backgroundColor: '#4A90E2',
-  },
-  submitButton: {
-    backgroundColor: '#4CAF50',
-  },
-  buttonDisabled: {
-    backgroundColor: '#E0E0E0',
-    opacity: 0.6,
-  },
-  buttonText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  buttonTextDisabled: {
-    color: '#999',
-  },
   progressContainer: {
-    backgroundColor: '#FFFFFF',
+    width: '100%',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingVertical: 16,
+    zIndex: 10,
   },
   progressBar: {
-    height: 6,
-    backgroundColor: '#FFE4CC',
-    borderRadius: 3,
+    height: 16, 
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FF8C00',
-    borderRadius: 3,
+    backgroundColor: '#FF8C00', // Changed to Orange
+    borderRadius: 12,
   },
   errorText: {
     fontFamily: 'BalsamiqSans',

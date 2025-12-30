@@ -69,6 +69,7 @@ export const stages: Stage[] = [
 
 // Item Type Definition
 export interface Item {
+  id: number;
   word?: string;
   imageUrl?: string;
   audioUrl?: string;
@@ -79,6 +80,7 @@ export interface Item {
 // Dummy Item Data
 export const items: Item[] = [
   {
+    id: 1,
     word: 'Cat',
     imageUrl: 'https://i.pinimg.com/736x/a0/d3/f5/a0d3f5479c6b5a589aeca0d76b631c85.jpg',
     audioUrl: 'https://example.com/audio/cat.mp3',
@@ -86,19 +88,22 @@ export const items: Item[] = [
     categoryId: 1, // Animal Sounds
   },
   {
+    id: 2,
     word: 'Dog',
-    imageUrl: 'https://i.pinimg.com/1200x/92/eb/e1/92ebe136b670b217dc325517fbbd3864.jpg',
+    imageUrl: 'https://i.pinimg.com/736x/06/1a/e5/061ae5d61ecc08daaeeed0c988ec5476.jpg',
     audioUrl: 'https://example.com/audio/dog.mp3',
     syllablesAudioUrl: 'https://example.com/audio/dog-syllables.mp3',
     categoryId: 1, // Animal Sounds
   },
   {
+    id: 3,
     word: 'Red',
     imageUrl: 'https://i.pinimg.com/1200x/92/eb/e1/92ebe136b670b217dc325517fbbd3864.jpg',
     audioUrl: 'https://example.com/audio/red.mp3',
     categoryId: 3, // Colors
   },
   {
+    id: 4,
     word: 'Blue',
     audioUrl: 'https://i.pinimg.com/736x/59/30/80/59308077a78e27b50a731dc28743a153.jpg',
     syllablesAudioUrl: 'https://example.com/audio/blue-syllables.mp3',

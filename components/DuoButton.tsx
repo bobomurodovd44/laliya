@@ -43,6 +43,10 @@ const colorSchemes = {
     main: '#FF9600',
     shadow: '#CC6D00',
   },
+  gray: {
+    main: '#C0C0C0', // Darker gray for better contrast with white text
+    shadow: '#A0A0A0',
+  },
 };
 
 const sizes = {
@@ -77,7 +81,7 @@ export function DuoButton({
   style,
   disabled = false,
 }: DuoButtonProps) {
-  const colors = colorSchemes[color];
+  const colors = disabled ? colorSchemes.gray : colorSchemes[color];
   const sizeStyle = sizes[size];
   
   // Animation values

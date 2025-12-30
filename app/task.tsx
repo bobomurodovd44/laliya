@@ -51,6 +51,8 @@ export default function Task() {
     useCallback(() => {
       // Increment reset key to force component remount
       setResetKey(prev => prev + 1);
+      // Reset completion state
+      setIsCompleted(false);
     }, [])
   );
 

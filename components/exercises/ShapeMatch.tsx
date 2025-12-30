@@ -26,7 +26,7 @@ const getCardSize = (itemCount: number) => {
   const gap = 12;
   const availableWidth = SCREEN_WIDTH - horizontalPadding - (gap * (columns - 1));
   const maxHeight = (SCREEN_HEIGHT - 350) / 2;
-  return Math.min(availableWidth / columns, maxHeight, 130);
+  return Math.min(availableWidth / columns, maxHeight, 160);
 };
 
 const CARD_GAP = 12;
@@ -109,7 +109,6 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
       {/* Original Images (Top) - Draggable */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>🎯 Drag to match</Text>
         <View style={styles.grid}>
           {shuffledOriginals.map((item) => (
             <DraggableCard
@@ -126,9 +125,11 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
         </View>
       </View>
 
+      {/* Divider */}
+      <View style={styles.divider} />
+
       {/* Target Shapes (Bottom) - Blurred & Grayscale */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>🎨 Drop zones</Text>
         <View style={styles.grid}>
           {shuffledTargets.map((item) => (
             <TargetCard
@@ -238,11 +239,9 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
     // Wrong match - shake and return
     onWrongMatch();
     shake.value = withSequence(
-      withTiming(-12, { duration: 50 }),
-      withTiming(12, { duration: 50 }),
-      withTiming(-12, { duration: 50 }),
-      withTiming(12, { duration: 50 }),
-      withTiming(0, { duration: 50 })
+      withTiming(-4, { duration: 100 }),
+      withTiming(4, { duration: 100 }),
+      withTiming(0, { duration: 100 })
     );
     translateX.value = withSpring(0, { damping: 15 });
     translateY.value = withSpring(0, { damping: 15 });
@@ -398,13 +397,12 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
-  sectionLabel: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    marginBottom: 10,
-    fontWeight: '700',
+  divider: {
+    height: 2,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 16,
+    marginHorizontal: 40,
+    borderRadius: 1,
   },
   grid: {
     flexDirection: 'row',

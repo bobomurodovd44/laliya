@@ -125,7 +125,7 @@ export interface Exercise {
   question: string;
   type: ExerciseType;
   optionIds: number[];  // Array of item IDs
-  answerId: number;     // ID of the correct item
+  answerId?: number;     // ID of the correct item
   score: number;
   order: number;
   stageId: number;
@@ -154,8 +154,7 @@ export const exercises: Exercise[] = [
   {
     question: 'Match the shape to the picture',
     type: ExerciseType.SHAPE_MATCH,
-    optionIds: [3, 4],  // Red, Blue
-    answerId: 3,  // Red
+    optionIds: [1, 2, 3, 4],  // Red, Blue
     score: 20,
     order: 1,
     stageId: 3,  // Colors

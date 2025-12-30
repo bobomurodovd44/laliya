@@ -45,6 +45,20 @@ const getCardSize = (itemCount: number) => {
 
 const CARD_GAP = 12;
 
+// Colors array for shape backgrounds
+const SHAPE_COLORS = [
+  '#FF6B6B', // Red
+  '#4ECDC4', // Teal
+  '#45B7D1', // Blue
+  '#FFA07A', // Light Salmon
+  '#98D8C8', // Mint
+  '#F7DC6F', // Yellow
+  '#BB8FCE', // Purple
+  '#85C1E2', // Sky Blue
+  '#F8B88B', // Peach
+  '#AED6F1', // Light Blue
+];
+
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
   const arr = [...array];
@@ -53,6 +67,12 @@ const shuffleArray = <T,>(array: T[]): T[] => {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+};
+
+// Get random color from array
+const getRandomColor = (): string => {
+  const randomIndex = Math.floor(Math.random() * SHAPE_COLORS.length);
+  return SHAPE_COLORS[randomIndex];
 };
 
 export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
@@ -66,94 +86,80 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   const CARD_SIZE = useMemo(() => getCardSize(exerciseItems.length), [exerciseItems.length]);
   const DROP_THRESHOLD = CARD_SIZE * 0.6;
 
-  // Initialize with empty arrays - shuffle will happen in useEffect
+  // Initialize with empty array - shuffle will happen in useEffect
   const [shuffledOriginals, setShuffledOriginals] = useState<Item[]>([]);
-  const [shuffledTargets, setShuffledTargets] = useState<Item[]>([]);
-
-  // Track matched items (itemId -> targetId mapping)
-  const [matchedIds, setMatchedIds] = useState<Set<number>>(new Set());
-  // Track which targets are already matched to prevent duplicate matches
-  const [matchedTargets, setMatchedTargets] = useState<Set<number>>(new Set());
   
-  // Track target positions for drop detection
-  const targetPositionsRef = useRef<Record<number, { x: number; y: number }>>({});
-  // Key to force re-measurement of target cards after reset
+  // Random color for the shape
+  const [shapeColor, setShapeColor] = useState<string>(getRandomColor());
+
+  // Track if the correct answer has been matched
+  const [isCompleted, setIsCompleted] = useState(false);
+  
+  // Track target position for drop detection (single target)
+  const targetPositionRef = useRef<{ x: number; y: number } | null>(null);
+  // Key to force re-measurement of target card after reset
   const [remountKey, setRemountKey] = useState(0);
 
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
 
+  // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
+  const answerIdRef = useRef<number | undefined>(exercise.answerId);
+  
+  // Update ref when exercise changes
+  useEffect(() => {
+    answerIdRef.current = exercise.answerId;
+  }, [exercise.answerId]);
+  
+  // Get the answer ID for rendering (not for callbacks)
+  const answerId = exercise.answerId;
+  
+  // Get the answer item (the single target shape)
+  const answerItem = useMemo(() => {
+    if (!answerId) return null;
+    return items.find(item => item.id === answerId);
+  }, [answerId]);
+
   // Helper function to ensure shuffle produces different order
-  const ensureShuffled = useCallback((items: Item[], originalOrder?: Item[]): Item[] => {
-    let shuffled = shuffleArray(items);
-    // If we have an original order, ensure the shuffled version is different
-    if (originalOrder && originalOrder.length > 0) {
-      let attempts = 0;
-      const maxAttempts = 10;
-      while (attempts < maxAttempts && 
-             shuffled.every((item, index) => item.id === originalOrder[index]?.id)) {
-        shuffled = shuffleArray(items);
-        attempts++;
-      }
-    }
-    return shuffled;
+  const ensureShuffled = useCallback((items: Item[]): Item[] => {
+    return shuffleArray(items);
   }, []);
 
   // Reset state when exercise changes - using stable identifier
   useEffect(() => {
     // Reset all state
-    setMatchedIds(new Set());
-    setMatchedTargets(new Set());
-    targetPositionsRef.current = {};
+    setIsCompleted(false);
+    targetPositionRef.current = null;
     
-    // Shuffle items ensuring different orders
+    // Get new random color for the shape
+    setShapeColor(getRandomColor());
+    
+    // Shuffle items
     const shuffledOrig = ensureShuffled(exerciseItems);
     
-    // Ensure target shuffle is different from original shuffle
-    let shuffledTarg = ensureShuffled(exerciseItems, shuffledOrig);
-    let attempts = 0;
-    const maxAttempts = 10;
-    while (attempts < maxAttempts && 
-           shuffledTarg.every((item, index) => item.id === shuffledOrig[index]?.id)) {
-      shuffledTarg = ensureShuffled(exerciseItems);
-      attempts++;
-    }
-    
     setShuffledOriginals(shuffledOrig);
-    setShuffledTargets(shuffledTarg);
     setRemountKey(prev => prev + 1); // Force re-measurement
   }, [exerciseId, exerciseItems, ensureShuffled]);
 
-  // Check if all matches are correct
-  const allMatched = matchedIds.size === exerciseItems.length && exerciseItems.length > 0;
-
-  // Debounce completion to prevent race conditions
-  useEffect(() => {
-    if (allMatched) {
-      const timer = setTimeout(() => {
-        onComplete();
-      }, 300); // Small delay to ensure all animations complete
-      return () => clearTimeout(timer);
-    }
-  }, [allMatched, onComplete]);
-
-  const handleSuccessMatch = useCallback((itemId: number, targetId: number) => {
-    // Prevent duplicate matches
-    if (matchedIds.has(itemId) || matchedTargets.has(targetId)) {
-      return;
-    }
+  // Handle correct match - complete the exercise
+  const handleCorrectMatch = useCallback(() => {
+    if (isCompleted) return; // Prevent multiple completions
     
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setMatchedIds(prev => new Set([...prev, itemId]));
-    setMatchedTargets(prev => new Set([...prev, targetId]));
-  }, [matchedIds, matchedTargets]);
+    setIsCompleted(true);
+    
+    // Small delay to ensure animation completes
+    setTimeout(() => {
+      onComplete();
+    }, 300);
+  }, [isCompleted, onComplete]);
 
   const handleWrongMatch = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
   }, []);
 
-  const registerTargetPosition = useCallback((itemId: number, x: number, y: number) => {
-    targetPositionsRef.current[itemId] = { x, y };
+  const registerTargetPosition = useCallback((x: number, y: number) => {
+    targetPositionRef.current = { x, y };
   }, []);
 
   return (
@@ -172,11 +178,11 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
               item={item}
               cardSize={CARD_SIZE}
               dropThreshold={DROP_THRESHOLD}
-              targetPositionsRef={targetPositionsRef}
-              onSuccessMatch={handleSuccessMatch}
+              targetPositionRef={targetPositionRef}
+              answerIdRef={answerIdRef}
+              onCorrectMatch={handleCorrectMatch}
               onWrongMatch={handleWrongMatch}
-              isMatched={matchedIds.has(item.id)}
-              matchedTargets={matchedTargets}
+              isCompleted={isCompleted}
             />
           ))}
         </View>
@@ -185,18 +191,19 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
       {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Target Shapes (Bottom) - Blurred & Grayscale */}
+      {/* Target Shape (Bottom) - Single shape for the answer */}
       <View style={styles.section}>
-        <View style={styles.grid}>
-          {shuffledTargets.map((item) => (
+        <View style={styles.singleTargetContainer}>
+          {answerItem && (
             <TargetCard
-              key={`target-${item.id}-${remountKey}`}
-              item={item}
+              key={`target-${answerItem.id}-${remountKey}`}
+              item={answerItem}
               cardSize={CARD_SIZE}
               onLayout={registerTargetPosition}
-              isMatched={matchedIds.has(item.id)}
+              isCompleted={isCompleted}
+              shapeColor={shapeColor}
             />
-          ))}
+          )}
         </View>
       </View>
     </View>
@@ -208,14 +215,14 @@ interface DraggableCardProps {
   item: Item;
   cardSize: number;
   dropThreshold: number;
-  targetPositionsRef: React.MutableRefObject<Record<number, { x: number; y: number }>>;
-  onSuccessMatch: (itemId: number, targetId: number) => void;
+  targetPositionRef: React.MutableRefObject<{ x: number; y: number } | null>;
+  answerIdRef: React.MutableRefObject<number | undefined>;
+  onCorrectMatch: () => void;
   onWrongMatch: () => void;
-  isMatched: boolean;
-  matchedTargets: Set<number>;
+  isCompleted: boolean;
 }
 
-function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSuccessMatch, onWrongMatch, isMatched, matchedTargets }: DraggableCardProps) {
+function DraggableCard({ item, cardSize, dropThreshold, targetPositionRef, answerIdRef, onCorrectMatch, onWrongMatch, isCompleted }: DraggableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -224,13 +231,17 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
   const opacity = useSharedValue(1);
   
   const startPositionRef = useRef({ x: 0, y: 0 });
-  const isMatchedRef = useRef(false);
-  const matchedTargetsRef = useRef<Set<number>>(new Set());
+  const isCompletedRef = useRef(false);
 
-  // Sync matchedTargets ref immediately
+  // Sync isCompleted ref immediately
   useEffect(() => {
-    matchedTargetsRef.current = matchedTargets;
-  }, [matchedTargets]);
+    isCompletedRef.current = isCompleted;
+    if (isCompleted) {
+      opacity.value = withTiming(0.5, { duration: 300 });
+    } else {
+      opacity.value = 1;
+    }
+  }, [isCompleted]);
 
   // Reset animations when item changes (component remounts with new data)
   useEffect(() => {
@@ -242,18 +253,8 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
     zIndex.value = 1;
     shake.value = 0;
     startPositionRef.current = { x: 0, y: 0 };
+    isCompletedRef.current = false;
   }, [item.id]);
-
-  // Sync isMatched ref immediately and handle matched state
-  useEffect(() => {
-    isMatchedRef.current = isMatched;
-    if (isMatched) {
-      opacity.value = withTiming(0, { duration: 300 });
-    } else {
-      // Reset opacity if unmatched (e.g., after reset)
-      opacity.value = 1;
-    }
-  }, [isMatched]);
 
   const measureCard = (event: any) => {
     event.target.measureInWindow((x: number, y: number) => {
@@ -262,80 +263,66 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
   };
 
   const checkDropAndHandle = useCallback((finalX: number, finalY: number) => {
-    // Prevent matching if already matched
-    if (isMatchedRef.current) {
+    // Prevent matching if already completed
+    if (isCompletedRef.current) {
       translateX.value = withSpring(0, { damping: 15 });
       translateY.value = withSpring(0, { damping: 15 });
       return;
     }
 
-    const targetPositions = targetPositionsRef.current;
+    const targetPosition = targetPositionRef.current;
+    
+    // No target position registered yet
+    if (!targetPosition) {
+      translateX.value = withSpring(0, { damping: 15 });
+      translateY.value = withSpring(0, { damping: 15 });
+      return;
+    }
+
     const currentX = startPositionRef.current.x + finalX + cardSize / 2;
     const currentY = startPositionRef.current.y + finalY + cardSize / 2;
 
-    // Find closest target
-    interface ClosestTarget {
-      id: number;
-      dist: number;
-      pos: { x: number; y: number };
-    }
-    
-    let closestTarget: ClosestTarget | null = null;
-    
-    Object.entries(targetPositions).forEach(([id, pos]) => {
-      const targetId = parseInt(id);
-      // Skip targets that are already matched
-      if (matchedTargetsRef.current.has(targetId)) {
+    // Calculate distance to the single target
+    const targetCenterX = targetPosition.x + cardSize / 2;
+    const targetCenterY = targetPosition.y + cardSize / 2;
+    const dist = Math.sqrt(
+      Math.pow(currentX - targetCenterX, 2) + 
+      Math.pow(currentY - targetCenterY, 2)
+    );
+
+    // Check if dropped on target
+    if (dist < dropThreshold) {
+      // Check if this dragged image is the correct answer
+      // Compare the dragged image's id with the answerId from ref (always current)
+      const draggedImageId = item.id;
+      const correctAnswerId = answerIdRef.current;
+      
+      // Check if answerId exists and if dragged image id matches answer id
+      // Use strict comparison - ref ensures we always have the current value
+      if (correctAnswerId !== undefined && correctAnswerId !== null && draggedImageId === correctAnswerId) {
+        // Correct match! Snap to target and complete exercise
+        translateX.value = withSpring(targetPosition.x - startPositionRef.current.x);
+        translateY.value = withSpring(targetPosition.y - startPositionRef.current.y);
+        onCorrectMatch();
+        return;
+      } else {
+        // Wrong match - shake and return to original position
+        onWrongMatch();
+        shake.value = withSequence(
+          withTiming(-4, { duration: 100 }),
+          withTiming(4, { duration: 100 }),
+          withTiming(0, { duration: 100 })
+        );
+        translateX.value = withSpring(0, { damping: 15 });
+        translateY.value = withSpring(0, { damping: 15 });
         return;
       }
-      
-      const targetCenterX = pos.x + cardSize / 2;
-      const targetCenterY = pos.y + cardSize / 2;
-      const dist = Math.sqrt(
-        Math.pow(currentX - targetCenterX, 2) + 
-        Math.pow(currentY - targetCenterY, 2)
-      );
-      
-      if (dist < dropThreshold && (!closestTarget || dist < closestTarget.dist)) {
-        closestTarget = { id: targetId, dist, pos } as ClosestTarget;
-      }
-    });
-
-    // No target hit - return to original position
-    if (closestTarget === null) {
-      translateX.value = withSpring(0, { damping: 15 });
-      translateY.value = withSpring(0, { damping: 15 });
-      return;
     }
 
-    // At this point, closestTarget is definitely not null
-    const matchedTarget: ClosestTarget = closestTarget;
-
-    // Check if target is already matched (double-check)
-    if (matchedTargetsRef.current.has(matchedTarget.id)) {
-      translateX.value = withSpring(0, { damping: 15 });
-      translateY.value = withSpring(0, { damping: 15 });
-      return;
-    }
-
-    // Correct match! Snap to target
-    if (matchedTarget.id === item.id) {
-      translateX.value = withSpring(matchedTarget.pos.x - startPositionRef.current.x);
-      translateY.value = withSpring(matchedTarget.pos.y - startPositionRef.current.y);
-      onSuccessMatch(item.id, matchedTarget.id);
-      return;
-    }
-
-    // Wrong match - shake and return
-    onWrongMatch();
-    shake.value = withSequence(
-      withTiming(-4, { duration: 100 }),
-      withTiming(4, { duration: 100 }),
-      withTiming(0, { duration: 100 })
-    );
+    // Not dropped on target - return to original position
     translateX.value = withSpring(0, { damping: 15 });
     translateY.value = withSpring(0, { damping: 15 });
-  }, [item.id, cardSize, dropThreshold, onSuccessMatch, onWrongMatch]);
+  }, [item.id, cardSize, dropThreshold, onCorrectMatch, onWrongMatch]);
 
   const gesture = useMemo(() => {
     return Gesture.Pan()
@@ -387,11 +374,8 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.cardImage, { backgroundColor: '#E0E0E0' }]} />
+          <View style={[styles.cardImage, { backgroundColor: 'transparent' }]} />
         )}
-        <View style={styles.cardLabel}>
-          <Body style={styles.cardLabelText} weight="bold">{item.word}</Body>
-        </View>
       </Animated.View>
     </GestureDetector>
   );
@@ -401,25 +385,26 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
 interface TargetCardProps {
   item: Item;
   cardSize: number;
-  onLayout: (itemId: number, x: number, y: number) => void;
-  isMatched: boolean;
+  onLayout: (x: number, y: number) => void;
+  isCompleted: boolean;
+  shapeColor: string;
 }
 
-function TargetCard({ item, cardSize, onLayout, isMatched }: TargetCardProps) {
+function TargetCard({ item, cardSize, onLayout, isCompleted, shapeColor }: TargetCardProps) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    if (isMatched) {
+    if (isCompleted) {
       scale.value = withSequence(
         withSpring(1.12, { damping: 8 }),
         withSpring(1, { damping: 12 })
       );
     }
-  }, [isMatched]);
+  }, [isCompleted]);
 
   const handleLayout = (event: any) => {
     event.target.measureInWindow((x: number, y: number) => {
-      onLayout(item.id, x, y);
+      onLayout(x, y);
     });
   };
 
@@ -442,7 +427,7 @@ function TargetCard({ item, cardSize, onLayout, isMatched }: TargetCardProps) {
         styles.card, 
         styles.targetCard,
         cardDynamicStyle,
-        isMatched && styles.targetCardMatched,
+        isCompleted && styles.targetCardMatched,
         animatedStyle
       ]}
       onLayout={handleLayout}
@@ -451,21 +436,19 @@ function TargetCard({ item, cardSize, onLayout, isMatched }: TargetCardProps) {
         <View style={styles.blurContainer}>
           <Image
             source={{ uri: item.imageUrl }}
-            style={[styles.cardImage, { width: cardSize, height: cardSize }]}
-            resizeMode="cover"
-            blurRadius={isMatched ? 0 : 10}
+            style={[
+              styles.cardImage, 
+              { 
+                width: cardSize, 
+                height: cardSize,
+                tintColor: isCompleted ? undefined : shapeColor,
+              }
+            ]}
+            resizeMode="contain"
           />
-          {!isMatched && <View style={styles.grayscaleOverlay} />}
         </View>
       ) : (
-        <View style={[styles.blurContainer, { backgroundColor: '#E0E0E0' }]} />
-      )}
-      {isMatched && (
-        <View style={styles.matchedOverlay}>
-          <View style={styles.matchedBadge}>
-            <Body style={styles.matchedBadgeText} weight="bold">✓</Body>
-          </View>
-        </View>
+        <View style={[styles.blurContainer, { backgroundColor: 'transparent' }]} />
       )}
     </Animated.View>
   );
@@ -514,6 +497,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     width: '100%',
   },
+  singleTargetContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+    width: '100%',
+  },
   card: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -522,31 +512,16 @@ const styles = StyleSheet.create({
     flexBasis: 'auto',
   },
   originalCard: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#FF8C00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: '#FF8C00',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   targetCard: {
-    backgroundColor: '#F0F0F0',
-    borderWidth: 3,
-    borderColor: '#CCCCCC',
-    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   targetCardMatched: {
-    borderColor: '#58CC02',
-    borderStyle: 'solid',
-    borderWidth: 3,
-    backgroundColor: '#E8FFE8',
-    shadowColor: '#58CC02',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    elevation: 6,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   cardImage: {
     width: '100%',
@@ -560,7 +535,7 @@ const styles = StyleSheet.create({
   },
   grayscaleOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(100, 100, 100, 0.5)',
+    backgroundColor: 'transparent',
   },
   cardLabel: {
     position: 'absolute',
@@ -588,11 +563,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#58CC02',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
   },
   matchedBadgeText: {
     color: '#FFFFFF',

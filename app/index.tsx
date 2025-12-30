@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { stages } from '../data/data';
+import { exercises, stages } from '../data/data';
 
 interface LessonCard {
   order: number;
@@ -127,6 +127,15 @@ export default function Index() {
       : { top: 20 + (index * 140), left: '8%' },
     isActive: true, // All stages are available
   }));
+
+  // Handler to navigate to task page only if exercises exist
+  const handleStagePress = (stageId: number) => {
+    const stageExercises = exercises.filter(ex => ex.stageId === stageId);
+    if (stageExercises.length > 0) {
+      router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
+    }
+    // If no exercises, do nothing
+  };
 
 
 
@@ -368,13 +377,12 @@ export default function Index() {
             <View key={lesson.order} style={[styles.cardWrapper, lesson.positionStyle]}>
 
 
-              {/* Lesson Card with enhanced design */}
               <TouchableOpacity 
                 style={[
                   styles.lessonCard,
                   lesson.isActive && styles.lessonCardActive
                 ]}
-                onPress={() => router.push('/record-audio')}
+                onPress={() => handleStagePress(lesson.order)}
                 activeOpacity={0.8}
               >
                 {/* Card inner glow for active state */}
@@ -398,7 +406,7 @@ export default function Index() {
               {lesson.isActive && (
                 <TouchableOpacity 
                   style={styles.playButtonContainer}
-                  onPress={() => router.push('/record-audio')}
+                  onPress={() => handleStagePress(lesson.order)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.playButton}>

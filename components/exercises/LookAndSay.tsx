@@ -2,13 +2,13 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withRepeat,
-    withSequence,
-    withTiming
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming
 } from 'react-native-reanimated';
 import { Exercise, items } from '../../data/data';
 import { DuoButton } from '../DuoButton';
@@ -79,6 +79,9 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
+  // State for recording playback specifically
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+
   // Get item for this exercise
   const item = items.find(i => i.id === exercise.answerId);
 
@@ -136,13 +139,19 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     if (!item?.audioUrl) return;
     
     try {
-      const { sound } = await Audio.Sound.createAsync(
+      // Unload active sound if any
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: item.audioUrl }
       );
-      setSound(sound);
+      setSound(newSound);
       setIsPlaying(true);
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+      await newSound.playAsync();
+      
+      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -153,17 +162,43 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     }
   };
 
-  const playRecordedAudio = async () => {
+  const togglePlayback = async () => {
+    // If currently playing recording, stop it
+    if (isPlayingRecording && sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      } catch (err) { console.log(err); }
+      setSound(null);
+      setIsPlayingRecording(false);
+      return;
+    }
+
     if (!recordedUri) return;
     
     try {
-      const { sound } = await Audio.Sound.createAsync(
+      // Unload any prior sound
+      if (sound) {
+         try { await sound.unloadAsync(); } catch(e){}
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: recordedUri }
       );
-      setSound(sound);
-      await sound.playAsync();
+      setSound(newSound);
+      setIsPlayingRecording(true);
+      await newSound.playAsync();
+      
+      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlayingRecording(false);
+          // Don't nullify sound immediately if we want to support replay without reload, 
+          // but for toggle logic simplicity we reset state.
+        }
+      });
     } catch (error) {
       console.log('Error playing recording', error);
+      setIsPlayingRecording(false);
     }
   };
 
@@ -174,31 +209,34 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
       {/* Centered Content */}
       <View style={styles.content}>
         
-        {/* Image Card */}
-        <View style={styles.imageCard}>
-          {item.imageUrl && (
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          )}
-        </View>
+        {/* Unified Flashcard */}
+        <View style={styles.card}>
+          {/* Image Area - Takes remaining space */}
+          <View style={styles.imageContainer}>
+             {item.imageUrl && (
+                <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+                />
+            )}
+          </View>
 
-        {/* Word and Audio Play Button */}
-        <View style={styles.wordContainer}>
-          <Text style={styles.word}>{item.word}</Text>
-          <DuoButton
-            title=""
-            onPress={playItemAudio}
-            color="blue"
-            size="medium"
-            customSize={60} // Explicit size
-            style={styles.audioButton}
-            icon="volume-high"
-            shape="circle"
-            iconSize={28}
-          />
+          {/* Footer Area: Word + Play Button */}
+          <View style={styles.cardFooter}>
+            <Text style={styles.word}>{item.word}</Text>
+            <DuoButton
+                title=""
+                onPress={playItemAudio}
+                color="blue"
+                size="medium"
+                customSize={60} 
+                style={styles.audioButton}
+                icon="volume-high"
+                shape="circle"
+                iconSize={28}
+            />
+          </View>
         </View>
 
       </View>
@@ -222,7 +260,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
               onPress={isRecording ? stopRecording : startRecording}
               color={isRecording ? "red" : "orange"}
               size="large"
-              customSize={100} // Explicit size
+              customSize={100} 
               style={styles.recordButton}
               icon={isRecording ? "stop" : "mic"}
               shape="circle"
@@ -230,17 +268,17 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
             />
          </View>
 
-         {/* Playback Button */}
+         {/* Playback Button - Toggles Play/Stop */}
          {recordedUri && !isRecording && (
            <View style={styles.playbackContainer}>
              <DuoButton
                title=""
-               onPress={playRecordedAudio}
-               color="green"
+               onPress={togglePlayback}
+               color={isPlayingRecording ? "red" : "green"} 
                size="medium"
-               customSize={70} // Explicit size
+               customSize={70} 
                style={styles.playbackButton}
-               icon="play"
+               icon={isPlayingRecording ? "pause" : "play"} 
                shape="circle"
                iconSize={32}
              />
@@ -252,7 +290,6 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
 }
 
 const styles = StyleSheet.create({
-  // ... existing styles ...
   container: {
     flex: 1,
     width: '100%',
@@ -266,35 +303,53 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  imageCard: {
-    width: 280,
-    height: 280,
+  card: {
+    width: '90%', 
+    maxWidth: 360,
+    aspectRatio: 0.8, 
     backgroundColor: 'white',
     borderRadius: 40,
-    padding: 10,
+    padding: 12, // Reduced padding
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    marginBottom: 40,
+    marginBottom: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'column', 
+  },
+  imageContainer: {
+    flex: 1,
+    width: '100%',
+    marginBottom: 10,
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderRadius: 24, // Slightly less round, more standard
     overflow: 'hidden',
+    backgroundColor: '#FFF5E6', // Light Orange background to define shape
+    borderWidth: 2,
+    borderColor: '#FFE0B2', // Subtle border
   },
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 24,
   },
-  wordContainer: {
+  cardFooter: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, // Adjusted padding
+    paddingTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: '#f0f0f0', 
   },
   word: {
     fontFamily: 'FredokaOne',
-    fontSize: 56,
+    fontSize: 48, 
     color: '#4A4A4A',
   },
   audioButton: {
@@ -303,9 +358,11 @@ const styles = StyleSheet.create({
   controls: {
     width: '100%',
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 20, // Reduced from 40 to move buttons lower
     justifyContent: 'center',
     height: 120,
+    flexDirection: 'row', 
+    gap: 30, 
   },
   recordButtonContainer: {
     width: 100, 
@@ -326,11 +383,11 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   playbackContainer: {
-    position: 'absolute',
-    right: 30,
-    zIndex: 3,
+     // Removed absolute positioning so it flows in flex row
+     zIndex: 3,
   },
   playbackButton: {
     // Width/Height handled by customSize prop now
-  }
+  },
+
 });

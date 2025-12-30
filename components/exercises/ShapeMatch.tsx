@@ -23,11 +23,24 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Responsive card sizing based on screen and item count
 const getCardSize = (itemCount: number) => {
   const columns = itemCount <= 2 ? 2 : Math.min(itemCount, 3);
-  const horizontalPadding = 40;
+  // Account for container padding (16px each side = 32px total)
+  const containerPadding = 32;
+  // Account for gap between cards
   const gap = 12;
-  const availableWidth = SCREEN_WIDTH - horizontalPadding - (gap * (columns - 1));
-  const maxHeight = (SCREEN_HEIGHT - 350) / 2;
-  return Math.min(availableWidth / columns, maxHeight, 160);
+  // Calculate available width after padding and gaps
+  const totalGaps = gap * (columns - 1);
+  const availableWidth = SCREEN_WIDTH - containerPadding - totalGaps;
+  // Calculate card size based on available width
+  const calculatedSize = Math.floor(availableWidth / columns);
+  // Reserve space for header, divider, and sections
+  const reservedHeight = 180;
+  const maxHeight = Math.floor((SCREEN_HEIGHT - reservedHeight) / 2);
+  // Set smaller min and max sizes to ensure they fit
+  const minSize = 100;
+  const maxSize = Math.min(maxHeight, 150);
+  // Return size that fits both width and height constraints, ensuring it's an integer
+  const finalSize = Math.max(minSize, Math.min(calculatedSize, maxSize));
+  return Math.floor(finalSize);
 };
 
 const CARD_GAP = 12;
@@ -53,38 +66,87 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   const CARD_SIZE = useMemo(() => getCardSize(exerciseItems.length), [exerciseItems.length]);
   const DROP_THRESHOLD = CARD_SIZE * 0.6;
 
-  // Shuffle orders independently
-  const [shuffledOriginals, setShuffledOriginals] = useState(() => shuffleArray(exerciseItems));
-  const [shuffledTargets, setShuffledTargets] = useState(() => shuffleArray(exerciseItems));
+  // Initialize with empty arrays - shuffle will happen in useEffect
+  const [shuffledOriginals, setShuffledOriginals] = useState<Item[]>([]);
+  const [shuffledTargets, setShuffledTargets] = useState<Item[]>([]);
 
-  // Track matched items
+  // Track matched items (itemId -> targetId mapping)
   const [matchedIds, setMatchedIds] = useState<Set<number>>(new Set());
+  // Track which targets are already matched to prevent duplicate matches
+  const [matchedTargets, setMatchedTargets] = useState<Set<number>>(new Set());
   
   // Track target positions for drop detection
   const targetPositionsRef = useRef<Record<number, { x: number; y: number }>>({});
+  // Key to force re-measurement of target cards after reset
+  const [remountKey, setRemountKey] = useState(0);
 
-  // Reset state when exercise changes OR when component remounts
-  // Using optionIds.join() to create a stable dependency
+  // Create stable exercise identifier
+  const exerciseId = `${exercise.stageId}-${exercise.order}`;
+
+  // Helper function to ensure shuffle produces different order
+  const ensureShuffled = useCallback((items: Item[], originalOrder?: Item[]): Item[] => {
+    let shuffled = shuffleArray(items);
+    // If we have an original order, ensure the shuffled version is different
+    if (originalOrder && originalOrder.length > 0) {
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts && 
+             shuffled.every((item, index) => item.id === originalOrder[index]?.id)) {
+        shuffled = shuffleArray(items);
+        attempts++;
+      }
+    }
+    return shuffled;
+  }, []);
+
+  // Reset state when exercise changes - using stable identifier
   useEffect(() => {
+    // Reset all state
     setMatchedIds(new Set());
-    setShuffledOriginals(shuffleArray(exerciseItems));
-    setShuffledTargets(shuffleArray(exerciseItems));
+    setMatchedTargets(new Set());
     targetPositionsRef.current = {};
-  }, [exercise.order, exercise.stageId, exercise.optionIds.join(',')]);
+    
+    // Shuffle items ensuring different orders
+    const shuffledOrig = ensureShuffled(exerciseItems);
+    
+    // Ensure target shuffle is different from original shuffle
+    let shuffledTarg = ensureShuffled(exerciseItems, shuffledOrig);
+    let attempts = 0;
+    const maxAttempts = 10;
+    while (attempts < maxAttempts && 
+           shuffledTarg.every((item, index) => item.id === shuffledOrig[index]?.id)) {
+      shuffledTarg = ensureShuffled(exerciseItems);
+      attempts++;
+    }
+    
+    setShuffledOriginals(shuffledOrig);
+    setShuffledTargets(shuffledTarg);
+    setRemountKey(prev => prev + 1); // Force re-measurement
+  }, [exerciseId, exerciseItems, ensureShuffled]);
 
   // Check if all matches are correct
-  const allMatched = matchedIds.size === exerciseItems.length;
+  const allMatched = matchedIds.size === exerciseItems.length && exerciseItems.length > 0;
 
+  // Debounce completion to prevent race conditions
   useEffect(() => {
     if (allMatched) {
-      onComplete();
+      const timer = setTimeout(() => {
+        onComplete();
+      }, 300); // Small delay to ensure all animations complete
+      return () => clearTimeout(timer);
     }
-  }, [allMatched]);
+  }, [allMatched, onComplete]);
 
-  const handleSuccessMatch = useCallback((itemId: number) => {
+  const handleSuccessMatch = useCallback((itemId: number, targetId: number) => {
+    // Prevent duplicate matches
+    if (matchedIds.has(itemId) || matchedTargets.has(targetId)) {
+      return;
+    }
+    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setMatchedIds(prev => new Set([...prev, itemId]));
-  }, []);
+    setMatchedTargets(prev => new Set([...prev, targetId]));
+  }, [matchedIds, matchedTargets]);
 
   const handleWrongMatch = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -96,15 +158,17 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
   return (
     <View style={styles.container}>
-      <Title size="medium" style={styles.title}>Shape Match</Title>
-      <Body size="medium" style={styles.question}>{exercise.question}</Body>
+      <View style={styles.header}>
+        <Title size="medium" style={styles.title}>Shape Match</Title>
+        <Body size="medium" style={styles.question}>{exercise.question}</Body>
+      </View>
 
       {/* Original Images (Top) - Draggable */}
       <View style={styles.section}>
         <View style={styles.grid}>
           {shuffledOriginals.map((item) => (
             <DraggableCard
-              key={`original-${item.id}`}
+              key={`original-${item.id}-${remountKey}`}
               item={item}
               cardSize={CARD_SIZE}
               dropThreshold={DROP_THRESHOLD}
@@ -112,6 +176,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
               onSuccessMatch={handleSuccessMatch}
               onWrongMatch={handleWrongMatch}
               isMatched={matchedIds.has(item.id)}
+              matchedTargets={matchedTargets}
             />
           ))}
         </View>
@@ -125,7 +190,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
         <View style={styles.grid}>
           {shuffledTargets.map((item) => (
             <TargetCard
-              key={`target-${item.id}`}
+              key={`target-${item.id}-${remountKey}`}
               item={item}
               cardSize={CARD_SIZE}
               onLayout={registerTargetPosition}
@@ -144,12 +209,13 @@ interface DraggableCardProps {
   cardSize: number;
   dropThreshold: number;
   targetPositionsRef: React.MutableRefObject<Record<number, { x: number; y: number }>>;
-  onSuccessMatch: (itemId: number) => void;
+  onSuccessMatch: (itemId: number, targetId: number) => void;
   onWrongMatch: () => void;
   isMatched: boolean;
+  matchedTargets: Set<number>;
 }
 
-function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSuccessMatch, onWrongMatch, isMatched }: DraggableCardProps) {
+function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSuccessMatch, onWrongMatch, isMatched, matchedTargets }: DraggableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -159,21 +225,33 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
   
   const startPositionRef = useRef({ x: 0, y: 0 });
   const isMatchedRef = useRef(false);
+  const matchedTargetsRef = useRef<Set<number>>(new Set());
+
+  // Sync matchedTargets ref immediately
+  useEffect(() => {
+    matchedTargetsRef.current = matchedTargets;
+  }, [matchedTargets]);
 
   // Reset animations when item changes (component remounts with new data)
   useEffect(() => {
+    // Reset all animation values
     opacity.value = 1;
     translateX.value = 0;
     translateY.value = 0;
     scale.value = 1;
     zIndex.value = 1;
     shake.value = 0;
+    startPositionRef.current = { x: 0, y: 0 };
   }, [item.id]);
 
+  // Sync isMatched ref immediately and handle matched state
   useEffect(() => {
     isMatchedRef.current = isMatched;
     if (isMatched) {
       opacity.value = withTiming(0, { duration: 300 });
+    } else {
+      // Reset opacity if unmatched (e.g., after reset)
+      opacity.value = 1;
     }
   }, [isMatched]);
 
@@ -184,6 +262,13 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
   };
 
   const checkDropAndHandle = useCallback((finalX: number, finalY: number) => {
+    // Prevent matching if already matched
+    if (isMatchedRef.current) {
+      translateX.value = withSpring(0, { damping: 15 });
+      translateY.value = withSpring(0, { damping: 15 });
+      return;
+    }
+
     const targetPositions = targetPositionsRef.current;
     const currentX = startPositionRef.current.x + finalX + cardSize / 2;
     const currentY = startPositionRef.current.y + finalY + cardSize / 2;
@@ -198,6 +283,12 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
     let closestTarget: ClosestTarget | null = null;
     
     Object.entries(targetPositions).forEach(([id, pos]) => {
+      const targetId = parseInt(id);
+      // Skip targets that are already matched
+      if (matchedTargetsRef.current.has(targetId)) {
+        return;
+      }
+      
       const targetCenterX = pos.x + cardSize / 2;
       const targetCenterY = pos.y + cardSize / 2;
       const dist = Math.sqrt(
@@ -206,7 +297,7 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
       );
       
       if (dist < dropThreshold && (!closestTarget || dist < closestTarget.dist)) {
-        closestTarget = { id: parseInt(id), dist, pos } as ClosestTarget;
+        closestTarget = { id: targetId, dist, pos } as ClosestTarget;
       }
     });
 
@@ -220,11 +311,18 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
     // At this point, closestTarget is definitely not null
     const matchedTarget: ClosestTarget = closestTarget;
 
+    // Check if target is already matched (double-check)
+    if (matchedTargetsRef.current.has(matchedTarget.id)) {
+      translateX.value = withSpring(0, { damping: 15 });
+      translateY.value = withSpring(0, { damping: 15 });
+      return;
+    }
+
     // Correct match! Snap to target
     if (matchedTarget.id === item.id) {
       translateX.value = withSpring(matchedTarget.pos.x - startPositionRef.current.x);
       translateY.value = withSpring(matchedTarget.pos.y - startPositionRef.current.y);
-      onSuccessMatch(item.id);
+      onSuccessMatch(item.id, matchedTarget.id);
       return;
     }
 
@@ -241,9 +339,9 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
 
   const gesture = useMemo(() => {
     return Gesture.Pan()
-      .enabled(!isMatchedRef.current)
       .onStart(() => {
-        scale.value = withSpring(1.08);
+        // Early return if already matched (checked in JS thread via ref)
+        scale.value = withSpring(1.1, { damping: 12 });
         zIndex.value = 100;
       })
       .onUpdate((e) => {
@@ -251,7 +349,7 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
         translateY.value = e.translationY;
       })
       .onEnd((e) => {
-        scale.value = withSpring(1);
+        scale.value = withSpring(1, { damping: 15 });
         zIndex.value = 1;
         runOnJS(checkDropAndHandle)(e.translationX, e.translationY);
       });
@@ -270,6 +368,10 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
   const cardDynamicStyle = {
     width: cardSize,
     height: cardSize,
+    minWidth: cardSize,
+    minHeight: cardSize,
+    maxWidth: cardSize,
+    maxHeight: cardSize,
   };
 
   return (
@@ -328,6 +430,10 @@ function TargetCard({ item, cardSize, onLayout, isMatched }: TargetCardProps) {
   const cardDynamicStyle = {
     width: cardSize,
     height: cardSize,
+    minWidth: cardSize,
+    minHeight: cardSize,
+    maxWidth: cardSize,
+    maxHeight: cardSize,
   };
 
   return (
@@ -369,46 +475,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    paddingHorizontal: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
+    paddingTop: 8,
+  },
+  header: {
+    marginBottom: 16,
+    paddingHorizontal: 0,
   },
   title: {
     color: '#FF1493',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   question: {
     color: '#666',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 12,
+    flexShrink: 1,
   },
   divider: {
     height: 2,
     backgroundColor: '#E0E0E0',
-    marginVertical: 16,
-    marginHorizontal: 40,
+    marginVertical: 12,
+    marginHorizontal: 0,
     borderRadius: 1,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
+    alignItems: 'flex-start',
+    alignContent: 'flex-start',
     gap: CARD_GAP,
+    paddingVertical: 4,
+    width: '100%',
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    flexShrink: 0,
+    flexGrow: 0,
+    flexBasis: 'auto',
   },
   originalCard: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#FF8C00',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
     borderWidth: 3,
     borderColor: '#FF8C00',
   },
@@ -424,14 +543,15 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     backgroundColor: '#E8FFE8',
     shadowColor: '#58CC02',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
   cardImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   blurContainer: {
     width: '100%',
@@ -448,11 +568,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(255, 140, 0, 0.95)',
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
   cardLabelText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -462,20 +582,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   matchedBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#58CC02',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   matchedBadgeText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 24,
   },
 });

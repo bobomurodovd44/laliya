@@ -3,6 +3,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LookAndSay from '../components/exercises/LookAndSay';
+import OddOneOut from '../components/exercises/OddOneOut';
+import PicturePuzzle from '../components/exercises/PicturePuzzle';
+import ShapeMatch from '../components/exercises/ShapeMatch';
 import { Exercise, ExerciseType, exercises } from '../data/data';
 
 export default function Task() {
@@ -37,15 +41,32 @@ export default function Task() {
   const getExerciseTypeText = (type: ExerciseType): string => {
     switch (type) {
       case ExerciseType.ODD_ONE_OUT:
-        return 'This is Odd One Out';
+        return 'Odd One Out';
       case ExerciseType.LOOK_AND_SAY:
-        return 'This is Look and Say';
+        return 'Look and Say';
       case ExerciseType.SHAPE_MATCH:
-        return 'This is Shape Match';
+        return 'Shape Match';
       case ExerciseType.PICTURE_PUZZLE:
-        return 'This is Picture Puzzle';
+        return 'Picture Puzzle';
       default:
         return 'Unknown Exercise';
+    }
+  };
+
+  const renderExercise = () => {
+    if (!currentExercise) return null;
+
+    switch (currentExercise.type) {
+      case ExerciseType.ODD_ONE_OUT:
+        return <OddOneOut exercise={currentExercise} />;
+      case ExerciseType.LOOK_AND_SAY:
+        return <LookAndSay exercise={currentExercise} />;
+      case ExerciseType.SHAPE_MATCH:
+        return <ShapeMatch exercise={currentExercise} />;
+      case ExerciseType.PICTURE_PUZZLE:
+        return <PicturePuzzle exercise={currentExercise} />;
+      default:
+        return <Text style={styles.errorText}>Unknown exercise type</Text>;
     }
   };
 
@@ -86,18 +107,7 @@ export default function Task() {
 
       {/* Content */}
       <View style={styles.content}>
-        <View style={styles.exerciseCard}>
-          <Text style={styles.exerciseType}>
-            {getExerciseTypeText(currentExercise.type)}
-          </Text>
-          
-          <Text style={styles.question}>{currentExercise.question}</Text>
-          
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoText}>Exercise {exerciseOrder} of {stageExercises.length}</Text>
-            <Text style={styles.scoreText}>Score: {currentExercise.score} points</Text>
-          </View>
-        </View>
+        {renderExercise()}
       </View>
 
       {/* Navigation Button */}

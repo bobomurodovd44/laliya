@@ -4,11 +4,10 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { stages } from '../data/data';
 
 interface LessonCard {
-  id: number;
-  title: string;
-  stars: number;
+  order: number;
   positionStyle: any;
   isActive?: boolean;
 }
@@ -121,64 +120,15 @@ export default function Index() {
     ).start();
   }, []);
 
-  const lessons: LessonCard[] = [
-    {
-      id: 1,
-      title: 'Animal Sounds',
-      stars: 3,
-      positionStyle: { top: 20, right: '5%' },
-    },
-    {
-      id: 2,
-      title: 'First Words',
-      stars: 2,
-      positionStyle: { top: 160, left: '8%' },
-    },
-    {
-      id: 3,
-      title: 'Colors',
-      stars: 0,
-      positionStyle: { top: 300, right: '10%' },
-      isActive: true,
-    },
-    {
-      id: 4,
-      title: 'Numbers',
-      stars: 0,
-      positionStyle: { top: 440, left: '5%' },
-    },
-    {
-      id: 5,
-      title: 'Shapes',
-      stars: 0,
-      positionStyle: { top: 580, right: '8%' },
-    },
-    {
-      id: 6,
-      title: 'Body Parts',
-      stars: 0,
-      positionStyle: { top: 720, left: '10%' },
-    },
-    {
-      id: 7,
-      title: 'Emotions',
-      stars: 0,
-      positionStyle: { top: 860, right: '6%' },
-    },
-  ];
+  const lessons: LessonCard[] = stages.map((stage, index) => ({
+    order: stage.order,
+    positionStyle: index % 2 === 0 
+      ? { top: 20 + (index * 140), right: '5%' }
+      : { top: 20 + (index * 140), left: '8%' },
+    isActive: true, // All stages are available
+  }));
 
-  const StarRating = ({ count }: { count: number }) => (
-    <View style={styles.starContainer}>
-      {[1, 2, 3].map((star) => (
-        <Ionicons
-          key={star}
-          name="star"
-          size={16}
-          color={star <= count ? '#FFD700' : '#E0E0E0'}
-        />
-      ))}
-    </View>
-  );
+
 
   const { width: screenWidth } = useWindowDimensions();
   const cardSize = 110;
@@ -415,7 +365,7 @@ export default function Index() {
           </Svg>
 
           {lessons.map((lesson) => (
-            <View key={lesson.id} style={[styles.cardWrapper, lesson.positionStyle]}>
+            <View key={lesson.order} style={[styles.cardWrapper, lesson.positionStyle]}>
 
 
               {/* Lesson Card with enhanced design */}
@@ -430,32 +380,19 @@ export default function Index() {
                 {/* Card inner glow for active state */}
                 {lesson.isActive && <View style={styles.cardInnerGlow} />}
                 
-                {!lesson.isActive ? (
-                  <Text style={[
-                    styles.lessonNumber,
-                    lesson.stars > 0 && { color: '#FF8C00' } // Orange for started lessons
-                  ]}>{lesson.id}</Text>
-                ) : (
-                  <Animated.View 
-                    style={[
-                      styles.mascotInCard,
-                      { transform: [{ translateY: mascotAnim }] }
-                    ]}
-                  >
-                    <Image
-                      source={require('../assets/parrot.png')}
-                      style={styles.mascotImage}
-                      resizeMode="contain"
-                    />
-                  </Animated.View>
-                )}
-                <StarRating count={lesson.stars} />
+                <Animated.View 
+                  style={[
+                    styles.mascotInCard,
+                    { transform: [{ translateY: mascotAnim }] }
+                  ]}
+                >
+                  <Image
+                    source={require('../assets/parrot.png')}
+                    style={styles.mascotImage}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
               </TouchableOpacity>
-              
-              {/* Card Title */}
-              <Text style={styles.lessonTitle}>{lesson.title}</Text>
-              
-
               
               {/* Compact Play Button - Bottom Right Corner */}
               {lesson.isActive && (

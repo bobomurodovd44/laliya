@@ -65,7 +65,6 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   // Reset state when exercise changes OR when component remounts
   // Using optionIds.join() to create a stable dependency
   useEffect(() => {
-    console.log('ShapeMatch - Resetting state for exercise:', exercise.order, exercise.stageId);
     setMatchedIds(new Set());
     setShuffledOriginals(shuffleArray(exerciseItems));
     setShuffledTargets(shuffleArray(exerciseItems));
@@ -93,14 +92,6 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   const registerTargetPosition = useCallback((itemId: number, x: number, y: number) => {
     targetPositionsRef.current[itemId] = { x, y };
   }, []);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('ShapeMatch - Exercise Items:', exerciseItems);
-    console.log('ShapeMatch - Shuffled Originals:', shuffledOriginals);
-    console.log('ShapeMatch - Shuffled Targets:', shuffledTargets);
-    console.log('ShapeMatch - Matched IDs:', Array.from(matchedIds));
-  }, [exerciseItems, shuffledOriginals, shuffledTargets, matchedIds]);
 
   return (
     <View style={styles.container}>

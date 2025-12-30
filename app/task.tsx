@@ -20,6 +20,7 @@ export default function Task() {
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     // Get all exercises for this stage
@@ -36,6 +37,9 @@ export default function Task() {
     // Check if this is the last exercise
     const isLast = exerciseOrder >= exercisesInStage.length;
     setIsLastExercise(isLast);
+    
+    // Reset completion state when exercise changes
+    setIsCompleted(false);
   }, [stageId, exerciseOrder]);
 
   const getExerciseTypeText = (type: ExerciseType): string => {
@@ -53,18 +57,22 @@ export default function Task() {
     }
   };
 
+  const handleComplete = () => {
+    setIsCompleted(true);
+  };
+
   const renderExercise = () => {
     if (!currentExercise) return null;
 
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:
-        return <OddOneOut exercise={currentExercise} />;
+        return <OddOneOut exercise={currentExercise} onComplete={handleComplete} />;
       case ExerciseType.LOOK_AND_SAY:
-        return <LookAndSay exercise={currentExercise} />;
+        return <LookAndSay exercise={currentExercise} onComplete={handleComplete} />;
       case ExerciseType.SHAPE_MATCH:
-        return <ShapeMatch exercise={currentExercise} />;
+        return <ShapeMatch exercise={currentExercise} onComplete={handleComplete} />;
       case ExerciseType.PICTURE_PUZZLE:
-        return <PicturePuzzle exercise={currentExercise} />;
+        return <PicturePuzzle exercise={currentExercise} onComplete={handleComplete} />;
       default:
         return <Text style={styles.errorText}>Unknown exercise type</Text>;
     }
@@ -114,21 +122,23 @@ export default function Task() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {isLastExercise ? (
           <TouchableOpacity 
-            style={[styles.button, styles.submitButton]} 
+            style={[styles.button, styles.submitButton, !isCompleted && styles.buttonDisabled]} 
             onPress={handleSubmit}
             activeOpacity={0.8}
+            disabled={!isCompleted}
           >
-            <Text style={styles.buttonText}>Submit</Text>
-            <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+            <Text style={[styles.buttonText, !isCompleted && styles.buttonTextDisabled]}>Submit</Text>
+            <Ionicons name="checkmark-circle" size={24} color={isCompleted ? "#FFFFFF" : "#999"} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.button, styles.nextButton]} 
+            style={[styles.button, styles.nextButton, !isCompleted && styles.buttonDisabled]} 
             onPress={handleNext}
             activeOpacity={0.8}
+            disabled={!isCompleted}
           >
-            <Text style={styles.buttonText}>Next</Text>
-            <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+            <Text style={[styles.buttonText, !isCompleted && styles.buttonTextDisabled]}>Next</Text>
+            <Ionicons name="arrow-forward" size={24} color={isCompleted ? "#FFFFFF" : "#999"} />
           </TouchableOpacity>
         )}
       </View>
@@ -224,11 +234,18 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: '#4CAF50',
   },
+  buttonDisabled: {
+    backgroundColor: '#E0E0E0',
+    opacity: 0.6,
+  },
   buttonText: {
     fontFamily: 'BalsamiqSans',
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  buttonTextDisabled: {
+    color: '#999',
   },
   progressContainer: {
     backgroundColor: '#FFFFFF',

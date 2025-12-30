@@ -117,6 +117,9 @@ function RootLayoutNav() {
         name="task"
         options={{
           href: null,
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+          sceneStyle: { paddingBottom: 0 },
         }}
       />
       <Tabs.Screen

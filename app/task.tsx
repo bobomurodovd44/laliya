@@ -70,12 +70,18 @@ export default function Task() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Stage {stageId}</Text>
-        <View style={styles.placeholder} />
+      <View style={styles.header} />
+
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar}>
+          <View 
+            style={[
+              styles.progressFill, 
+              { width: `${(exerciseOrder / stageExercises.length) * 100}%` }
+            ]} 
+          />
+        </View>
       </View>
 
       {/* Content */}
@@ -95,7 +101,7 @@ export default function Task() {
       </View>
 
       {/* Navigation Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {isLastExercise ? (
           <TouchableOpacity 
             style={[styles.button, styles.submitButton]} 
@@ -126,26 +132,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5E8',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    height: 60,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-  },
-  placeholder: {
-    width: 44,
   },
   content: {
     flex: 1,
@@ -229,6 +219,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  progressContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#FFE4CC',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF8C00',
+    borderRadius: 3,
   },
   errorText: {
     fontFamily: 'BalsamiqSans',

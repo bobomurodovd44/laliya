@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Add this import
-import React, { useEffect, useRef } from 'react';
-import { Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
+import { PageContainer } from '../components/layout/PageContainer';
+import { Body, Title } from '../components/Typography';
+import { Colors, Spacing, Typography } from '../constants';
 
 export default function Profile() {
-  const router = useRouter(); // Add router hook
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   
-  // Mock user data - replace with actual user data later
   const user = {
     name: 'Laliya',
     age: 5,
@@ -18,95 +20,13 @@ export default function Profile() {
     profilePicture: 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg',
   };
 
-  // Animated shapes
-  const shape1Anim = useRef(new Animated.Value(0)).current;
-  const shape2Anim = useRef(new Animated.Value(0)).current;
-  const shape3Anim = useRef(new Animated.Value(0)).current;
-  const shape4Anim = useRef(new Animated.Value(0)).current;
-  const shape5Anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Animate floating shapes
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape1Anim, { toValue: 1, duration: 4000, useNativeDriver: true }),
-        Animated.timing(shape1Anim, { toValue: 0, duration: 4000, useNativeDriver: true }),
-      ])
-    ).start();
-    
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape2Anim, { toValue: 1, duration: 5000, useNativeDriver: true }),
-        Animated.timing(shape2Anim, { toValue: 0, duration: 5000, useNativeDriver: true }),
-      ])
-    ).start();
-    
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape3Anim, { toValue: 1, duration: 6000, useNativeDriver: true }),
-        Animated.timing(shape3Anim, { toValue: 0, duration: 6000, useNativeDriver: true }),
-      ])
-    ).start();
-    
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape4Anim, { toValue: 1, duration: 4500, useNativeDriver: true }),
-        Animated.timing(shape4Anim, { toValue: 0, duration: 4500, useNativeDriver: true }),
-      ])
-    ).start();
-    
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape5Anim, { toValue: 1, duration: 5500, useNativeDriver: true }),
-        Animated.timing(shape5Anim, { toValue: 0, duration: 5500, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
   return (
-    <View style={styles.container}>
-      {/* Background Layer */}
-      <View style={styles.backgroundLayer} />
-
-      {/* Animated Floating Shapes */}
-      <View style={styles.animatedShapesContainer}>
-        <Animated.View style={[styles.floatingShape, styles.circle1, {
-          transform: [
-            { translateY: shape1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -30] }) },
-            { translateX: shape1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }
-          ]
-        }]} />
-        <Animated.View style={[styles.floatingShape, styles.square1, {
-          transform: [
-            { translateY: shape2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
-            { rotate: shape2Anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
-          ]
-        }]} />
-        <Animated.View style={[styles.floatingShape, styles.circle2, {
-          transform: [
-            { translateY: shape3Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -50] }) },
-            { scale: shape3Anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.1, 1] }) }
-          ]
-        }]} />
-        <Animated.View style={[styles.floatingShape, styles.square2, {
-          transform: [
-            { translateY: shape4Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 35] }) },
-            { translateX: shape4Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -25] }) }
-          ]
-        }]} />
-        <Animated.View style={[styles.floatingShape, styles.circle3, {
-          transform: [
-            { translateY: shape5Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -45] }) },
-            { rotate: shape5Anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-180deg'] }) }
-          ]
-        }]} />
-      </View>
-      {/* Fixed Header */}
+    <PageContainer useFloatingShapes>
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <View style={{ width: 32 }} />
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Title size="medium" style={styles.headerTitle}>Profile</Title>
         <TouchableOpacity style={styles.settingsButton} onPress={() => {}}>
-          <Ionicons name="settings-sharp" size={24} color="#4B4B4B" />
+          <Ionicons name="settings-sharp" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -115,7 +35,6 @@ export default function Profile() {
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Info Section - Simplified */}
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             <Image 
@@ -123,40 +42,34 @@ export default function Profile() {
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.editIconButton} onPress={() => {}}>
-              <Ionicons name="pencil" size={20} color="#FFFFFF" />
+              <Ionicons name="pencil" size={20} color={Colors.textWhite} />
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.childName}>
-            {user.name}
-          </Text>
-          <Text style={styles.subtitleText}>{user.age} years old • {user.gender}</Text>
+          <Title size="large" style={styles.childName}>{user.name}</Title>
+          <Body style={styles.subtitleText}>{user.age} years old • {user.gender}</Body>
         </View>
 
-        {/* Stats Row - Duolingo Style Widgets */}
         <View style={styles.statsRow}>
-          {/* Stars Card */}
-          <View style={[styles.statCard, { borderColor: '#FFD700' }]}>
-            <Text style={styles.statTitle}>Stars</Text>
+          <View style={[styles.statCard, { borderColor: Colors.badgeStar }]}>
+            <Body style={styles.statTitle} weight="bold">Stars</Body>
             <View style={styles.statValueContainer}>
-              <Ionicons name="star" size={24} color="#FFD700" style={{ marginBottom: 4 }} />
-              <Text style={styles.statValue}>1,240</Text>
+              <Ionicons name="star" size={24} color={Colors.badgeStar} style={{ marginBottom: 4 }} />
+              <Title size="small" style={styles.statValue}>1,240</Title>
             </View>
           </View>
 
-          {/* Level Card */}
-          <View style={[styles.statCard, { borderColor: '#4DA6FF' }]}>
-            <Text style={styles.statTitle}>Level</Text>
+          <View style={[styles.statCard, { borderColor: Colors.badgeLevel }]}>
+            <Body style={styles.statTitle} weight="bold">Level</Body>
             <View style={styles.statValueContainer}>
-              <Ionicons name="trophy" size={24} color="#4DA6FF" style={{ marginBottom: 4 }} />
-              <Text style={styles.statValue}>{user.level}</Text>
+              <Ionicons name="trophy" size={24} color={Colors.badgeLevel} style={{ marginBottom: 4 }} />
+              <Title size="small" style={styles.statValue}>{user.level}</Title>
             </View>
           </View>
         </View>
 
         <View style={styles.divider} />
 
-        {/* Account Actions */}
         <View style={styles.section}>
           <ProfileMenuItem 
             iconName="share-social-outline"
@@ -176,74 +89,13 @@ export default function Profile() {
           />
         </View>
 
-        {/* Bottom spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
-    </View>
+    </PageContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF5E8',
-  },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFF5E8',
-  },
-  animatedShapesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: 'none',
-  },
-  floatingShape: {
-    position: 'absolute',
-  },
-  circle1: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFD7E5',
-    opacity: 0.3,
-    top: 100,
-    left: '10%',
-  },
-  square1: {
-    width: 60,
-    height: 60,
-    borderRadius: 15,
-    backgroundColor: '#D4E4FF',
-    opacity: 0.25,
-    top: 200,
-    right: '15%',
-  },
-  circle2: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFE4B8',
-    opacity: 0.2,
-    top: 450,
-    left: '60%',
-  },
-  square2: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    backgroundColor: '#B8E6B8',
-    opacity: 0.25,
-    top: 600,
-    left: '8%',
-  },
-  circle3: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#E8D4FF',
-    opacity: 0.2,
-    top: 500,
-    right: '12%',
-  },
   fixedHeader: {
     position: 'absolute',
     top: 0,
@@ -253,109 +105,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: '#E5E5E5',
+    backgroundColor: Colors.backgroundLight,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingVertical: Spacing.padding.md,
+    borderBottomWidth: Spacing.borderWidth.medium,
+    borderBottomColor: Colors.borderDark,
   },
   headerTitle: {
-    fontFamily: 'FredokaOne',
-    fontSize: 20,
-    color: '#333',
     textAlign: 'center',
   },
   settingsButton: {
-    padding: 4,
+    padding: Spacing.padding.xs,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingBottom: Spacing.margin.huge,
   },
   profileSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: Spacing.margin.xxxl,
   },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: Spacing.margin.lg,
   },
   profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: Colors.backgroundDark,
   },
   editIconButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#4DA6FF',
+    backgroundColor: Colors.badgeLevel,
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderWidth: Spacing.borderWidth.thick,
+    borderColor: Colors.backgroundLight,
   },
   childName: {
-    fontFamily: 'FredokaOne',
-    fontSize: 32,
-    color: '#333',
-    marginBottom: 4,
+    marginBottom: Spacing.margin.xs,
     textAlign: 'center',
   },
   subtitleText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    color: '#999',
+    fontSize: Typography.fontSize.md,
+    color: Colors.textTertiary,
   },
   statsRow: {
     flexDirection: 'row',
-    marginBottom: 30,
-    gap: 16,
+    marginBottom: Spacing.margin.xxxl,
+    gap: Spacing.gap.lg,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 2,
-    borderBottomWidth: 5,
-    borderColor: '#E5E5E5', // Default fallback
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: Spacing.radius.lg,
+    padding: Spacing.padding.lg,
+    borderWidth: Spacing.borderWidth.medium,
+    borderBottomWidth: Spacing.borderWidth.xxthick,
+    borderColor: Colors.borderDark,
     alignItems: 'flex-start',
   },
   statTitle: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
-    color: '#777',
-    marginBottom: 8,
-    fontWeight: '700',
+    fontSize: Typography.fontSize.md,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.margin.sm,
   },
   statValueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.gap.sm,
   },
   statValue: {
-    fontFamily: 'FredokaOne',
-    fontSize: 24,
-    color: '#333',
+    color: Colors.textPrimary,
   },
   divider: {
-    height: 2,
-    backgroundColor: '#E5E5E5',
-    marginBottom: 20,
+    height: Spacing.borderWidth.medium,
+    backgroundColor: Colors.borderDark,
+    marginBottom: Spacing.margin.xl,
     borderRadius: 1,
   },
   section: {
-    gap: 10,
+    gap: Spacing.gap.md,
   },
   bottomSpacer: {
-    height: 50,
+    height: Spacing.margin.xxxl,
   },
 });

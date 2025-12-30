@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { Exercise, items } from '../../data/data';
+import { Body, Title } from '../Typography';
 
 interface PicturePuzzleProps {
   exercise: Exercise;
@@ -35,7 +36,7 @@ export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzlePro
 
   if (!item?.imageUrl) return (
       <View style={styles.container}>
-          <Text style={styles.question}>Image not found</Text>
+          <Body style={styles.question}>Image not found</Body>
       </View>
   );
 
@@ -118,8 +119,8 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-       <Text style={styles.title}>Picture Puzzle</Text>
-       <Text style={styles.question}>{question}</Text>
+       <Title size="medium" style={styles.title}>Picture Puzzle</Title>
+       <Body style={styles.question}>{question}</Body>
 
        {/* Board Container */}
        <View style={[

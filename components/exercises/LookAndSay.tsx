@@ -1,6 +1,6 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -11,6 +11,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { Exercise, items } from '../../data/data';
+import { Body, Title } from '../Typography';
 import { DuoButton } from '../DuoButton';
 
 interface LookAndSayProps {
@@ -202,7 +203,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     }
   };
 
-  if (!item) return <View><Text>Item not found</Text></View>;
+  if (!item) return <View><Body>Item not found</Body></View>;
 
   return (
     <View style={styles.container}>
@@ -224,7 +225,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
 
           {/* Footer Area: Word + Play Button */}
           <View style={styles.cardFooter}>
-            <Text style={styles.word}>{item.word}</Text>
+            <Title size="huge" style={styles.word}>{item.word}</Title>
             <DuoButton
                 title=""
                 onPress={playItemAudio}

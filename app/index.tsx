@@ -1,19 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Image,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { FloatingShapesBackground } from "../components/layout/FloatingShapesBackground";
+import { PageContainer } from "../components/layout/PageContainer";
+import { Body } from "../components/Typography";
+import { Colors, Spacing, Typography } from "../constants";
 import { exercises, stages } from "../data/data";
 
 interface LessonCard {
@@ -33,26 +36,21 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const mascotAnim = useRef(new Animated.Value(0)).current;
 
-  // Animated shapes
-  const shape1Anim = useRef(new Animated.Value(0)).current;
-  const shape2Anim = useRef(new Animated.Value(0)).current;
-  const shape3Anim = useRef(new Animated.Value(0)).current;
-  const shape4Anim = useRef(new Animated.Value(0)).current;
-  const shape5Anim = useRef(new Animated.Value(0)).current;
-
-  const stageThemes = [
-    { primary: "#FF9F1C", secondary: "#FFD6A5", accent: "#FFF3D9" },
-    { primary: "#6C63FF", secondary: "#A29BFE", accent: "#ECE9FF" },
-    { primary: "#2ED573", secondary: "#7BED9F", accent: "#E9FFF1" },
-    { primary: "#FF6B6B", secondary: "#FFA8A8", accent: "#FFECEC" },
-    { primary: "#1CB0F6", secondary: "#6DD5FA", accent: "#E4F7FF" },
-  ];
+  const stageThemes = useMemo(
+    () => [
+      Colors.gradientOrange,
+      Colors.gradientPurple,
+      Colors.gradientGreen,
+      Colors.gradientRed,
+      Colors.gradientBlue,
+    ],
+    []
+  );
 
   const verticalSpacing = 160;
   const cardSize = 135;
   const halfCard = cardSize / 2;
 
-  // Animate mascot bouncing
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -68,83 +66,7 @@ export default function Index() {
         }),
       ])
     ).start();
-
-    // Animate floating shapes
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape1Anim, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shape1Anim, {
-          toValue: 0,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape2Anim, {
-          toValue: 1,
-          duration: 5000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shape2Anim, {
-          toValue: 0,
-          duration: 5000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape3Anim, {
-          toValue: 1,
-          duration: 6000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shape3Anim, {
-          toValue: 0,
-          duration: 6000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape4Anim, {
-          toValue: 1,
-          duration: 4500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shape4Anim, {
-          toValue: 0,
-          duration: 4500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shape5Anim, {
-          toValue: 1,
-          duration: 5500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shape5Anim, {
-          toValue: 0,
-          duration: 5500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
+  }, [mascotAnim]);
 
   const lessons: LessonCard[] = stages.map((stage, index) => ({
     order: stage.order,
@@ -235,127 +157,8 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Simple Light Background */}
-      <View style={styles.backgroundLayer} />
-
-      {/* Animated Floating Shapes */}
-      <View style={styles.animatedShapesContainer}>
-        <Animated.View
-          style={[
-            styles.floatingShape,
-            styles.circle1,
-            {
-              transform: [
-                {
-                  translateY: shape1Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -30],
-                  }),
-                },
-                {
-                  translateX: shape1Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 20],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-
-        <Animated.View
-          style={[
-            styles.floatingShape,
-            styles.square1,
-            {
-              transform: [
-                {
-                  translateY: shape2Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 40],
-                  }),
-                },
-                {
-                  rotate: shape2Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0deg", "360deg"],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-
-        <Animated.View
-          style={[
-            styles.floatingShape,
-            styles.circle2,
-            {
-              transform: [
-                {
-                  translateY: shape3Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -50],
-                  }),
-                },
-                {
-                  scale: shape3Anim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [1, 1.1, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-
-        <Animated.View
-          style={[
-            styles.floatingShape,
-            styles.square2,
-            {
-              transform: [
-                {
-                  translateY: shape4Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 35],
-                  }),
-                },
-                {
-                  translateX: shape4Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -25],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-
-        <Animated.View
-          style={[
-            styles.floatingShape,
-            styles.circle3,
-            {
-              transform: [
-                {
-                  translateY: shape5Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -45],
-                  }),
-                },
-                {
-                  rotate: shape5Anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0deg", "-180deg"],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-      </View>
+    <PageContainer>
+      <FloatingShapesBackground />
 
       {/* Decorative dots only */}
       <View style={styles.decorativeElements}>
@@ -365,16 +168,19 @@ export default function Index() {
         <View style={styles.pathDot4} />
       </View>
 
-      {/* Fixed Header at Top */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerStarsContainer}>
           <View style={styles.starBadge}>
-            <Ionicons name="star" size={28} color="#FFD700" />
-            <Text style={styles.starCount}>1,240</Text>
+            <Ionicons name="star" size={28} color={Colors.badgeStar} />
+            <Body style={styles.starCount} weight="bold">
+              1,240
+            </Body>
           </View>
         </View>
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>Level 3</Text>
+          <Body style={styles.levelText} weight="bold">
+            Level 3
+          </Body>
         </View>
       </View>
 
@@ -393,11 +199,10 @@ export default function Index() {
             { height: Math.max(lessons.length * verticalSpacing + 260, 720) },
           ]}
         >
-          {/* Svg Dotted Path */}
           <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
             <Path
               d={generatePath()}
-              stroke="#D1D5DB" // Medium gray for better visibility
+              stroke={Colors.border}
               strokeWidth="20"
               strokeDasharray="0, 28"
               strokeLinecap="round"
@@ -443,74 +248,13 @@ export default function Index() {
           ))}
         </View>
 
-        {/* Bottom spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
-    </View>
+    </PageContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFF5E8",
-  },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#FFF5E8",
-  },
-  animatedShapesContainer: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: "none",
-  },
-  floatingShape: {
-    position: "absolute",
-  },
-  circle1: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#FFD4E5",
-    opacity: 0.3,
-    top: 100,
-    left: "10%",
-  },
-  square1: {
-    width: 60,
-    height: 60,
-    borderRadius: 15,
-    backgroundColor: "#D4E4FF",
-    opacity: 0.25,
-    top: 200,
-    right: "15%",
-  },
-  circle2: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFE4B8",
-    opacity: 0.2,
-    top: 450,
-    left: "60%",
-  },
-  square2: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    backgroundColor: "#B8E6B8",
-    opacity: 0.25,
-    top: 600,
-    left: "8%",
-  },
-  circle3: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#E8D4FF",
-    opacity: 0.2,
-    top: 800,
-    right: "12%",
-  },
   decorativeElements: {
     ...StyleSheet.absoluteFillObject,
     pointerEvents: "none",
@@ -520,7 +264,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#B8E6B8",
+    backgroundColor: Colors.shapeGreen,
     top: 130,
     left: "22%",
     opacity: 0.4,
@@ -530,7 +274,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#FFD4E5",
+    backgroundColor: Colors.shapePink,
     top: 250,
     right: "28%",
     opacity: 0.4,
@@ -540,7 +284,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#FFE4B8",
+    backgroundColor: Colors.shapeYellow,
     top: 420,
     left: "45%",
     opacity: 0.4,
@@ -550,7 +294,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#D4E4FF",
+    backgroundColor: Colors.shapeBlue,
     top: 540,
     left: "30%",
     opacity: 0.4,
@@ -559,8 +303,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingBottom: Spacing.margin.xxxl,
   },
   fixedHeader: {
     position: "absolute",
@@ -571,11 +315,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    backgroundColor: Colors.backgroundLight,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingVertical: Spacing.padding.md,
+    borderBottomWidth: Spacing.borderWidth.thin,
+    borderBottomColor: Colors.borderLight,
   },
   headerStarsContainer: {
     flexDirection: "row",
@@ -584,59 +328,51 @@ const styles = StyleSheet.create({
   starBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF9E6",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
+    backgroundColor: Colors.badgeStarBg,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingVertical: Spacing.padding.md,
+    borderRadius: Spacing.radius.xxl,
   },
   starCount: {
-    fontFamily: "BalsamiqSans",
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#FF8C00",
-    marginLeft: 8,
+    fontSize: Typography.fontSize.xxl,
+    color: Colors.secondary,
+    marginLeft: Spacing.margin.sm,
   },
   levelBadge: {
-    backgroundColor: "#E6F2FF",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
+    backgroundColor: Colors.badgeLevelBg,
+    paddingHorizontal: Spacing.padding.lg,
+    paddingVertical: Spacing.padding.md,
+    borderRadius: Spacing.radius.xl,
   },
   levelText: {
-    fontFamily: "BalsamiqSans",
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#4A90E2",
+    fontSize: Typography.fontSize.lg,
+    color: Colors.badgeLevel,
   },
   pathContainer: {
     position: "relative",
-    marginTop: 20,
+    marginTop: Spacing.margin.xl,
   },
   cardWrapper: {
     position: "absolute",
     alignItems: "center",
   },
   lessonCardOuter: {
-    borderRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 16,
+    borderRadius: Spacing.radius.xxl,
+    ...Spacing.shadow.xlarge,
   },
   lessonCard: {
     width: 135,
     height: 135,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 28,
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: Spacing.radius.xxl,
     justifyContent: "center",
     alignItems: "center",
-    padding: 12,
+    padding: Spacing.padding.md,
     overflow: "hidden",
   },
   lessonCardActive: {
-    borderColor: "#FFFFFF",
-    borderWidth: 4,
+    borderColor: Colors.backgroundLight,
+    borderWidth: Spacing.borderWidth.xthick,
   },
   cardInnerGlow: {
     position: "absolute",
@@ -750,6 +486,6 @@ const styles = StyleSheet.create({
     color: "#fdfdfd",
   },
   bottomSpacer: {
-    height: 40,
+    height: Spacing.margin.xxxl,
   },
 });

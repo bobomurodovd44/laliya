@@ -1,143 +1,141 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import ConfettiCannon from 'react-native-confetti-cannon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AnimatedBackground from '../components/AnimatedBackground';
-import { DuoButton } from '../components/DuoButton';
-import LookAndSay from '../components/exercises/LookAndSay';
-import OddOneOut from '../components/exercises/OddOneOut';
-import PicturePuzzle from '../components/exercises/PicturePuzzle';
-import ShapeMatch from '../components/exercises/ShapeMatch';
-import { Exercise, ExerciseType, exercises } from '../data/data';
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
+import ConfettiCannon from "react-native-confetti-cannon";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DuoButton } from "../components/DuoButton";
+import LookAndSay from "../components/exercises/LookAndSay";
+import OddOneOut from "../components/exercises/OddOneOut";
+import PicturePuzzle from "../components/exercises/PicturePuzzle";
+import ShapeMatch from "../components/exercises/ShapeMatch";
+import { PageContainer } from "../components/layout/PageContainer";
+import { ProgressBar } from "../components/ProgressBar";
+import { Body } from "../components/Typography";
+import { Colors, Spacing } from "../constants";
+import { Exercise, ExerciseType, exercises } from "../data/data";
 
 export default function Task() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  
+
   const stageId = Number(params.stageId);
   const exerciseOrder = Number(params.exerciseOrder) || 1;
-  
+
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [resetKey, setResetKey] = useState(0); // Key to force component remount
+  const [resetKey, setResetKey] = useState(0);
   const confettiRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
-    // Get all exercises for this stage
     const exercisesInStage = exercises
-      .filter(ex => ex.stageId === stageId)
+      .filter((ex) => ex.stageId === stageId)
       .sort((a, b) => a.order - b.order);
-    
+
     setStageExercises(exercisesInStage);
-    
-    // Find current exercise
-    const exercise = exercisesInStage.find(ex => ex.order === exerciseOrder);
+
+    const exercise = exercisesInStage.find((ex) => ex.order === exerciseOrder);
     setCurrentExercise(exercise || null);
-    
-    // Check if this is the last exercise
+
     const isLast = exerciseOrder >= exercisesInStage.length;
     setIsLastExercise(isLast);
-    
-    // Reset completion state when exercise changes
+
     setIsCompleted(false);
   }, [stageId, exerciseOrder]);
 
-  // Reset exercise every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Increment reset key to force component remount
-      setResetKey(prev => prev + 1);
-      // Reset completion state
+      setResetKey((prev) => prev + 1);
       setIsCompleted(false);
     }, [])
   );
 
-  const getExerciseTypeText = (type: ExerciseType): string => {
-    switch (type) {
-      case ExerciseType.ODD_ONE_OUT:
-        return 'Odd One Out';
-      case ExerciseType.LOOK_AND_SAY:
-        return 'Look and Say';
-      case ExerciseType.SHAPE_MATCH:
-        return 'Shape Match';
-      case ExerciseType.PICTURE_PUZZLE:
-        return 'Picture Puzzle';
-      default:
-        return 'Unknown Exercise';
-    }
-  };
-
-  const handleComplete = () => {
+  const handleComplete = useCallback(() => {
     setIsCompleted(true);
-    
-    // Only fire confetti if NOT LookAndSay (as per user request)
+
     if (currentExercise?.type !== ExerciseType.LOOK_AND_SAY) {
       confettiRef.current?.start();
     }
-  };
+  }, [currentExercise]);
 
   const renderExercise = () => {
     if (!currentExercise) return null;
 
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:
-        return <OddOneOut exercise={currentExercise} onComplete={handleComplete} />;
+        return (
+          <OddOneOut exercise={currentExercise} onComplete={handleComplete} />
+        );
       case ExerciseType.LOOK_AND_SAY:
-        return <LookAndSay exercise={currentExercise} onComplete={handleComplete} />;
+        return (
+          <LookAndSay exercise={currentExercise} onComplete={handleComplete} />
+        );
       case ExerciseType.SHAPE_MATCH:
-        return <ShapeMatch key={resetKey} exercise={currentExercise} onComplete={handleComplete} />;
+        return (
+          <ShapeMatch
+            key={resetKey}
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
+        );
       case ExerciseType.PICTURE_PUZZLE:
-        return <PicturePuzzle exercise={currentExercise} onComplete={handleComplete} />;
+        return (
+          <PicturePuzzle
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
+        );
       default:
-        return <Text style={styles.errorText}>Unknown exercise type</Text>;
+        return <Body style={styles.errorText}>Unknown exercise type</Body>;
     }
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (!isLastExercise) {
-      router.push(`/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`);
+      router.push(
+        `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
+      );
     }
-  };
+  }, [isLastExercise, stageId, exerciseOrder, router]);
 
-  const handleSubmit = () => {
-    router.push('/');
-  };
+  const handleSubmit = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  const progress =
+    stageExercises.length > 0 ? exerciseOrder / stageExercises.length : 0;
 
   if (!currentExercise) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Exercise not found</Text>
-      </View>
+      <PageContainer>
+        <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
+          <Body style={styles.errorText}>Exercise not found</Body>
+        </View>
+      </PageContainer>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <AnimatedBackground />
-      
-      {/* Progress Bar (Header removed) */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${(exerciseOrder / stageExercises.length) * 100}%` }
-            ]} 
-          />
-        </View>
+    <PageContainer useAnimatedBackground>
+      <View
+        style={[
+          styles.progressContainer,
+          { paddingTop: insets.top + Spacing.padding.md },
+        ]}
+      >
+        <ProgressBar progress={progress} />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {renderExercise()}
-      </View>
+      <View style={styles.content}>{renderExercise()}</View>
 
-      {/* Navigation Button */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, Spacing.padding.lg) },
+        ]}
+      >
         {isLastExercise ? (
           <DuoButton
             title="Submit"
@@ -150,86 +148,52 @@ export default function Task() {
           <DuoButton
             title="Next"
             onPress={handleNext}
-            color="green" 
+            color="green"
             size="medium"
             disabled={!isCompleted}
           />
         )}
       </View>
 
-      {/* Single Rain Confetti from Top */}
       <ConfettiCannon
         ref={confettiRef}
         count={200}
-        origin={{x: Dimensions.get('window').width / 2, y: -10}}
+        origin={{ x: Dimensions.get("window").width / 2, y: -10 }}
         autoStart={false}
         fadeOut={true}
         explosionSpeed={0}
         fallSpeed={3500}
       />
-    </View>
+    </PageContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent', // Make transparent so background shows
-  },
-  // Header style removed
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  exerciseType: {
-    fontFamily: 'FredokaOne',
-    fontSize: 32,
-    color: '#FF1493',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  question: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 24, // Increased from 18
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  footer: {
-    padding: 20,
-    paddingBottom: 32,
-  },
   progressContainer: {
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    width: "100%",
+    paddingHorizontal: Spacing.padding.lg,
+    paddingVertical: Spacing.padding.lg,
     zIndex: 10,
   },
-  progressBar: {
-    height: 16, 
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.padding.lg,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FF8C00', // Changed to Orange
-    borderRadius: 12,
+  footer: {
+    padding: Spacing.padding.lg,
+    paddingBottom: Spacing.padding.xxl,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorText: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 18,
-    color: '#FF0000',
-    textAlign: 'center',
-    padding: 20,
+    fontSize: Spacing.size.icon.medium,
+    color: Colors.error,
+    textAlign: "center",
+    padding: Spacing.padding.lg,
   },
 });

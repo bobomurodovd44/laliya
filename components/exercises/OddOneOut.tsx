@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,6 +8,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { Exercise, Item, items } from '../../data/data';
+import { Body, Title } from '../Typography';
 import TryAgainModal from '../TryAgainModal';
 
 interface OddOneOutProps {
@@ -63,9 +64,8 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
 
   return (
     <View style={styles.container}>
-      {/* Title and Question added back per user request */}
-      <Text style={styles.title}>Odd One Out</Text>
-      <Text style={styles.question}>{exercise.question}</Text>
+      <Title size="large" style={styles.title}>Odd One Out</Title>
+      <Body size="large" style={styles.question}>{exercise.question}</Body>
 
       <TryAgainModal 
         visible={showTryAgain} 
@@ -122,16 +122,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'FredokaOne',
-    fontSize: 32, // Big title
     color: '#FF1493',
     textAlign: 'center',
     marginBottom: 8,
-    marginTop: -20, // Adjust spacing
+    marginTop: -20,
   },
   question: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 24, // Readable question
     color: '#666',
     textAlign: 'center',
     marginBottom: 32,

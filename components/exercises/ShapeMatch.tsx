@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
@@ -11,6 +11,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { Exercise, Item, items } from '../../data/data';
+import { Body, Title } from '../Typography';
 
 interface ShapeMatchProps {
   exercise: Exercise;
@@ -95,8 +96,8 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Shape Match</Text>
-      <Text style={styles.question}>{exercise.question}</Text>
+      <Title size="medium" style={styles.title}>Shape Match</Title>
+      <Body size="medium" style={styles.question}>{exercise.question}</Body>
 
       {/* Original Images (Top) - Draggable */}
       <View style={styles.section}>
@@ -287,7 +288,7 @@ function DraggableCard({ item, cardSize, dropThreshold, targetPositionsRef, onSu
           <View style={[styles.cardImage, { backgroundColor: '#E0E0E0' }]} />
         )}
         <View style={styles.cardLabel}>
-          <Text style={styles.cardLabelText}>{item.word}</Text>
+          <Body style={styles.cardLabelText} weight="bold">{item.word}</Body>
         </View>
       </Animated.View>
     </GestureDetector>
@@ -356,7 +357,7 @@ function TargetCard({ item, cardSize, onLayout, isMatched }: TargetCardProps) {
       {isMatched && (
         <View style={styles.matchedOverlay}>
           <View style={styles.matchedBadge}>
-            <Text style={styles.matchedBadgeText}>✓</Text>
+            <Body style={styles.matchedBadgeText} weight="bold">✓</Body>
           </View>
         </View>
       )}
@@ -372,15 +373,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'FredokaOne',
-    fontSize: 26,
     color: '#FF1493',
     textAlign: 'center',
     marginBottom: 4,
   },
   question: {
-    fontFamily: 'BalsamiqSans',
-    fontSize: 16,
     color: '#666',
     textAlign: 'center',
     marginBottom: 16,
@@ -455,9 +452,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   cardLabelText: {
-    fontFamily: 'BalsamiqSans',
     fontSize: 12,
-    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -482,6 +477,5 @@ const styles = StyleSheet.create({
   matchedBadgeText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: 'bold',
   },
 });

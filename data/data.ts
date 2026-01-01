@@ -117,7 +117,8 @@ export enum ExerciseType {
   ODD_ONE_OUT = "odd_one_out", // Ortiqchasini top
   LOOK_AND_SAY = "look_and_say", // Rasmga qarab talaffuz qil
   SHAPE_MATCH = "shape_match", // Rasmni shaklga mosla
-  PICTURE_PUZZLE = "picture_puzzle", // Pazl yig'ish
+  PICTURE_PUZZLE = "picture_puzzle",
+  LISTEN_AND_PICK = "listen_and_pick", // Pazl yig'ish
 }
 
 // Exercise Type Definition
@@ -167,6 +168,15 @@ export const exercises: Exercise[] = [
     answerId: 3,
     score: 15,
     order: 2,
+    stageId: 3, // Colors
+  },
+  {
+    question: "Listen and pick the correct one",
+    type: ExerciseType.LISTEN_AND_PICK,
+    optionIds: [1, 2, 3, 4], // Cat, Dog, Red, Blue
+    answerId: 3, // Red is the correct answer
+    score: 20,
+    order: 3,
     stageId: 3, // Colors
   },
   {

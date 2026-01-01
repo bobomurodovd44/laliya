@@ -5,6 +5,7 @@ import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
 import LookAndSay from "../components/exercises/LookAndSay";
+import ListenAndPick from "../components/exercises/ListenAndPick";
 import OddOneOut from "../components/exercises/OddOneOut";
 import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
@@ -83,6 +84,13 @@ export default function Task() {
       case ExerciseType.PICTURE_PUZZLE:
         return (
           <PicturePuzzle
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
+        );
+      case ExerciseType.LISTEN_AND_PICK:
+        return (
+          <ListenAndPick
             exercise={currentExercise}
             onComplete={handleComplete}
           />

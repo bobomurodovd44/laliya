@@ -9,6 +9,7 @@ import ListenAndPick from "../components/exercises/ListenAndPick";
 import OddOneOut from "../components/exercises/OddOneOut";
 import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
+import SortAndGroup from "../components/exercises/SortAndGroup";
 import { PageContainer } from "../components/layout/PageContainer";
 import { ProgressBar } from "../components/ProgressBar";
 import { Body } from "../components/Typography";
@@ -91,6 +92,14 @@ export default function Task() {
       case ExerciseType.LISTEN_AND_PICK:
         return (
           <ListenAndPick
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
+        );
+      case ExerciseType.SORT_AND_GROUP:
+        return (
+          <SortAndGroup
+            key={resetKey}
             exercise={currentExercise}
             onComplete={handleComplete}
           />

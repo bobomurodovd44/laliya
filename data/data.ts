@@ -119,6 +119,7 @@ export enum ExerciseType {
   SHAPE_MATCH = "shape_match", // Rasmni shaklga mosla
   PICTURE_PUZZLE = "picture_puzzle",
   LISTEN_AND_PICK = "listen_and_pick", // Pazl yig'ish
+  SORT_AND_GROUP = "sort_and_group",
 }
 
 // Exercise Type Definition
@@ -187,5 +188,13 @@ export const exercises: Exercise[] = [
     score: 25,
     order: 3,
     stageId: 1, // Animal Sounds
+  },
+  {
+    question: "Sort the items into their correct categories",
+    type: ExerciseType.SORT_AND_GROUP,
+    optionIds: [1, 2, 3, 4], // Cat, Dog (Animal Sounds), Red, Blue (Colors)
+    score: 25,
+    order: 4,
+    stageId: 3, // Colors
   },
 ];

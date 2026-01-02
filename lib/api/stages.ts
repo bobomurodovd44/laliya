@@ -34,7 +34,6 @@ export const fetchStages = async (): Promise<Stage[]> => {
     
     return sortedStages;
   } catch (error: any) {
-    console.error("Error fetching stages:", error);
     throw new Error(error.message || "Failed to load stages");
   }
 };

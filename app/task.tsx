@@ -4,8 +4,8 @@ import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
-import LookAndSay from "../components/exercises/LookAndSay";
 import ListenAndPick from "../components/exercises/ListenAndPick";
+import LookAndSay from "../components/exercises/LookAndSay";
 import OddOneOut from "../components/exercises/OddOneOut";
 import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
@@ -19,14 +19,14 @@ import { Exercise, ExerciseType } from "../data/data";
 import {
   fetchExercisesByStageId,
   mapPopulatedExerciseToExercise,
+  PopulatedExercise,
 } from "../lib/api/exercises";
 import {
   getCachedExercises,
   setCachedExercises,
 } from "../lib/cache/exercises-cache";
-import { PopulatedExercise } from "../lib/api/exercises";
-import { items, setItems } from "../lib/items-store";
 import { imagePreloader } from "../lib/image-preloader";
+import { items, setItems } from "../lib/items-store";
 
 export default function Task() {
   const router = useRouter();
@@ -62,23 +62,21 @@ export default function Task() {
 
     // Check cache first
     const cached = getCachedExercises(stageId);
-    
+
     if (cached) {
       // Use cached data - no loading needed
-      console.log("[Task] Using cached exercises for stageId:", stageId);
-      
       setStageExercises(cached.exercises);
       setApiExercises(cached.apiExercises);
-      
+
       // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
       const exerciseIndex = exerciseOrder - 1;
-      
+
       if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
         const exercise = cached.exercises[exerciseIndex];
         setCurrentExercise(exercise);
         setIsLastExercise(exerciseOrder >= cached.exercises.length);
         isCompletingRef.current = false;
-        
+
         // Map and set items for the current exercise
         const currentApiExercise = cached.apiExercises[exerciseIndex];
         if (currentApiExercise) {
@@ -86,12 +84,13 @@ export default function Task() {
             mapPopulatedExerciseToExercise(currentApiExercise);
           setItems(exerciseItems);
         }
-        
+
         setLoading(false);
         return;
       } else {
-        console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", cached.exercises.length);
-        setError(`Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`);
+        setError(
+          `Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`
+        );
         setLoading(false);
         setCurrentExercise(null);
         return;
@@ -104,15 +103,10 @@ export default function Task() {
 
     const loadExercises = async () => {
       try {
-        console.log("[Task] Loading exercises for stageId:", stageId, "exerciseOrder:", exerciseOrder);
-
         // Fetch exercises from API
         const apiExercises = await fetchExercisesByStageId(stageId);
 
-        console.log("[Task] Fetched", apiExercises.length, "exercises from API");
-
         if (apiExercises.length === 0) {
-          console.warn("[Task] No exercises found for stageId:", stageId);
           setError("No exercises found for this stage");
           setLoading(false);
           return;
@@ -125,8 +119,6 @@ export default function Task() {
           mappedExercises.push(exercise);
         });
 
-        console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
-
         // Cache the exercises
         setCachedExercises(stageId, mappedExercises, apiExercises);
 
@@ -135,19 +127,16 @@ export default function Task() {
 
         // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
         const exerciseIndex = exerciseOrder - 1;
-        
-        console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
-        
+
         if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
-          console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
-          setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
+          setError(
+            `Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`
+          );
           setLoading(false);
           return;
         }
 
         const exercise = mappedExercises[exerciseIndex];
-        
-        console.log("[Task] Found exercise:", exercise.order, exercise.type);
 
         if (!exercise) {
           setError("Exercise not found");
@@ -169,7 +158,6 @@ export default function Task() {
         isCompletingRef.current = false;
         setLoading(false);
       } catch (err: any) {
-        console.error("Error loading exercises:", err);
         setError(err.message || "Failed to load exercises");
         setLoading(false);
       }
@@ -206,19 +194,18 @@ export default function Task() {
 
       // Preload current exercise images with high priority
       if (imageUrls.length > 0) {
-        imagePreloader.preloadBatch(imageUrls, "high").catch((err) => {
+        imagePreloader.preloadBatch(imageUrls, "high").catch(() => {
           // Silently fail - images will load normally if prefetch fails
-          console.log("[Task] Current exercise image preload failed:", err);
         });
       }
 
       // Preload next exercise images in background (if exists)
       const currentIndex = exerciseOrder - 1;
       const nextApiExercise = apiExercises[currentIndex + 1];
-      
+
       if (nextApiExercise) {
         const nextImageUrls: string[] = [];
-        
+
         // Extract image URLs from next exercise's API data
         if (nextApiExercise.options) {
           nextApiExercise.options.forEach((option) => {
@@ -237,8 +224,8 @@ export default function Task() {
 
         // Preload next exercise images with normal priority (background)
         if (nextImageUrls.length > 0) {
-          imagePreloader.preloadBatch(nextImageUrls, "normal").catch((err) => {
-            console.log("[Task] Next exercise image preload failed:", err);
+          imagePreloader.preloadBatch(nextImageUrls, "normal").catch(() => {
+            // Silently fail - images will load normally if prefetch fails
           });
         }
       }
@@ -280,12 +267,19 @@ export default function Task() {
       clearTimeout(completionTimeoutRef.current);
     }
 
-    // Update state immediately
+    // Enable button immediately for instant feedback
     setIsCompleted(true);
 
-    // Trigger confetti immediately if not LOOK_AND_SAY type
+    // Defer confetti with InteractionManager to prevent blocking UI
+    // This ensures button state updates complete before starting heavy animation
     if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-      confettiRef.current?.start();
+      // Use InteractionManager to defer until after interactions complete
+      InteractionManager.runAfterInteractions(() => {
+        // Add small delay to ensure button render completes
+        setTimeout(() => {
+          confettiRef.current?.start();
+        }, 100);
+      });
     }
   }, [currentExercise, loading]);
 
@@ -387,9 +381,7 @@ export default function Task() {
     return (
       <PageContainer>
         <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
-          <Body style={styles.errorText}>
-            {error || "Exercise not found"}
-          </Body>
+          <Body style={styles.errorText}>{error || "Exercise not found"}</Body>
         </View>
       </PageContainer>
     );
@@ -435,12 +427,12 @@ export default function Task() {
 
       <ConfettiCannon
         ref={confettiRef}
-        count={200}
+        count={100}
         origin={{ x: Dimensions.get("window").width / 2, y: -10 }}
         autoStart={false}
         fadeOut={true}
         explosionSpeed={0}
-        fallSpeed={3500}
+        fallSpeed={3000}
       />
     </PageContainer>
   );

@@ -69,23 +69,11 @@ export const fetchExercisesByStageId = async (
   stageId: string
 ): Promise<PopulatedExercise[]> => {
   try {
-    console.log(
-      "[fetchExercisesByStageId] Fetching exercises for stageId:",
-      stageId
-    );
     const response = await app.service("exercises").find({
       query: {
         stageId: stageId,
         $sort: { order: 1 },
       },
-    });
-
-    console.log("[fetchExercisesByStageId] Response received:", {
-      isArray: Array.isArray(response),
-      hasData: !Array.isArray(response) && (response as ExercisesResponse).data,
-      length: Array.isArray(response)
-        ? response.length
-        : (response as ExercisesResponse).data?.length,
     });
 
     // Handle both paginated and non-paginated responses
@@ -98,14 +86,8 @@ export const fetchExercisesByStageId = async (
       (a, b) => a.order - b.order
     );
 
-    console.log(
-      "[fetchExercisesByStageId] Returning",
-      sortedExercises.length,
-      "exercises"
-    );
     return sortedExercises;
   } catch (error: any) {
-    console.error("[fetchExercisesByStageId] Error fetching exercises:", error);
     throw new Error(error.message || "Failed to load exercises");
   }
 };
@@ -133,9 +115,6 @@ export const mapApiTypeToExerciseType = (apiType: string): ExerciseType => {
     case "different":
       return ExerciseType.ODD_ONE_OUT;
     default:
-      console.warn(
-        `Unknown exercise type: ${apiType}, defaulting to ODD_ONE_OUT`
-      );
       return ExerciseType.ODD_ONE_OUT;
   }
 };

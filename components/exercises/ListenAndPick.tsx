@@ -108,7 +108,6 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
         }
       });
     } catch (error) {
-      console.log('Error playing audio', error);
       setIsPlaying(false);
     }
   };

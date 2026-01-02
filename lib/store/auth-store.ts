@@ -49,7 +49,6 @@ export const useAuthStore = create<AuthState>()(
               });
             } catch (error) {
               // Token is invalid or expired
-              console.log("[Auth Store] Token invalid, clearing auth state");
               await app.logout();
               set({
                 isAuthenticated: false,
@@ -66,7 +65,6 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch (error) {
-          console.error("[Auth Store] Error initializing auth:", error);
           set({
             isAuthenticated: false,
             user: null,

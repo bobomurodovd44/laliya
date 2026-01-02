@@ -44,7 +44,6 @@ export default function Profile() {
       // Navigate to login (protected routes will handle redirect)
       router.replace("/login");
     } catch (error) {
-      console.error("Logout error:", error);
       // Even if logout fails, clear local auth state
       setUnauthenticated();
       router.replace("/login");

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   Animated,
   Platform,
@@ -79,7 +79,7 @@ const sizes = {
   },
 };
 
-export function DuoButton({ 
+function DuoButtonComponent({ 
   title, 
   onPress, 
   color = 'green', 
@@ -91,23 +91,32 @@ export function DuoButton({
   shape = 'rectangle',
   customSize,
 }: DuoButtonProps) {
-  const colors = disabled ? colorSchemes.gray : colorSchemes[color];
+  // Memoize colors calculation to prevent recalculation on every render
+  const colors = useMemo(
+    () => disabled ? colorSchemes.gray : colorSchemes[color],
+    [disabled, color]
+  );
   const sizeStyle = sizes[size];
   
-  // Calculate border radius based on shape
-  const borderRadius = shape === 'circle' ? 999 : sizeStyle.borderRadius;
+  // Memoize expensive style calculations
+  const { borderRadius, buttonWidth, faceHeight, circleShadowDepth } = useMemo(() => {
+    // Calculate border radius based on shape
+    const borderRadius = shape === 'circle' ? 999 : sizeStyle.borderRadius;
 
-  // Determine dimensions if customSize is provided
-  // For circles, customSize = diameter of the TOP FACE
-  const buttonWidth = customSize ? customSize : (shape === 'circle' ? undefined : '100%');
-  // For circles, height of the top face is customSize.
-  // The container will be taller by shadowDepth.
-  const faceHeight = customSize && shape === 'circle' ? customSize : undefined;
-  
-  // For circles, ensure shadow depth is proportional
-  const circleShadowDepth = shape === 'circle' && customSize 
-    ? Math.max(6, Math.min(customSize * 0.12, 12)) 
-    : sizeStyle.shadowDepth;
+    // Determine dimensions if customSize is provided
+    // For circles, customSize = diameter of the TOP FACE
+    const buttonWidth = customSize ? customSize : (shape === 'circle' ? undefined : '100%');
+    // For circles, height of the top face is customSize.
+    // The container will be taller by shadowDepth.
+    const faceHeight = customSize && shape === 'circle' ? customSize : undefined;
+    
+    // For circles, ensure shadow depth is proportional
+    const circleShadowDepth = shape === 'circle' && customSize 
+      ? Math.max(6, Math.min(customSize * 0.12, 12)) 
+      : sizeStyle.shadowDepth;
+
+    return { borderRadius, buttonWidth, faceHeight, circleShadowDepth };
+  }, [shape, sizeStyle.borderRadius, sizeStyle.shadowDepth, customSize]);
 
   // Animation values
   const pressAnim = useRef(new Animated.Value(0)).current;
@@ -285,6 +294,9 @@ export function DuoButton({
     </Animated.View>
   );
 }
+
+export const DuoButton = React.memo(DuoButtonComponent);
+DuoButton.displayName = 'DuoButton';
 
 const styles = StyleSheet.create({
   container: {

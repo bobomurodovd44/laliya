@@ -88,7 +88,6 @@ export default function Index() {
 
     if (cachedStages) {
       // Use cached data - no loading needed
-      console.log("[Index] Using cached stages");
       setStages(cachedStages);
       setLoading(false);
       setError(null);
@@ -140,18 +139,13 @@ export default function Index() {
 
       // Only navigate if the stage has exercises
       if (!lesson || lesson.exerciseCount === 0) {
-        console.warn("[Index] Cannot navigate: Stage has no exercises", {
-          stageId,
-          exerciseCount: lesson?.exerciseCount,
-        });
         return;
       }
 
       // Start preloading all images for this stage in the background
       // This happens while navigating, so images will be ready when user arrives
-      imagePreloader.preloadStage(stageId).catch((err) => {
+      imagePreloader.preloadStage(stageId).catch(() => {
         // Silently fail - preloading failures shouldn't block navigation
-        console.log("[Index] Image preloading started in background:", err);
       });
 
       // Navigate immediately to task page with stage._id (ObjectId string)

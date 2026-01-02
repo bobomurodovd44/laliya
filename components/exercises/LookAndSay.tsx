@@ -134,7 +134,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
-      console.error("Failed to start recording", err);
+      // Failed to start recording
     }
   };
 
@@ -172,7 +172,6 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
         }
       });
     } catch (error) {
-      console.log("Error playing audio", error);
       setIsPlaying(false);
     }
   };
@@ -184,7 +183,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
         await sound.stopAsync();
         await sound.unloadAsync();
       } catch (err) {
-        console.log(err);
+        // Error stopping sound
       }
       setSound(null);
       setIsPlayingRecording(false);
@@ -216,7 +215,6 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
         }
       });
     } catch (error) {
-      console.log("Error playing recording", error);
       setIsPlayingRecording(false);
     }
   };

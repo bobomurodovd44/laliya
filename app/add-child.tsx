@@ -97,7 +97,6 @@ export default function AddChild() {
       // Redirect to index page
       router.replace('/');
     } catch (err: any) {
-      console.error('Error saving child meta:', err);
       setError(err.message || 'Failed to save child information. Please try again.');
     } finally {
       setLoading(false);

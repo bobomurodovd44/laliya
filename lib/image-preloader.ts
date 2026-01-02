@@ -122,7 +122,6 @@ class ImagePreloader {
       // Preload with normal priority (background loading)
       await this.preloadBatch(uniqueUrls, "normal");
     } catch (error) {
-      console.error("[ImagePreloader] Error preloading stage:", error);
       // Don't throw - preloading failures shouldn't block the app
     }
   }

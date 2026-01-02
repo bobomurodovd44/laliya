@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import io from "socket.io-client";
 
 // Get API URL from environment variable
-const FEATHERS_API_URL = "https://8da339ae9dc0.ngrok-free.app";
+const FEATHERS_API_URL = "https://ee0a3d2d3d29.ngrok-free.app";
 
 // Create the Feathers application
 const app = feathers();

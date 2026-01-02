@@ -7,61 +7,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "../components/Input";
 import { PageContainer } from "../components/layout/PageContainer";
 import { Body, Subtitle, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
-import { signInWithEmailPassword } from "../lib/auth/firebase-auth";
-import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
-import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Login() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setAuthenticated } = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter both email and password");
-      return;
-    }
-
-    setError("");
-    setLoading(true);
-
-    try {
-      // Step 1: Sign in with Firebase
-      const { accessToken } = await signInWithEmailPassword(
-        email.trim(),
-        password
-      );
-
-      // Step 2: Authenticate with Feathers backend
-      // For login, we pass empty fullName since backend will find existing user
-      const feathersResult = await authenticateWithFeathers(accessToken, {
-        fullName: "", // Backend will use existing user's fullName
-        role: "user",
-      });
-
-      // Step 3: Update auth store with user data
-      // The _layout.tsx will handle redirects based on user state
-      setAuthenticated(feathersResult.user);
-      
-      // Navigate to home - _layout will redirect to add-child if needed
-      router.replace("/");
-    } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const handleLogin = () => {
+    router.replace("/");
   };
 
   const handleGoogleLogin = () => {
@@ -83,10 +44,7 @@ export default function Login() {
               icon="mail"
               placeholder="Email Address"
               value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError("");
-              }}
+              onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -95,32 +53,15 @@ export default function Login() {
               icon="lock-closed"
               placeholder="Password"
               value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError("");
-              }}
+              onChangeText={setPassword}
               isPassword
             />
           </View>
 
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Body style={styles.errorText}>{error}</Body>
-            </View>
-          ) : null}
-
-          <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.textWhite} />
-            ) : (
-              <Body style={styles.loginButtonText} weight="bold">
-                LET'S GO!
-              </Body>
-            )}
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Body style={styles.loginButtonText} weight="bold">
+              LET'S GO!
+            </Body>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -201,23 +142,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xl,
     color: Colors.textWhite,
     letterSpacing: Typography.letterSpacing.wide,
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  errorContainer: {
-    width: "100%",
-    marginBottom: Spacing.margin.lg,
-    padding: Spacing.padding.md,
-    backgroundColor: Colors.errorLight,
-    borderRadius: Spacing.radius.md,
-    borderWidth: 1,
-    borderColor: Colors.error,
-  },
-  errorText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.error,
-    textAlign: "center",
   },
   signupLink: {
     marginTop: Spacing.margin.xl,

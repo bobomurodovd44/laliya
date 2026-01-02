@@ -15,13 +15,21 @@ const app = feathers();
 const restClient = rest(FEATHERS_API_URL);
 app.configure(restClient.fetch(fetch));
 
-// Setup Socket.io client
+// Setup Socket.io client with logging disabled
 const socket = io(FEATHERS_API_URL, {
   transports: ["websocket"],
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   reconnectionAttempts: 5,
+  autoConnect: true,
+  // Disable all logging
+  logger: {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  },
 });
 
 app.configure(socketio(socket));

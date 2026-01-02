@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState, startTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,10 @@ import {
   fetchExercisesByStageId,
   mapPopulatedExerciseToExercise,
 } from "../lib/api/exercises";
+import {
+  getCachedExercises,
+  setCachedExercises,
+} from "../lib/cache/exercises-cache";
 import { setItems } from "../lib/items-store";
 
 export default function Task() {
@@ -41,18 +45,56 @@ export default function Task() {
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
     setIsCompleted(false);
-    setCurrentExercise(null);
     setError(null);
-    // Set loading immediately so React can render loading screen first
+
+    if (!stageId) {
+      setError("Stage ID is required");
+      setLoading(false);
+      setCurrentExercise(null);
+      return;
+    }
+
+    // Check cache first
+    const cached = getCachedExercises(stageId);
+    
+    if (cached) {
+      // Use cached data - no loading needed
+      console.log("[Task] Using cached exercises for stageId:", stageId);
+      
+      setStageExercises(cached.exercises);
+      
+      // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+      const exerciseIndex = exerciseOrder - 1;
+      
+      if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
+        const exercise = cached.exercises[exerciseIndex];
+        setCurrentExercise(exercise);
+        setIsLastExercise(exerciseOrder >= cached.exercises.length);
+        
+        // Map and set items for the current exercise
+        const currentApiExercise = cached.apiExercises[exerciseIndex];
+        if (currentApiExercise) {
+          const { items: exerciseItems } =
+            mapPopulatedExerciseToExercise(currentApiExercise);
+          setItems(exerciseItems);
+        }
+        
+        setLoading(false);
+        return;
+      } else {
+        console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", cached.exercises.length);
+        setError(`Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`);
+        setLoading(false);
+        setCurrentExercise(null);
+        return;
+      }
+    }
+
+    // No cache - fetch from API
+    setCurrentExercise(null);
     setLoading(true);
 
     const loadExercises = async () => {
-      if (!stageId) {
-        setError("Stage ID is required");
-        setLoading(false);
-        return;
-      }
-
       try {
         console.log("[Task] Loading exercises for stageId:", stageId, "exerciseOrder:", exerciseOrder);
 
@@ -68,54 +110,54 @@ export default function Task() {
           return;
         }
 
-        // Use startTransition to defer heavy mapping work, allowing UI to stay responsive
-        startTransition(() => {
-          // Map all exercises
-          const mappedExercises: Exercise[] = [];
-          apiExercises.forEach((apiExercise) => {
-            const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
-            mappedExercises.push(exercise);
-          });
-
-          console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
-
-          setStageExercises(mappedExercises);
-
-          // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
-          const exerciseIndex = exerciseOrder - 1;
-          
-          console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
-          
-          if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
-            console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
-            setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
-            setLoading(false);
-            return;
-          }
-
-          const exercise = mappedExercises[exerciseIndex];
-          
-          console.log("[Task] Found exercise:", exercise.order, exercise.type);
-
-          if (!exercise) {
-            setError("Exercise not found");
-            setLoading(false);
-            return;
-          }
-
-          // Map and set items for the current exercise
-          const currentApiExercise = apiExercises[exerciseIndex];
-          if (currentApiExercise) {
-            const { items: exerciseItems } =
-              mapPopulatedExerciseToExercise(currentApiExercise);
-            setItems(exerciseItems);
-          }
-
-          setCurrentExercise(exercise);
-          setIsLastExercise(exerciseOrder >= mappedExercises.length);
-          setIsCompleted(false);
-          setLoading(false);
+        // Map all exercises
+        const mappedExercises: Exercise[] = [];
+        apiExercises.forEach((apiExercise) => {
+          const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
+          mappedExercises.push(exercise);
         });
+
+        console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
+
+        // Cache the exercises
+        setCachedExercises(stageId, mappedExercises, apiExercises);
+
+        setStageExercises(mappedExercises);
+
+        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+        const exerciseIndex = exerciseOrder - 1;
+        
+        console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
+        
+        if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
+          console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
+          setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
+          setLoading(false);
+          return;
+        }
+
+        const exercise = mappedExercises[exerciseIndex];
+        
+        console.log("[Task] Found exercise:", exercise.order, exercise.type);
+
+        if (!exercise) {
+          setError("Exercise not found");
+          setLoading(false);
+          return;
+        }
+
+        // Map and set items for the current exercise
+        const currentApiExercise = apiExercises[exerciseIndex];
+        if (currentApiExercise) {
+          const { items: exerciseItems } =
+            mapPopulatedExerciseToExercise(currentApiExercise);
+          setItems(exerciseItems);
+        }
+
+        setCurrentExercise(exercise);
+        setIsLastExercise(exerciseOrder >= mappedExercises.length);
+        setIsCompleted(false);
+        setLoading(false);
       } catch (err: any) {
         console.error("Error loading exercises:", err);
         setError(err.message || "Failed to load exercises");

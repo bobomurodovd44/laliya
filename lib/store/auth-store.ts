@@ -37,7 +37,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           // Check if there's a stored access token
           const accessToken = await app.authentication.getAccessToken();
-          
+
           if (accessToken) {
             // Try to re-authenticate to verify the token is still valid
             try {
@@ -86,4 +86,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-

@@ -1,7 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -20,6 +26,7 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { exercises } from "../data/data";
 import { fetchStages, Stage } from "../lib/api/stages";
+import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 
 interface LessonCard {
   order: number;
@@ -40,7 +47,7 @@ export default function Index() {
   const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  //
   const stageThemes = useMemo(
     () => [
       Colors.gradientOrange,
@@ -75,11 +82,28 @@ export default function Index() {
 
   // Fetch stages from backend
   useEffect(() => {
+    // Check cache first
+    const cachedStages = getCachedStages();
+
+    if (cachedStages) {
+      // Use cached data - no loading needed
+      console.log("[Index] Using cached stages");
+      setStages(cachedStages);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // No cache - fetch from API
     const loadStages = async () => {
       try {
         setLoading(true);
         setError(null);
         const stagesData = await fetchStages();
+
+        // Cache the stages
+        setCachedStages(stagesData);
+
         setStages(stagesData);
       } catch (err: any) {
         setError(err.message || "Failed to load stages");
@@ -108,10 +132,25 @@ export default function Index() {
   }, [stages, stageThemes, exercises]);
 
   // Handler to navigate to task page
-  const handleStagePress = (stageId: string) => {
-    // Navigate immediately to task page with stage._id (ObjectId string)
-    router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
-  };
+  const handleStagePress = useCallback(
+    (stageId: string) => {
+      // Find the lesson to check exercise count
+      const lesson = lessons.find((l) => l.stageId === stageId);
+
+      // Only navigate if the stage has exercises
+      if (!lesson || lesson.exerciseCount === 0) {
+        console.warn("[Index] Cannot navigate: Stage has no exercises", {
+          stageId,
+          exerciseCount: lesson?.exerciseCount,
+        });
+        return;
+      }
+
+      // Navigate immediately to task page with stage._id (ObjectId string)
+      router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
+    },
+    [lessons, router]
+  );
 
   const { width: screenWidth } = useWindowDimensions();
 
@@ -272,21 +311,21 @@ export default function Index() {
                         lesson.isActive && styles.lessonCardActive,
                       ]}
                     >
-                        <Animated.View
-                          style={[
-                            styles.mascotInCard,
-                            { transform: [{ translateY: mascotAnim }] },
-                          ]}
-                        >
-                          <Image
-                            source={require("../assets/parrot.png")}
-                            style={styles.mascotImage}
-                            resizeMode="contain"
-                          />
-                        </Animated.View>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
+                      <Animated.View
+                        style={[
+                          styles.mascotInCard,
+                          { transform: [{ translateY: mascotAnim }] },
+                        ]}
+                      >
+                        <Image
+                          source={require("../assets/parrot.png")}
+                          style={styles.mascotImage}
+                          resizeMode="contain"
+                        />
+                      </Animated.View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
 

@@ -23,13 +23,6 @@ const socket = io(FEATHERS_API_URL, {
   reconnectionDelayMax: 5000,
   reconnectionAttempts: 5,
   autoConnect: true,
-  // Disable all logging
-  logger: {
-    debug: () => {},
-    info: () => {},
-    warn: () => {},
-    error: () => {},
-  },
 });
 
 app.configure(socketio(socket));

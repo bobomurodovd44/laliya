@@ -33,16 +33,32 @@ const PIECES_CONFIG = [
 ];
 
 export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzleProps) {
-  const item = items.find((i) => i.id === exercise.answerId);
-
-  if (!item?.imageUrl) return (
+  // Get the first option ID from optionIds array
+  const firstOptionId = exercise.optionIds?.[0];
+  
+  // Validate that optionIds exists and has at least one element
+  if (!exercise.optionIds || exercise.optionIds.length === 0 || firstOptionId === undefined) {
+    return (
       <View style={styles.container}>
-          <Body style={styles.question}>Image not found</Body>
+        <Body style={styles.question}>No options available</Body>
       </View>
-  );
+    );
+  }
+
+  // Find the item using the first optionId
+  const item = items.find((i) => i.id === firstOptionId);
+
+  if (!item?.imageUrl) {
+    return (
+      <View style={styles.container}>
+        <Body style={styles.question}>Image not found</Body>
+      </View>
+    );
+  }
 
   return (
     <PuzzleLogic 
+      key={item.imageUrl}
       imageUrl={item.imageUrl} 
       onSolved={onComplete} 
       question={exercise.question}
@@ -54,8 +70,9 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
   // Guard to prevent multiple onSolved calls
   const isSolvedRef = useRef(false);
   
-  // Initialize game state with valid starting positions
-  const [gameState] = useState(() => {
+  // Initialize game state with valid starting positions - memoized per imageUrl
+  // This ensures shuffle only happens once per unique image
+  const gameState = useMemo(() => {
     // 1. Fisher-Yates Shuffle
     let slots = [0, 1, 2, 3];
     
@@ -81,11 +98,12 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
     return {
         initialPlacement: slots, 
     };
-  });
+  }, [imageUrl]); // Only reshuffle when imageUrl changes
 
-  const [piecesPlacement, setPiecesPlacement] = useState<number[]>(
-    gameState ? gameState.initialPlacement : []
-  );
+  const [piecesPlacement, setPiecesPlacement] = useState<number[]>(() => {
+    // Initialize with shuffled placement - this only runs once per mount
+    return gameState ? gameState.initialPlacement : [];
+  });
 
   const isSolved = useMemo(() => {
      if (piecesPlacement.length === 0) return false;

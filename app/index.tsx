@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Image,
   ScrollView,
@@ -17,7 +18,8 @@ import { FloatingShapesBackground } from "../components/layout/FloatingShapesBac
 import { PageContainer } from "../components/layout/PageContainer";
 import { Body } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
-import { exercises, stages } from "../data/data";
+import { exercises } from "../data/data";
+import { fetchStages, Stage } from "../lib/api/stages";
 
 interface LessonCard {
   order: number;
@@ -35,6 +37,9 @@ export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mascotAnim = useRef(new Animated.Value(0)).current;
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const stageThemes = useMemo(
     () => [
@@ -68,24 +73,41 @@ export default function Index() {
     ).start();
   }, [mascotAnim]);
 
-  const lessons: LessonCard[] = stages.map((stage, index) => ({
-    order: stage.order,
-    positionStyle:
-      index % 2 === 0
-        ? { top: 20 + index * verticalSpacing, right: "5%" }
-        : { top: 20 + index * verticalSpacing, left: "8%" },
-    isActive: true, // All stages are available
-    exerciseCount: exercises.filter((ex) => ex.stageId === stage.order).length,
-    theme: stageThemes[index % stageThemes.length],
-  }));
+  // Fetch stages from backend
+  useEffect(() => {
+    const loadStages = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const stagesData = await fetchStages();
+        setStages(stagesData);
+      } catch (err: any) {
+        setError(err.message || "Failed to load stages");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Handler to navigate to task page only if exercises exist
+    loadStages();
+  }, []);
+
+  const lessons: LessonCard[] = useMemo(() => {
+    return stages.map((stage, index) => ({
+      order: stage.order,
+      positionStyle:
+        index % 2 === 0
+          ? { top: 20 + index * verticalSpacing, right: "5%" }
+          : { top: 20 + index * verticalSpacing, left: "8%" },
+      isActive: true, // All stages are available
+      exerciseCount: stage.numberOfExercises ?? exercises.filter((ex) => ex.stageId === stage.order).length,
+      theme: stageThemes[index % stageThemes.length],
+    }));
+  }, [stages, stageThemes, exercises]);
+
+  // Handler to navigate to task page
   const handleStagePress = (stageId: number) => {
-    const stageExercises = exercises.filter((ex) => ex.stageId === stageId);
-    if (stageExercises.length > 0) {
-      router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
-    }
-    // If no exercises, do nothing
+    // Navigate to task page - exercises will be handled later
+    router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
   };
 
   const { width: screenWidth } = useWindowDimensions();
@@ -192,63 +214,80 @@ export default function Index() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Lesson Cards in Path Layout */}
-        <View
-          style={[
-            styles.pathContainer,
-            { height: Math.max(lessons.length * verticalSpacing + 260, 720) },
-          ]}
-        >
-          <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Path
-              d={generatePath()}
-              stroke={Colors.border}
-              strokeWidth="20"
-              strokeDasharray="0, 28"
-              strokeLinecap="round"
-              fill="none"
-              opacity={0.85}
-            />
-          </Svg>
-
-          {lessons.map((lesson) => (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Body style={styles.loadingText}>Loading stages...</Body>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Body style={styles.errorText}>{error}</Body>
+          </View>
+        ) : lessons.length === 0 ? (
+          <View style={styles.errorContainer}>
+            <Body style={styles.errorText}>No stages available</Body>
+          </View>
+        ) : (
+          <>
+            {/* Lesson Cards in Path Layout */}
             <View
-              key={lesson.order}
-              style={[styles.cardWrapper, lesson.positionStyle]}
+              style={[
+                styles.pathContainer,
+                { height: Math.max(lessons.length * verticalSpacing + 260, 720) },
+              ]}
             >
-              <TouchableOpacity
-                style={styles.lessonCardOuter}
-                onPress={() => handleStagePress(lesson.order)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={[lesson.theme.primary, lesson.theme.secondary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    styles.lessonCard,
-                    lesson.isActive && styles.lessonCardActive,
-                  ]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.mascotInCard,
-                      { transform: [{ translateY: mascotAnim }] },
-                    ]}
-                  >
-                    <Image
-                      source={require("../assets/parrot.png")}
-                      style={styles.mascotImage}
-                      resizeMode="contain"
-                    />
-                  </Animated.View>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+              <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+                <Path
+                  d={generatePath()}
+                  stroke={Colors.border}
+                  strokeWidth="20"
+                  strokeDasharray="0, 28"
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity={0.85}
+                />
+              </Svg>
 
-        <View style={styles.bottomSpacer} />
+              {lessons.map((lesson) => (
+                <View
+                  key={lesson.order}
+                  style={[styles.cardWrapper, lesson.positionStyle]}
+                >
+                  <TouchableOpacity
+                    style={styles.lessonCardOuter}
+                    onPress={() => handleStagePress(lesson.order)}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={[lesson.theme.primary, lesson.theme.secondary]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[
+                        styles.lessonCard,
+                        lesson.isActive && styles.lessonCardActive,
+                      ]}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.mascotInCard,
+                          { transform: [{ translateY: mascotAnim }] },
+                        ]}
+                      >
+                        <Image
+                          source={require("../assets/parrot.png")}
+                          style={styles.mascotImage}
+                          resizeMode="contain"
+                        />
+                      </Animated.View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.bottomSpacer} />
+          </>
+        )}
       </ScrollView>
     </PageContainer>
   );
@@ -487,5 +526,30 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: Spacing.margin.xxxl,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.padding.xxl,
+    minHeight: 400,
+  },
+  loadingText: {
+    marginTop: Spacing.margin.md,
+    color: Colors.secondary,
+    fontSize: Typography.fontSize.lg,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.padding.xxl,
+    minHeight: 400,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: Typography.fontSize.lg,
+    textAlign: "center",
+    paddingHorizontal: Spacing.padding.lg,
   },
 });

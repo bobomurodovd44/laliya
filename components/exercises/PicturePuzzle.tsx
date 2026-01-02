@@ -9,7 +9,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Exercise, items } from '../../data/data';
+import { Exercise } from '../../data/data';
+import { items } from '../../lib/items-store';
 import { Body, Title } from '../Typography';
 
 interface PicturePuzzleProps {

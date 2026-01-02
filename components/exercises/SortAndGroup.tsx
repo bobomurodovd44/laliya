@@ -10,7 +10,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { categories, Exercise, Item, items } from '../../data/data';
+import { categories, Exercise, Item } from '../../data/data';
+import { items } from '../../lib/items-store';
 import { Colors, Spacing, Typography } from '../../constants';
 import { Body, Title } from '../Typography';
 

@@ -7,7 +7,8 @@ import Animated, {
   withSequence,
   withTiming
 } from 'react-native-reanimated';
-import { Exercise, Item, items } from '../../data/data';
+import { Exercise, Item } from '../../data/data';
+import { items } from '../../lib/items-store';
 import { Body, Title } from '../Typography';
 import TryAgainModal from '../TryAgainModal';
 

@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -14,41 +14,115 @@ import { PageContainer } from "../components/layout/PageContainer";
 import { ProgressBar } from "../components/ProgressBar";
 import { Body } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
-import { Exercise, ExerciseType, exercises } from "../data/data";
+import { Exercise, ExerciseType } from "../data/data";
+import {
+  fetchExercisesByStageId,
+  mapPopulatedExerciseToExercise,
+} from "../lib/api/exercises";
+import { setItems } from "../lib/items-store";
 
 export default function Task() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
 
-  const stageId = Number(params.stageId);
+  const stageId = params.stageId as string;
   const exerciseOrder = Number(params.exerciseOrder) || 1;
 
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const confettiRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
-    const exercisesInStage = exercises
-      .filter((ex) => ex.stageId === stageId)
-      .sort((a, b) => a.order - b.order);
+    const loadExercises = async () => {
+      if (!stageId) {
+        setError("Stage ID is required");
+        setLoading(false);
+        return;
+      }
 
-    setStageExercises(exercisesInStage);
+      try {
+        setLoading(true);
+        setError(null);
 
-    const exercise = exercisesInStage.find((ex) => ex.order === exerciseOrder);
-    setCurrentExercise(exercise || null);
+        console.log("[Task] Loading exercises for stageId:", stageId, "exerciseOrder:", exerciseOrder);
 
-    const isLast = exerciseOrder >= exercisesInStage.length;
-    setIsLastExercise(isLast);
+        // Fetch exercises from API
+        const apiExercises = await fetchExercisesByStageId(stageId);
 
-    setIsCompleted(false);
+        console.log("[Task] Fetched", apiExercises.length, "exercises from API");
+
+        if (apiExercises.length === 0) {
+          console.warn("[Task] No exercises found for stageId:", stageId);
+          setError("No exercises found for this stage");
+          setLoading(false);
+          return;
+        }
+
+        // Map all exercises
+        const mappedExercises: Exercise[] = [];
+        apiExercises.forEach((apiExercise) => {
+          const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
+          mappedExercises.push(exercise);
+        });
+
+        console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
+
+        setStageExercises(mappedExercises);
+
+        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+        const exerciseIndex = exerciseOrder - 1;
+        
+        console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
+        
+        if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
+          console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
+          setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
+          setLoading(false);
+          return;
+        }
+
+        const exercise = mappedExercises[exerciseIndex];
+        
+        console.log("[Task] Found exercise:", exercise.order, exercise.type);
+
+        if (!exercise) {
+          setError("Exercise not found");
+          setLoading(false);
+          return;
+        }
+
+        // Map and set items for the current exercise
+        const currentApiExercise = apiExercises[exerciseIndex];
+        if (currentApiExercise) {
+          const { items: exerciseItems } =
+            mapPopulatedExerciseToExercise(currentApiExercise);
+          setItems(exerciseItems);
+        }
+
+        setCurrentExercise(exercise);
+        setIsLastExercise(exerciseOrder >= mappedExercises.length);
+        setIsCompleted(false);
+      } catch (err: any) {
+        console.error("Error loading exercises:", err);
+        setError(err.message || "Failed to load exercises");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExercises();
   }, [stageId, exerciseOrder]);
 
   useFocusEffect(
     useCallback(() => {
+      // Reset state when page comes into focus
+      // This ensures exercises reset when navigating back to the same exercise
       setResetKey((prev) => prev + 1);
       setIsCompleted(false);
     }, [])
@@ -65,19 +139,30 @@ export default function Task() {
   const renderExercise = () => {
     if (!currentExercise) return null;
 
+    // Create a unique key that includes resetKey to force remount when page is focused
+    const exerciseKey = `${currentExercise.stageId}-${currentExercise.order}-${resetKey}`;
+
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:
         return (
-          <OddOneOut exercise={currentExercise} onComplete={handleComplete} />
+          <OddOneOut
+            key={exerciseKey}
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
         );
       case ExerciseType.LOOK_AND_SAY:
         return (
-          <LookAndSay exercise={currentExercise} onComplete={handleComplete} />
+          <LookAndSay
+            key={exerciseKey}
+            exercise={currentExercise}
+            onComplete={handleComplete}
+          />
         );
       case ExerciseType.SHAPE_MATCH:
         return (
           <ShapeMatch
-            key={resetKey}
+            key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
           />
@@ -85,6 +170,7 @@ export default function Task() {
       case ExerciseType.PICTURE_PUZZLE:
         return (
           <PicturePuzzle
+            key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
           />
@@ -92,6 +178,7 @@ export default function Task() {
       case ExerciseType.LISTEN_AND_PICK:
         return (
           <ListenAndPick
+            key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
           />
@@ -99,7 +186,7 @@ export default function Task() {
       case ExerciseType.SORT_AND_GROUP:
         return (
           <SortAndGroup
-            key={resetKey}
+            key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
           />
@@ -110,7 +197,7 @@ export default function Task() {
   };
 
   const handleNext = useCallback(() => {
-    if (!isLastExercise) {
+    if (!isLastExercise && stageId) {
       router.push(
         `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
       );
@@ -124,11 +211,29 @@ export default function Task() {
   const progress =
     stageExercises.length > 0 ? exerciseOrder / stageExercises.length : 0;
 
-  if (!currentExercise) {
+  if (loading) {
+    return (
+      <PageContainer>
+        <View
+          style={[
+            styles.errorContainer,
+            { paddingTop: insets.top + Spacing.padding.xxl },
+          ]}
+        >
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Body style={styles.loadingText}>Loading exercises...</Body>
+        </View>
+      </PageContainer>
+    );
+  }
+
+  if (error || !currentExercise) {
     return (
       <PageContainer>
         <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
-          <Body style={styles.errorText}>Exercise not found</Body>
+          <Body style={styles.errorText}>
+            {error || "Exercise not found"}
+          </Body>
         </View>
       </PageContainer>
     );
@@ -212,5 +317,10 @@ const styles = StyleSheet.create({
     color: Colors.error,
     textAlign: "center",
     padding: Spacing.padding.lg,
+  },
+  loadingText: {
+    marginTop: Spacing.margin.md,
+    color: Colors.secondary,
+    fontSize: Spacing.size.icon.medium,
   },
 });

@@ -91,9 +91,10 @@ export default function Index() {
     loadStages();
   }, []);
 
-  const lessons: LessonCard[] = useMemo(() => {
+  const lessons: (LessonCard & { stageId: string })[] = useMemo(() => {
     return stages.map((stage, index) => ({
       order: stage.order,
+      stageId: stage._id,
       positionStyle:
         index % 2 === 0
           ? { top: 20 + index * verticalSpacing, right: "5%" }
@@ -107,8 +108,8 @@ export default function Index() {
   }, [stages, stageThemes, exercises]);
 
   // Handler to navigate to task page
-  const handleStagePress = (stageId: number) => {
-    // Navigate to task page - exercises will be handled later
+  const handleStagePress = (stageId: string) => {
+    // Navigate to task page with stage._id (ObjectId string)
     router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
   };
 
@@ -259,7 +260,7 @@ export default function Index() {
                 >
                   <TouchableOpacity
                     style={styles.lessonCardOuter}
-                    onPress={() => handleStagePress(lesson.order)}
+                    onPress={() => handleStagePress(lesson.stageId)}
                     activeOpacity={0.85}
                   >
                     <LinearGradient

@@ -1,16 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Animated,
-  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -44,7 +36,6 @@ interface LessonCard {
 export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const mascotAnim = useRef(new Animated.Value(0)).current;
   const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,23 +54,6 @@ export default function Index() {
   const verticalSpacing = 160;
   const cardSize = 135;
   const halfCard = cardSize / 2;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(mascotAnim, {
-          toValue: -10,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(mascotAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [mascotAnim]);
 
   // Fetch stages from backend
   useEffect(() => {
@@ -312,18 +286,9 @@ export default function Index() {
                         lesson.isActive && styles.lessonCardActive,
                       ]}
                     >
-                      <Animated.View
-                        style={[
-                          styles.mascotInCard,
-                          { transform: [{ translateY: mascotAnim }] },
-                        ]}
-                      >
-                        <Image
-                          source={require("../assets/parrot.png")}
-                          style={styles.mascotImage}
-                          resizeMode="contain"
-                        />
-                      </Animated.View>
+                      <Body style={styles.stageOrderText} weight="bold">
+                        {lesson.order}
+                      </Body>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -505,21 +470,14 @@ const styles = StyleSheet.create({
     elevation: 3,
     minWidth: 100,
   },
-  mascotInCard: {
-    width: 80,
-    height: 80,
-    marginBottom: 0,
-  },
-  mascotContainer: {
-    position: "absolute",
-    top: -70,
-    right: -40,
-    width: 80,
-    height: 80,
-  },
-  mascotImage: {
-    width: "100%",
-    height: "100%",
+  stageOrderText: {
+    fontSize: Typography.fontSize.massive,
+    fontFamily: Typography.fontFamily.primary,
+    color: "#FFFFFF",
+    fontWeight: Typography.fontWeight.bold,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   lessonHeaderRow: {
     width: "100%",

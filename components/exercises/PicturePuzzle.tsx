@@ -91,10 +91,9 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
 
   useEffect(() => {
     if (isSolved) {
-       const timer = setTimeout(onSolved, 800);
-       return () => clearTimeout(timer);
+       onSolved();
     }
-  }, [isSolved]);
+  }, [isSolved, onSolved]);
 
   const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
       setPiecesPlacement(prev => {

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -109,7 +109,7 @@ export default function Index() {
 
   // Handler to navigate to task page
   const handleStagePress = (stageId: string) => {
-    // Navigate to task page with stage._id (ObjectId string)
+    // Navigate immediately to task page with stage._id (ObjectId string)
     router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
   };
 
@@ -272,21 +272,21 @@ export default function Index() {
                         lesson.isActive && styles.lessonCardActive,
                       ]}
                     >
-                      <Animated.View
-                        style={[
-                          styles.mascotInCard,
-                          { transform: [{ translateY: mascotAnim }] },
-                        ]}
-                      >
-                        <Image
-                          source={require("../assets/parrot.png")}
-                          style={styles.mascotImage}
-                          resizeMode="contain"
-                        />
-                      </Animated.View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
+                        <Animated.View
+                          style={[
+                            styles.mascotInCard,
+                            { transform: [{ translateY: mascotAnim }] },
+                          ]}
+                        >
+                          <Image
+                            source={require("../assets/parrot.png")}
+                            style={styles.mascotImage}
+                            resizeMode="contain"
+                          />
+                        </Animated.View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
               ))}
             </View>
 
@@ -417,6 +417,9 @@ const styles = StyleSheet.create({
   lessonCardActive: {
     borderColor: Colors.backgroundLight,
     borderWidth: Spacing.borderWidth.xthick,
+  },
+  lessonCardNavigating: {
+    opacity: 0.7,
   },
   cardInnerGlow: {
     position: "absolute",

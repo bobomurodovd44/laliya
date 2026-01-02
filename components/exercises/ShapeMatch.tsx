@@ -157,11 +157,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
-
-    // Small delay to ensure animation completes
-    setTimeout(() => {
-      onComplete();
-    }, 300);
+    onComplete();
   }, [isCompleted, onComplete]);
 
   const handleWrongMatch = useCallback(() => {

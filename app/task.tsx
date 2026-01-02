@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, startTransition } from "react";
 import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,6 +39,13 @@ export default function Task() {
   const confettiRef = useRef<ConfettiCannon>(null);
 
   useEffect(() => {
+    // Reset state immediately before async operations to prevent stale state
+    setIsCompleted(false);
+    setCurrentExercise(null);
+    setError(null);
+    // Set loading immediately so React can render loading screen first
+    setLoading(true);
+
     const loadExercises = async () => {
       if (!stageId) {
         setError("Stage ID is required");
@@ -47,9 +54,6 @@ export default function Task() {
       }
 
       try {
-        setLoading(true);
-        setError(null);
-
         console.log("[Task] Loading exercises for stageId:", stageId, "exerciseOrder:", exerciseOrder);
 
         // Fetch exercises from API
@@ -64,54 +68,57 @@ export default function Task() {
           return;
         }
 
-        // Map all exercises
-        const mappedExercises: Exercise[] = [];
-        apiExercises.forEach((apiExercise) => {
-          const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
-          mappedExercises.push(exercise);
+        // Use startTransition to defer heavy mapping work, allowing UI to stay responsive
+        startTransition(() => {
+          // Map all exercises
+          const mappedExercises: Exercise[] = [];
+          apiExercises.forEach((apiExercise) => {
+            const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
+            mappedExercises.push(exercise);
+          });
+
+          console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
+
+          setStageExercises(mappedExercises);
+
+          // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+          const exerciseIndex = exerciseOrder - 1;
+          
+          console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
+          
+          if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
+            console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
+            setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
+            setLoading(false);
+            return;
+          }
+
+          const exercise = mappedExercises[exerciseIndex];
+          
+          console.log("[Task] Found exercise:", exercise.order, exercise.type);
+
+          if (!exercise) {
+            setError("Exercise not found");
+            setLoading(false);
+            return;
+          }
+
+          // Map and set items for the current exercise
+          const currentApiExercise = apiExercises[exerciseIndex];
+          if (currentApiExercise) {
+            const { items: exerciseItems } =
+              mapPopulatedExerciseToExercise(currentApiExercise);
+            setItems(exerciseItems);
+          }
+
+          setCurrentExercise(exercise);
+          setIsLastExercise(exerciseOrder >= mappedExercises.length);
+          setIsCompleted(false);
+          setLoading(false);
         });
-
-        console.log("[Task] Mapped", mappedExercises.length, "exercises. Orders:", mappedExercises.map(e => e.order));
-
-        setStageExercises(mappedExercises);
-
-        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
-        const exerciseIndex = exerciseOrder - 1;
-        
-        console.log("[Task] Looking for exercise at index:", exerciseIndex, "out of", mappedExercises.length);
-        
-        if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
-          console.error("[Task] Exercise index out of bounds:", exerciseIndex, "length:", mappedExercises.length);
-          setError(`Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`);
-          setLoading(false);
-          return;
-        }
-
-        const exercise = mappedExercises[exerciseIndex];
-        
-        console.log("[Task] Found exercise:", exercise.order, exercise.type);
-
-        if (!exercise) {
-          setError("Exercise not found");
-          setLoading(false);
-          return;
-        }
-
-        // Map and set items for the current exercise
-        const currentApiExercise = apiExercises[exerciseIndex];
-        if (currentApiExercise) {
-          const { items: exerciseItems } =
-            mapPopulatedExerciseToExercise(currentApiExercise);
-          setItems(exerciseItems);
-        }
-
-        setCurrentExercise(exercise);
-        setIsLastExercise(exerciseOrder >= mappedExercises.length);
-        setIsCompleted(false);
       } catch (err: any) {
         console.error("Error loading exercises:", err);
         setError(err.message || "Failed to load exercises");
-      } finally {
         setLoading(false);
       }
     };
@@ -121,20 +128,29 @@ export default function Task() {
 
   useFocusEffect(
     useCallback(() => {
-      // Reset state when page comes into focus
+      // Reset state when page comes into focus (but not on initial mount)
       // This ensures exercises reset when navigating back to the same exercise
-      setResetKey((prev) => prev + 1);
-      setIsCompleted(false);
-    }, [])
+      // Only reset if we already have an exercise loaded (not initial load)
+      if (currentExercise) {
+        setResetKey((prev) => prev + 1);
+        setIsCompleted(false);
+      }
+    }, [currentExercise])
   );
 
   const handleComplete = useCallback(() => {
+    // Only allow completion if not loading and exercise exists
+    if (loading || !currentExercise) {
+      return;
+    }
+
     setIsCompleted(true);
 
-    if (currentExercise?.type !== ExerciseType.LOOK_AND_SAY) {
+    // Only trigger confetti if not loading and not LOOK_AND_SAY type
+    if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
       confettiRef.current?.start();
     }
-  }, [currentExercise]);
+  }, [currentExercise, loading]);
 
   const renderExercise = () => {
     if (!currentExercise) return null;

@@ -117,9 +117,9 @@ export enum ExerciseType {
   ODD_ONE_OUT = "odd_one_out", // Ortiqchasini top
   LOOK_AND_SAY = "look_and_say", // Rasmga qarab talaffuz qil
   SHAPE_MATCH = "shape_match", // Rasmni shaklga mosla
-  PICTURE_PUZZLE = "picture_puzzle",
+  PICTURE_PUZZLE = "picture_puzzle", //puzzle
   LISTEN_AND_PICK = "listen_and_pick", // Pazl yig'ish
-  SORT_AND_GROUP = "sort_and_group",
+  SORT_AND_GROUP = "sort_and_group", // sort category
 }
 
 // Exercise Type Definition

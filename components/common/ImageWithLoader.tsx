@@ -32,9 +32,16 @@ export default function ImageWithLoader({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const opacity = useSharedValue(0);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const isLoadingRef = React.useRef(true);
 
   // Determine if source is a URI (remote) or require (local)
   const isRemote = typeof source === 'object' && 'uri' in source;
+  
+  // Validate URL if remote
+  const isValidUrl = isRemote && source.uri 
+    ? (source.uri.startsWith('http://') || source.uri.startsWith('https://') || source.uri.startsWith('file://'))
+    : true;
   
   // Generate recycling key from URL for better memory management
   const recyclingKey = isRemote && source.uri 
@@ -43,18 +50,62 @@ export default function ImageWithLoader({
 
   useEffect(() => {
     // Reset states when source changes
+    isLoadingRef.current = true;
     setIsLoading(true);
     setHasError(false);
     opacity.value = 0;
-  }, [isRemote ? source.uri : source]);
+
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    // Set timeout for loading (10 seconds for remote images)
+    if (isRemote && isValidUrl) {
+      timeoutRef.current = setTimeout(() => {
+        if (isLoadingRef.current) {
+          isLoadingRef.current = false;
+          setIsLoading(false);
+          setHasError(true);
+          onError?.();
+        }
+      }, 10000); // 10 second timeout
+    } else if (isRemote && !isValidUrl) {
+      // Invalid URL - immediately show error
+      isLoadingRef.current = false;
+      setIsLoading(false);
+      setHasError(true);
+      onError?.();
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [isRemote ? source.uri : source, isValidUrl, onError]);
 
   const handleLoad = () => {
+    // Clear timeout on successful load
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    isLoadingRef.current = false;
     setIsLoading(false);
     opacity.value = withTiming(1, { duration: 300 });
     onLoad?.();
   };
 
   const handleError = () => {
+    // Clear timeout on error
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    isLoadingRef.current = false;
     setIsLoading(false);
     setHasError(true);
     onError?.();
@@ -107,23 +158,25 @@ export default function ImageWithLoader({
         />
       )}
 
-      {/* Actual Image */}
-      <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-        <Image
-          source={source}
-          style={StyleSheet.absoluteFill}
-          contentFit={contentFit || resizeMode}
-          tintColor={tintColor}
-          onLoad={handleLoad}
-          onError={handleError}
-          transition={200}
-          cachePolicy="memory-disk"
-          recyclingKey={recyclingKey}
-          allowDownscaling={true}
-          priority={priority}
-          placeholderContentFit="cover"
-        />
-      </Animated.View>
+      {/* Actual Image - only render if URL is valid or local */}
+      {(isValidUrl || !isRemote) && (
+        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+          <Image
+            source={source}
+            style={StyleSheet.absoluteFill}
+            contentFit={contentFit || resizeMode}
+            tintColor={tintColor}
+            onLoad={handleLoad}
+            onError={handleError}
+            transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={recyclingKey}
+            allowDownscaling={true}
+            priority={priority}
+            placeholderContentFit="cover"
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }

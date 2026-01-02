@@ -219,12 +219,25 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     }
   };
 
-  if (!item)
+  if (!item) {
     return (
-      <View>
-        <Body>Item not found</Body>
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Body>Item not found</Body>
+        </View>
       </View>
     );
+  }
+
+  if (!item.imageUrl) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Body>Image URL not available</Body>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

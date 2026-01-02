@@ -1,26 +1,38 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ProfileMenuItem } from '../components/ProfileMenuItem';
-import { PageContainer } from '../components/layout/PageContainer';
-import { Body, Title } from '../components/Typography';
-import { Colors, Spacing, Typography } from '../constants';
-import { useAuthStore } from '../lib/store/auth-store';
-import app from '../lib/feathers/feathers-client';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React from "react";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PageContainer } from "../components/layout/PageContainer";
+import { ProfileMenuItem } from "../components/ProfileMenuItem";
+import { Body, Title } from "../components/Typography";
+import { Colors, Spacing, Typography } from "../constants";
+import app from "../lib/feathers/feathers-client";
+import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setUnauthenticated, user } = useAuthStore();
-  
+
   // Get childMeta from user, with fallback values
   const childMeta = user?.childMeta;
-  const childName = childMeta?.fullName || 'Child';
+  const childName = childMeta?.fullName || "Child";
   const childAge = childMeta?.age || 0;
-  const childGender = childMeta?.gender === 'male' ? 'Boy' : childMeta?.gender === 'female' ? 'Girl' : '';
-  const profilePicture = 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg';
+  const childGender =
+    childMeta?.gender === "male"
+      ? "Boy"
+      : childMeta?.gender === "female"
+      ? "Girl"
+      : "";
+  const profilePicture =
+    "https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg";
   const level = 3; // TODO: Get from user data when available
 
   const handleLogout = async () => {
@@ -30,12 +42,12 @@ export default function Profile() {
       // Clear auth store
       setUnauthenticated();
       // Navigate to login (protected routes will handle redirect)
-      router.replace('/login');
+      router.replace("/login");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Even if logout fails, clear local auth state
       setUnauthenticated();
-      router.replace('/login');
+      router.replace("/login");
     }
   };
 
@@ -43,20 +55,29 @@ export default function Profile() {
     <PageContainer useFloatingShapes>
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <View style={{ width: 32 }} />
-        <Title size="medium" style={styles.headerTitle}>Profile</Title>
+        <Title size="medium" style={styles.headerTitle}>
+          Profile
+        </Title>
         <TouchableOpacity style={styles.settingsButton} onPress={() => {}}>
-          <Ionicons name="settings-sharp" size={24} color={Colors.textPrimary} />
+          <Ionicons
+            name="settings-sharp"
+            size={24}
+            color={Colors.textPrimary}
+          />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 80 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image 
+            <Image
               source={{ uri: profilePicture }}
               style={styles.profileImage}
             />
@@ -64,27 +85,49 @@ export default function Profile() {
               <Ionicons name="pencil" size={20} color={Colors.textWhite} />
             </TouchableOpacity>
           </View>
-          
-          <Title size="large" style={styles.childName}>{childName}</Title>
+
+          <Title size="large" style={styles.childName}>
+            {childName}
+          </Title>
           {childAge > 0 && childGender && (
-            <Body style={styles.subtitleText}>{childAge} years old • {childGender}</Body>
+            <Body style={styles.subtitleText}>
+              {childAge} years old • {childGender}
+            </Body>
           )}
         </View>
 
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderColor: Colors.badgeStar }]}>
-            <Body style={styles.statTitle} weight="bold">Stars</Body>
+            <Body style={styles.statTitle} weight="bold">
+              Stars
+            </Body>
             <View style={styles.statValueContainer}>
-              <Ionicons name="star" size={24} color={Colors.badgeStar} style={{ marginBottom: 4 }} />
-              <Title size="small" style={styles.statValue}>1,240</Title>
+              <Ionicons
+                name="star"
+                size={24}
+                color={Colors.badgeStar}
+                style={{ marginBottom: 4 }}
+              />
+              <Title size="small" style={styles.statValue}>
+                1,240
+              </Title>
             </View>
           </View>
 
           <View style={[styles.statCard, { borderColor: Colors.badgeLevel }]}>
-            <Body style={styles.statTitle} weight="bold">Level</Body>
+            <Body style={styles.statTitle} weight="bold">
+              Level
+            </Body>
             <View style={styles.statValueContainer}>
-              <Ionicons name="trophy" size={24} color={Colors.badgeLevel} style={{ marginBottom: 4 }} />
-              <Title size="small" style={styles.statValue}>{level}</Title>
+              <Ionicons
+                name="trophy"
+                size={24}
+                color={Colors.badgeLevel}
+                style={{ marginBottom: 4 }}
+              />
+              <Title size="small" style={styles.statValue}>
+                {level}
+              </Title>
             </View>
           </View>
         </View>
@@ -92,17 +135,17 @@ export default function Profile() {
         <View style={styles.divider} />
 
         <View style={styles.section}>
-          <ProfileMenuItem 
+          <ProfileMenuItem
             iconName="share-social-outline"
             title="Share Profile"
-            onPress={() => router.push('/add-child')}
+            onPress={() => router.push("/add-child")}
           />
-          <ProfileMenuItem 
+          <ProfileMenuItem
             iconName="log-out-outline"
             title="Logout"
             onPress={handleLogout}
           />
-          <ProfileMenuItem 
+          <ProfileMenuItem
             iconName="trash-outline"
             title="Delete Account"
             variant="danger"
@@ -118,14 +161,14 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   fixedHeader: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: Colors.backgroundLight,
     paddingHorizontal: Spacing.padding.lg,
     paddingVertical: Spacing.padding.md,
@@ -133,7 +176,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderDark,
   },
   headerTitle: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   settingsButton: {
     padding: Spacing.padding.xs,
@@ -143,14 +186,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.padding.lg,
-    paddingBottom: Spacing.margin.huge,
+    paddingBottom: Spacing.margin.xxxl,
   },
   profileSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.margin.xxxl,
   },
   profileImageContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: Spacing.margin.lg,
   },
   profileImage: {
@@ -160,28 +203,28 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundDark,
   },
   editIconButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
     backgroundColor: Colors.badgeLevel,
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: Spacing.borderWidth.thick,
     borderColor: Colors.backgroundLight,
   },
   childName: {
     marginBottom: Spacing.margin.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitleText: {
     fontSize: Typography.fontSize.md,
     color: Colors.textTertiary,
   },
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: Spacing.margin.xxxl,
     gap: Spacing.gap.lg,
   },
@@ -193,7 +236,7 @@ const styles = StyleSheet.create({
     borderWidth: Spacing.borderWidth.medium,
     borderBottomWidth: Spacing.borderWidth.xxthick,
     borderColor: Colors.borderDark,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   statTitle: {
     fontSize: Typography.fontSize.md,
@@ -201,8 +244,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.margin.sm,
   },
   statValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.gap.sm,
   },
   statValue: {

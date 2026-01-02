@@ -21,7 +21,10 @@ import { fetchStages, Stage } from "../lib/api/stages";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 import { imagePreloader } from "../lib/image-preloader";
 import { useAuthStore } from "../lib/store/auth-store";
-import { getUserMaxStageOrder, isStageAccessible } from "../lib/utils/stage-access";
+import {
+  getUserMaxStageOrder,
+  isStageAccessible,
+} from "../lib/utils/stage-access";
 
 interface LessonCard {
   order: number;
@@ -309,20 +312,24 @@ export default function Index() {
                     activeOpacity={lesson.isActive ? 0.85 : 1}
                     disabled={!lesson.isActive}
                   >
-                    <LinearGradient
-                      colors={[lesson.theme.primary, lesson.theme.secondary]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={[
-                        styles.lessonCard,
-                        lesson.isActive && styles.lessonCardActive,
-                        !lesson.isActive && styles.lessonCardDisabled,
-                      ]}
-                    >
-                      <Body style={styles.stageOrderText} weight="bold">
-                        {lesson.order}
-                      </Body>
-                      {!lesson.isActive && (
+                    {lesson.isActive ? (
+                      <LinearGradient
+                        colors={[lesson.theme.primary, lesson.theme.secondary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.lessonCard, styles.lessonCardActive]}
+                      >
+                        <Body style={styles.stageOrderText} weight="bold">
+                          {lesson.order}
+                        </Body>
+                      </LinearGradient>
+                    ) : (
+                      <View
+                        style={[styles.lessonCard, styles.lessonCardDisabled]}
+                      >
+                        <Body style={styles.stageOrderText} weight="bold">
+                          {lesson.order}
+                        </Body>
                         <View style={styles.lockIconContainer}>
                           <Ionicons
                             name="lock-closed"
@@ -331,8 +338,8 @@ export default function Index() {
                             style={styles.lockIcon}
                           />
                         </View>
-                      )}
-                    </LinearGradient>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               ))}
@@ -467,7 +474,7 @@ const styles = StyleSheet.create({
     borderWidth: Spacing.borderWidth.xthick,
   },
   lessonCardDisabled: {
-    opacity: 0.5,
+    backgroundColor: "#808080",
   },
   lessonCardNavigating: {
     opacity: 0.7,

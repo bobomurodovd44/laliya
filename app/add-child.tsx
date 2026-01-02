@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,6 +31,21 @@ export default function AddChild() {
   const [gender, setGender] = useState<'boy' | 'girl' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Prevent users who already have childMeta from accessing this page
+  useEffect(() => {
+    if (user) {
+      const hasChildMeta = user.childMeta && 
+        user.childMeta.fullName && 
+        user.childMeta.age && 
+        user.childMeta.gender;
+      
+      if (hasChildMeta) {
+        // User already has childMeta, redirect to home
+        router.replace('/');
+      }
+    }
+  }, [user, router]);
 
   const handleAddChild = async () => {
     // Validate inputs
@@ -91,7 +106,7 @@ export default function AddChild() {
 
   return (
     <PageContainer useFloatingShapes>
-      <PageHeader showBackButton />
+      <PageHeader />
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

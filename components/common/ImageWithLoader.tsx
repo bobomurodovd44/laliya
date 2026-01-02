@@ -125,7 +125,7 @@ export default function ImageWithLoader({
   };
 
   return (
-    <View style={[style, { position: 'relative', overflow: 'hidden' }]}>
+    <View style={[style, { position: 'relative', overflow: 'hidden', backgroundColor: 'transparent' }]}>
       {/* Skeleton/Loading Placeholder */}
       {isLoading && (
         <View
@@ -160,7 +160,7 @@ export default function ImageWithLoader({
 
       {/* Actual Image - only render if URL is valid or local */}
       {(isValidUrl || !isRemote) && (
-        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle, { backgroundColor: 'transparent' }]}>
           <Image
             source={source}
             style={StyleSheet.absoluteFill}

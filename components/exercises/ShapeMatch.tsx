@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Dimensions, Platform, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -260,6 +260,7 @@ function DraggableCard({
 
   const startPositionRef = useRef({ x: 0, y: 0 });
   const isCompletedRef = useRef(false);
+  const viewRef = useRef<any>(null);
 
   // Sync isCompleted ref immediately
   useEffect(() => {
@@ -282,10 +283,16 @@ function DraggableCard({
     shake.value = 0;
     startPositionRef.current = { x: 0, y: 0 };
     isCompletedRef.current = false;
+    // Re-measure after reset
+    setTimeout(() => {
+      viewRef.current?.measureInWindow((x, y) => {
+        startPositionRef.current = { x, y };
+      });
+    }, 100);
   }, [item.id]);
 
-  const measureCard = (event: any) => {
-    event.target.measureInWindow((x: number, y: number) => {
+  const measureCard = () => {
+    viewRef.current?.measureInWindow((x, y) => {
       startPositionRef.current = { x, y };
     });
   };
@@ -340,8 +347,9 @@ function DraggableCard({
           // Correct match! Snap to target and complete exercise
           const targetX = targetPosition.x - startPositionRef.current.x;
           const targetY = targetPosition.y - startPositionRef.current.y;
-          translateX.value = withSpring(targetX, { damping: 15 });
-          translateY.value = withSpring(targetY, { damping: 15 });
+          translateX.value = withTiming(targetX, { duration: 200 });
+          translateY.value = withTiming(targetY, { duration: 200 });
+          scale.value = withTiming(1, { duration: 200 });
           onCorrectMatch();
           return;
         } else {
@@ -371,7 +379,7 @@ function DraggableCard({
     return Gesture.Pan()
       .onStart(() => {
         // Early return if already matched (checked in JS thread via ref)
-        scale.value = withSpring(1.1, { damping: 12 });
+        scale.value = withSpring(1.05, { damping: 15 });
         zIndex.value = 100;
       })
       .onUpdate((e) => {
@@ -391,8 +399,11 @@ function DraggableCard({
       { translateY: translateY.value },
       { scale: scale.value },
     ],
-    zIndex: zIndex.value,
     opacity: opacity.value,
+  }));
+
+  const wrapperAnimatedStyle = useAnimatedStyle(() => ({
+    zIndex: zIndex.value,
   }));
 
   const cardDynamicStyle = {
@@ -405,29 +416,30 @@ function DraggableCard({
   };
 
   return (
-    <GestureDetector gesture={gesture}>
-      <Animated.View
-        style={[
-          styles.card,
-          styles.originalCard,
-          cardDynamicStyle,
-          animatedStyle,
-        ]}
-        onLayout={measureCard}
-      >
+    <Animated.View ref={viewRef} onLayout={measureCard} collapsable={false} style={[cardDynamicStyle, wrapperAnimatedStyle]} pointerEvents="box-none">
+      <GestureDetector gesture={gesture}>
+        <Animated.View
+          style={[
+            styles.card,
+            styles.originalCard,
+            cardDynamicStyle,
+            animatedStyle,
+          ]}
+        >
         {item.imageUrl ? (
           <ImageWithLoader
             source={{ uri: item.imageUrl }}
             style={[styles.cardImage, { width: cardSize, height: cardSize }]}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         ) : (
           <View
             style={[styles.cardImage, { backgroundColor: "transparent" }]}
           />
         )}
-      </Animated.View>
-    </GestureDetector>
+        </Animated.View>
+      </GestureDetector>
+    </Animated.View>
   );
 }
 
@@ -452,14 +464,16 @@ function TargetCard({
   useEffect(() => {
     if (isCompleted) {
       scale.value = withSequence(
-        withSpring(1.12, { damping: 8 }),
-        withSpring(1, { damping: 12 })
+        withTiming(1.05, { duration: 150 }),
+        withTiming(1, { duration: 150 })
       );
     }
   }, [isCompleted]);
 
-  const handleLayout = (event: any) => {
-    event.target.measureInWindow((x: number, y: number) => {
+  const viewRef = useRef<any>(null);
+
+  const handleLayout = () => {
+    viewRef.current?.measureInWindow((x, y) => {
       onLayout(x, y);
     });
   };
@@ -478,16 +492,16 @@ function TargetCard({
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.card,
-        styles.targetCard,
-        cardDynamicStyle,
-        isCompleted && styles.targetCardMatched,
-        animatedStyle,
-      ]}
-      onLayout={handleLayout}
-    >
+    <View ref={viewRef} onLayout={handleLayout} collapsable={false} style={cardDynamicStyle}>
+      <Animated.View
+        style={[
+          styles.card,
+          styles.targetCard,
+          cardDynamicStyle,
+          isCompleted && styles.targetCardMatched,
+          animatedStyle,
+        ]}
+      >
       {item.imageUrl ? (
         <View style={styles.blurContainer}>
           <ImageWithLoader
@@ -508,7 +522,8 @@ function TargetCard({
           style={[styles.blurContainer, { backgroundColor: "transparent" }]}
         />
       )}
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 }
 

@@ -40,3 +40,4 @@ export async function authenticateWithFeathers(
     throw new Error(errorMessage);
   }
 }
+

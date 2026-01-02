@@ -35,7 +35,7 @@ export default function Task() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { user } = useAuthStore();
+  const { user, setAuthenticated } = useAuthStore();
 
   const stageId = params.stageId as string;
   const exerciseOrder = Number(params.exerciseOrder) || 1;
@@ -308,6 +308,37 @@ export default function Task() {
     }, [currentExercise, exerciseOrder])
   );
 
+  // Helper function to update user score
+  const updateUserScore = useCallback(async (exerciseScore: number) => {
+    // Validate inputs
+    if (!user?._id) {
+      console.warn("Cannot update score: User not logged in");
+      return;
+    }
+
+    if (!exerciseScore || exerciseScore <= 0) {
+      console.warn("Cannot update score: Invalid exercise score", exerciseScore);
+      return;
+    }
+
+    try {
+      // Calculate new score
+      const currentScore = user.score || 0;
+      const newScore = currentScore + exerciseScore;
+
+      // Update user score via API
+      const updatedUser = await app.service("users").patch(user._id, {
+        score: newScore,
+      });
+
+      // Update auth store with new user data
+      setAuthenticated(updatedUser);
+    } catch (err: any) {
+      // Log error but don't block navigation
+      console.error("Failed to update user score:", err);
+    }
+  }, [user, setAuthenticated]);
+
   const handleComplete = useCallback(async () => {
     // Only allow completion if not loading and exercise exists
     if (loading || !currentExercise || isCompletingRef.current) {
@@ -414,17 +445,57 @@ export default function Task() {
     }
   };
 
-  const handleNext = useCallback(() => {
-    if (!isLastExercise && stageId) {
+  const handleNext = useCallback(async () => {
+    if (!isLastExercise && stageId && currentExercise) {
+      // Update user score before navigation (non-blocking)
+      await updateUserScore(currentExercise.score);
+      
       router.push(
         `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
       );
     }
-  }, [isLastExercise, stageId, exerciseOrder, router]);
+  }, [isLastExercise, stageId, exerciseOrder, router, currentExercise, updateUserScore]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
+    if (currentExercise) {
+      // Update user score before redirect (non-blocking)
+      await updateUserScore(currentExercise.score);
+    }
+
+    // Update currentStageId to the next stage
+    if (stageId && user?._id) {
+      try {
+        // Fetch the current stage
+        const currentStage = await app.service("stages").get(stageId);
+        
+        // Fetch all stages
+        const stagesResponse = await app.service("stages").find();
+        const allStages = Array.isArray(stagesResponse) 
+          ? stagesResponse 
+          : (stagesResponse as any).data || [];
+        
+        // Find the next stage by order
+        const nextStage = allStages.find(
+          (stage: any) => stage.order === currentStage.order + 1
+        );
+        
+        // If next stage exists, update currentStageId
+        if (nextStage) {
+          const updatedUser = await app.service("users").patch(user._id, {
+            currentStageId: nextStage._id,
+          });
+          
+          // Update auth store with new user data
+          setAuthenticated(updatedUser);
+        }
+      } catch (err: any) {
+        // Log error but don't block navigation
+        console.error("Failed to update currentStageId:", err);
+      }
+    }
+    
     router.push("/");
-  }, [router]);
+  }, [router, currentExercise, updateUserScore, stageId, user, setAuthenticated]);
 
   const progress =
     stageExercises.length > 0 ? exerciseOrder / stageExercises.length : 0;

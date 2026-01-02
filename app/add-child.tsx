@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,17 +18,75 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Body, Title, Subtitle } from '../components/Typography';
 import { Colors, Spacing, Typography } from '../constants';
+import app from '../lib/feathers/feathers-client';
+import { useAuthStore } from '../lib/store/auth-store';
 
 export default function AddChild() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user, setAuthenticated } = useAuthStore();
   
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'boy' | 'girl' | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleAddChild = () => {
-    router.back();
+  const handleAddChild = async () => {
+    // Validate inputs
+    if (!name.trim()) {
+      setError('Please enter the child\'s name');
+      return;
+    }
+    
+    if (!age.trim()) {
+      setError('Please enter the child\'s age');
+      return;
+    }
+    
+    const ageNum = parseInt(age, 10);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 18) {
+      setError('Please enter a valid age (1-18)');
+      return;
+    }
+    
+    if (!gender) {
+      setError('Please select a gender');
+      return;
+    }
+    
+    if (!user?._id) {
+      setError('User not found. Please log in again.');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      // Map gender from 'boy'/'girl' to 'male'/'female'
+      const backendGender = gender === 'boy' ? 'male' : 'female';
+      
+      // Save childMeta to backend
+      const updatedUser = await app.service('users').patch(user._id, {
+        childMeta: {
+          fullName: name.trim(),
+          age: ageNum,
+          gender: backendGender,
+        },
+      });
+
+      // Update auth store with the new user data
+      setAuthenticated(updatedUser);
+
+      // Redirect to index page
+      router.replace('/');
+    } catch (err: any) {
+      console.error('Error saving child meta:', err);
+      setError(err.message || 'Failed to save child information. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -121,12 +180,19 @@ export default function AddChild() {
               </View>
             </View>
 
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Body style={styles.errorText}>{error}</Body>
+              </View>
+            ) : null}
+
             <View style={styles.buttonContainer}>
               <DuoButton 
-                title="ADD PROFILE" 
+                title={loading ? "SAVING..." : "ADD PROFILE"} 
                 onPress={handleAddChild}
                 color="orange"
                 size="large"
+                disabled={loading}
               />
             </View>
           </View>
@@ -215,5 +281,19 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     marginBottom: Spacing.margin.xxxxl,
+  },
+  errorContainer: {
+    width: '100%',
+    marginBottom: Spacing.margin.lg,
+    padding: Spacing.padding.md,
+    backgroundColor: Colors.errorLight,
+    borderRadius: Spacing.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.error,
+    textAlign: 'center',
   },
 });

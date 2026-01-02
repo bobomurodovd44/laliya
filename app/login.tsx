@@ -54,8 +54,19 @@ export default function Login() {
       // Step 3: Update auth store with user data
       setAuthenticated(feathersResult.user);
 
-      // Step 4: Navigate to home on success
-      router.replace("/");
+      // Step 4: Check if user has childMeta and redirect accordingly
+      const hasChildMeta = feathersResult.user?.childMeta && 
+        feathersResult.user.childMeta.fullName && 
+        feathersResult.user.childMeta.age && 
+        feathersResult.user.childMeta.gender;
+      
+      if (hasChildMeta) {
+        // User has childMeta, go to home
+        router.replace("/");
+      } else {
+        // User missing childMeta, redirect to add-child page
+        router.replace("/add-child");
+      }
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");
     } finally {

@@ -1,6 +1,6 @@
 import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
 import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
@@ -39,7 +39,30 @@ function TabIcon({ iconSource, focused }: { iconSource: ImageSourcePropType; foc
 
 function RootLayoutNav() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const router = useRouter();
+  const segments = useSegments();
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
+
+  // Global redirect check: if authenticated but missing childMeta, redirect to add-child
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    if (isAuthenticated && user) {
+      const currentPath = segments[0] || '';
+      const isOnAddChildPage = currentPath === 'add-child';
+      
+      // Check if user is missing childMeta
+      const hasChildMeta = user.childMeta && 
+        user.childMeta.fullName && 
+        user.childMeta.age && 
+        user.childMeta.gender;
+      
+      // Redirect to add-child if missing childMeta and not already on that page
+      if (!hasChildMeta && !isOnAddChildPage) {
+        router.replace('/add-child');
+      }
+    }
+  }, [isAuthenticated, isInitialized, user, segments, router]);
 
   // Don't render tabs until auth is initialized
   if (!isInitialized) {

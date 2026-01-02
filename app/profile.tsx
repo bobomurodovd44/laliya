@@ -13,15 +13,15 @@ import app from '../lib/feathers/feathers-client';
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setUnauthenticated } = useAuthStore();
+  const { setUnauthenticated, user } = useAuthStore();
   
-  const user = {
-    name: 'Laliya',
-    age: 5,
-    gender: 'Girl',
-    level: 3,
-    profilePicture: 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg',
-  };
+  // Get childMeta from user, with fallback values
+  const childMeta = user?.childMeta;
+  const childName = childMeta?.fullName || 'Child';
+  const childAge = childMeta?.age || 0;
+  const childGender = childMeta?.gender === 'male' ? 'Boy' : childMeta?.gender === 'female' ? 'Girl' : '';
+  const profilePicture = 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg';
+  const level = 3; // TODO: Get from user data when available
 
   const handleLogout = async () => {
     try {
@@ -57,7 +57,7 @@ export default function Profile() {
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             <Image 
-              source={{ uri: user.profilePicture }}
+              source={{ uri: profilePicture }}
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.editIconButton} onPress={() => {}}>
@@ -65,8 +65,10 @@ export default function Profile() {
             </TouchableOpacity>
           </View>
           
-          <Title size="large" style={styles.childName}>{user.name}</Title>
-          <Body style={styles.subtitleText}>{user.age} years old • {user.gender}</Body>
+          <Title size="large" style={styles.childName}>{childName}</Title>
+          {childAge > 0 && childGender && (
+            <Body style={styles.subtitleText}>{childAge} years old • {childGender}</Body>
+          )}
         </View>
 
         <View style={styles.statsRow}>
@@ -82,7 +84,7 @@ export default function Profile() {
             <Body style={styles.statTitle} weight="bold">Level</Body>
             <View style={styles.statValueContainer}>
               <Ionicons name="trophy" size={24} color={Colors.badgeLevel} style={{ marginBottom: 4 }} />
-              <Title size="small" style={styles.statValue}>{user.level}</Title>
+              <Title size="small" style={styles.statValue}>{level}</Title>
             </View>
           </View>
         </View>

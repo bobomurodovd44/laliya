@@ -1,19 +1,25 @@
-import { Audio, AVPlaybackStatus } from 'expo-av';
-import * as Haptics from 'expo-haptics';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Audio, AVPlaybackStatus } from "expo-av";
+import * as Haptics from "expo-haptics";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
-  withTiming
-} from 'react-native-reanimated';
-import { Exercise, Item } from '../../data/data';
-import { items } from '../../lib/items-store';
-import { Body, Title } from '../Typography';
-import { DuoButton } from '../DuoButton';
-import TryAgainModal from '../TryAgainModal';
-import ImageWithLoader from '../common/ImageWithLoader';
+  withTiming,
+} from "react-native-reanimated";
+import { Exercise, Item } from "../../data/data";
+import { items } from "../../lib/items-store";
+import { DuoButton } from "../DuoButton";
+import TryAgainModal from "../TryAgainModal";
+import { Body, Title } from "../Typography";
+import ImageWithLoader from "../common/ImageWithLoader";
 
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -30,25 +36,28 @@ interface ListenAndPickProps {
   onComplete: () => void;
 }
 
-export default function ListenAndPick({ exercise, onComplete }: ListenAndPickProps) {
+export default function ListenAndPick({
+  exercise,
+  onComplete,
+}: ListenAndPickProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showTryAgain, setShowTryAgain] = useState(false);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  
+
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
-  
+
   // Ref to track if component is unmounting to avoid false errors
   const isUnmountingRef = useRef(false);
-  
+
   // Animation value for shake effect
   const shake = useSharedValue(0);
 
   // Get answer item
-  const answerItem = items.find(i => i.id === exercise.answerId);
+  const answerItem = items.find((i) => i.id === exercise.answerId);
 
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
@@ -74,42 +83,48 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
     // Map exercise.optionIds to items from items-store
     // The items-store is populated by task.tsx from API data via mapPopulatedExerciseToExercise
     const currentExerciseItems = exercise.optionIds
-      .map(id => items.find(item => item.id === id))
+      .map((id) => items.find((item) => item.id === id))
       .filter((item): item is Item => item !== undefined);
-    
+
     // Verify we found all options
     if (currentExerciseItems.length !== exercise.optionIds.length) {
       const missingIds = exercise.optionIds.filter(
-        id => !items.find(item => item.id === id)
+        (id) => !items.find((item) => item.id === id)
       );
       console.warn(
-        `ListenAndPick: Some option IDs not found in items-store. Missing IDs: ${missingIds.join(", ")}`
+        `ListenAndPick: Some option IDs not found in items-store. Missing IDs: ${missingIds.join(
+          ", "
+        )}`
       );
     }
-    
+
     // Reset state
     setSelectedId(null);
     setIsCorrect(null);
     setShowTryAgain(false);
     isCompletedRef.current = false;
-    
+
     // Only shuffle if we have items
     if (currentExerciseItems.length === 0) {
       setShuffledItems([]);
       return;
     }
-    
+
     // Shuffle items - ensure different order each time
     let shuffled = shuffleArray(currentExerciseItems);
     // Make sure it's actually shuffled (not same order)
     let attempts = 0;
     const maxAttempts = 10;
-    while (attempts < maxAttempts && 
-           shuffled.every((item, index) => item.id === currentExerciseItems[index]?.id)) {
+    while (
+      attempts < maxAttempts &&
+      shuffled.every(
+        (item, index) => item.id === currentExerciseItems[index]?.id
+      )
+    ) {
       shuffled = shuffleArray(currentExerciseItems);
       attempts++;
     }
-    
+
     setShuffledItems(shuffled);
   }, [exerciseId, exercise.optionIds]);
 
@@ -238,35 +253,38 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
     }
   };
 
-  const handleSelect = useCallback((itemId: number) => {
-    // If already completed, do nothing
-    if (isCorrect === true || isCompletedRef.current) return;
+  const handleSelect = useCallback(
+    (itemId: number) => {
+      // If already completed, do nothing
+      if (isCorrect === true || isCompletedRef.current) return;
 
-    setSelectedId(itemId);
-    
-    if (itemId === exercise.answerId) {
-      // Mark as completed immediately to prevent multiple calls
-      isCompletedRef.current = true;
-      setIsCorrect(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Call onComplete directly
-      onComplete();
-    } else {
-      setIsCorrect(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setShowTryAgain(true); // Show modal
-      
-      // Trigger shake animation
-      shake.value = withSequence(
-        withTiming(-10, { duration: 50 }),
-        withTiming(10, { duration: 50 }),
-        withTiming(-10, { duration: 50 }),
-        withTiming(10, { duration: 50 }),
-        withTiming(0, { duration: 50 })
-      );
-    }
-  }, [isCorrect, exercise.answerId, onComplete]);
+      setSelectedId(itemId);
+
+      if (itemId === exercise.answerId) {
+        // Mark as completed immediately to prevent multiple calls
+        isCompletedRef.current = true;
+        setIsCorrect(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Call onComplete directly
+        onComplete();
+      } else {
+        setIsCorrect(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setShowTryAgain(true); // Show modal
+
+        // Trigger shake animation
+        shake.value = withSequence(
+          withTiming(-10, { duration: 50 }),
+          withTiming(10, { duration: 50 }),
+          withTiming(-10, { duration: 50 }),
+          withTiming(10, { duration: 50 }),
+          withTiming(0, { duration: 50 })
+        );
+      }
+    },
+    [isCorrect, exercise.answerId, onComplete]
+  );
 
   const shakeStyle = useAnimatedStyle(() => {
     return {
@@ -298,20 +316,21 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
   if (!answerItem.audioUrl || answerItem.audioUrl.trim() === "") {
     return (
       <View style={styles.container}>
-        <Body style={styles.errorText}>
-          Answer item is missing audio URL
-        </Body>
+        <Body style={styles.errorText}>Answer item is missing audio URL</Body>
       </View>
     );
   }
 
   // Validation: Check if all options have imageUrl
-  const optionsWithoutImages = shuffledItems.filter(item => !item.imageUrl || item.imageUrl.trim() === "");
+  const optionsWithoutImages = shuffledItems.filter(
+    (item) => !item.imageUrl || item.imageUrl.trim() === ""
+  );
   if (optionsWithoutImages.length > 0) {
     return (
       <View style={styles.container}>
         <Body style={styles.errorText}>
-          Some options are missing images (IDs: {optionsWithoutImages.map(i => i.id).join(", ")})
+          Some options are missing images (IDs:{" "}
+          {optionsWithoutImages.map((i) => i.id).join(", ")})
         </Body>
       </View>
     );
@@ -319,17 +338,23 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
 
   return (
     <View style={styles.container}>
-      <Title size="large" style={styles.title}>Listen and Pick</Title>
-      <Body size="large" style={styles.question}>{exercise.question}</Body>
+      <Title size="large" style={styles.title}>
+        Listen and Pick
+      </Title>
+      <Body size="large" style={styles.question}>
+        {exercise.question}
+      </Body>
 
-      <TryAgainModal 
-        visible={showTryAgain} 
-        onClose={() => setShowTryAgain(false)} 
+      <TryAgainModal
+        visible={showTryAgain}
+        onClose={() => setShowTryAgain(false)}
       />
 
       {/* Answer Item Card with Audio */}
       <View style={styles.answerCard}>
-        <Title size="huge" style={styles.answerWord}>{answerItem.word}</Title>
+        <Title size="xlarge" style={styles.answerWord}>
+          {answerItem.word}
+        </Title>
         <DuoButton
           title=""
           onPress={playAnswerAudio}
@@ -349,8 +374,9 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
           {shuffledItems.map((item) => {
             const isSelected = selectedId === item.id;
             // Only shake the selected wrong item
-            const animatedStyle = (isSelected && isCorrect === false) ? shakeStyle : {};
-            
+            const animatedStyle =
+              isSelected && isCorrect === false ? shakeStyle : {};
+
             return (
               <Animated.View
                 key={item.id}
@@ -359,7 +385,7 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
                   isSelected && styles.imageCardSelected,
                   isSelected && isCorrect === true && styles.imageCardCorrect,
                   isSelected && isCorrect === false && styles.imageCardWrong,
-                  animatedStyle
+                  animatedStyle,
                 ]}
               >
                 <TouchableOpacity
@@ -388,70 +414,70 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   title: {
-    color: '#FF1493',
-    textAlign: 'center',
+    color: "#FF1493",
+    textAlign: "center",
     marginBottom: 8,
     marginTop: -20,
   },
   question: {
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 24,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   answerCard: {
-    width: '90%',
+    width: "90%",
     maxWidth: 360,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 32,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
+    borderColor: "#E8E8E8",
   },
   answerWord: {
-    fontFamily: 'FredokaOne',
+    fontFamily: "FredokaOne",
     fontSize: 42,
-    color: '#4A4A4A',
+    color: "#4A4A4A",
     flex: 1,
   },
   audioButton: {
     // Width/Height handled by customSize prop
   },
   content: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: 24,
-    width: '100%',
+    width: "100%",
     maxWidth: 380,
   },
   imageCard: {
-    width: '45%', // Responsive width
+    width: "45%", // Responsive width
     aspectRatio: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: '#E8E8E8',
-    shadowColor: '#000',
+    borderColor: "#E8E8E8",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -461,33 +487,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageCardSelected: {
-    borderColor: '#4A90E2',
+    borderColor: "#4A90E2",
     borderWidth: 6,
     transform: [{ scale: 1.08 }],
   },
   imageCardCorrect: {
-    borderColor: '#58CC02', // Match DuoButton green
+    borderColor: "#58CC02", // Match DuoButton green
     borderWidth: 6,
-    backgroundColor: '#E6FFFA',
-    shadowColor: '#58CC02',
+    backgroundColor: "#E6FFFA",
+    shadowColor: "#58CC02",
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 8,
   },
   imageCardWrong: {
-    borderColor: '#FF4B4B', // Match DuoButton red scheme
+    borderColor: "#FF4B4B", // Match DuoButton red scheme
     borderWidth: 6,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: "#FFF0F0",
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   errorText: {
     fontSize: 16,
-    color: '#FF4B4B',
-    textAlign: 'center',
+    color: "#FF4B4B",
+    textAlign: "center",
     padding: 20,
   },
 });
-

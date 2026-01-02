@@ -8,12 +8,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '../components/Input';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Body, Title, Subtitle } from '../components/Typography';
 import { Colors, Spacing, Typography } from '../constants';
+import { signUpWithEmailPassword } from '../lib/auth/firebase-auth';
+import { authenticateWithFeathers } from '../lib/auth/feathers-auth';
 
 export default function Signup() {
   const router = useRouter();
@@ -22,9 +25,44 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSignup = () => {
-    router.replace('/');
+  const handleSignup = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      // Step 1: Create user with Firebase
+      const { accessToken } = await signUpWithEmailPassword(
+        email.trim(),
+        password
+      );
+
+      // Step 2: Authenticate with Feathers backend
+      // For signup, we pass fullName and role to create the user in the backend
+      await authenticateWithFeathers(accessToken, {
+        fullName: name.trim(),
+        role: 'user',
+      });
+
+      // Step 3: Navigate to home on success
+      router.replace('/');
+    } catch (err: any) {
+      setError(err.message || 'Signup failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignup = () => {
@@ -51,7 +89,10 @@ export default function Signup() {
                 icon="person"
                 placeholder="Full Name"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  setError('');
+                }}
                 autoCapitalize="words"
               />
 
@@ -59,7 +100,10 @@ export default function Signup() {
                 icon="mail"
                 placeholder="Email Address"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError('');
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -68,13 +112,30 @@ export default function Signup() {
                 icon="lock-closed"
                 placeholder="Password"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setError('');
+                }}
                 isPassword
               />
             </View>
 
-            <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-              <Body style={styles.signupButtonText} weight="bold">SIGN UP</Body>
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Body style={styles.errorText}>{error}</Body>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+              onPress={handleSignup}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.textWhite} />
+              ) : (
+                <Body style={styles.signupButtonText} weight="bold">SIGN UP</Body>
+              )}
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -139,6 +200,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xl,
     color: Colors.textWhite,
     letterSpacing: Typography.letterSpacing.wide,
+  },
+  signupButtonDisabled: {
+    opacity: 0.6,
+  },
+  errorContainer: {
+    width: '100%',
+    marginBottom: Spacing.margin.lg,
+    padding: Spacing.padding.md,
+    backgroundColor: Colors.errorLight,
+    borderRadius: Spacing.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.error,
+    textAlign: 'center',
   },
   loginLink: {
     marginBottom: Spacing.margin.xl,

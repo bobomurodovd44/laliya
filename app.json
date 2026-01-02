@@ -55,7 +55,8 @@
       "router": {},
       "eas": {
         "projectId": "66d7d7ea-a23c-4f22-8b23-7f1913175dbd"
-      }
+      },
+      "FEATHERS_API_URL": "http://localhost:3030"
     }
   }
 }

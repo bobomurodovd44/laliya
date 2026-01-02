@@ -1,28 +1,61 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Input } from '../components/Input';
-import { PageContainer } from '../components/layout/PageContainer';
-import { Body, Title, Subtitle } from '../components/Typography';
-import { Colors, Spacing, Typography } from '../constants';
+  ActivityIndicator,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Input } from "../components/Input";
+import { PageContainer } from "../components/layout/PageContainer";
+import { Body, Subtitle, Title } from "../components/Typography";
+import { Colors, Spacing, Typography } from "../constants";
+import { signInWithEmailPassword } from "../lib/auth/firebase-auth";
+import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
 
 export default function Login() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    router.replace('/');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      // Step 1: Sign in with Firebase
+      const { accessToken } = await signInWithEmailPassword(
+        email.trim(),
+        password
+      );
+
+      // Step 2: Authenticate with Feathers backend
+      // For login, we pass empty fullName since backend will find existing user
+      await authenticateWithFeathers(accessToken, {
+        fullName: "", // Backend will use existing user's fullName
+        role: "user",
+      });
+
+      // Step 3: Navigate to home on success
+      router.replace("/");
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -31,8 +64,8 @@ export default function Login() {
 
   return (
     <PageContainer useFloatingShapes>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.contentContainer}
       >
         <View style={[styles.formContainer, { marginTop: insets.top + 60 }]}>
@@ -44,39 +77,79 @@ export default function Login() {
               icon="mail"
               placeholder="Email Address"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError("");
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            
+
             <Input
               icon="lock-closed"
               placeholder="Password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError("");
+              }}
               isPassword
             />
           </View>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Body style={styles.loginButtonText} weight="bold">LET'S GO!</Body>
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Body style={styles.errorText}>{error}</Body>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.textWhite} />
+            ) : (
+              <Body style={styles.loginButtonText} weight="bold">
+                LET'S GO!
+              </Body>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.signupLink} 
-            onPress={() => router.push('/signup')}
+          <TouchableOpacity
+            style={styles.signupLink}
+            onPress={() => router.push("/signup")}
           >
             <Body style={styles.signupLinkText}>
-              Don't have an account? <Body style={styles.signupLinkHighlight}>Sign Up</Body>
+              Don't have an account?{" "}
+              <Body style={styles.signupLinkHighlight}>Sign Up</Body>
             </Body>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
-          <Body style={styles.orText} weight="bold">OR</Body>
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
-            <Ionicons name="logo-google" size={24} color={Colors.textWhite} style={styles.googleIcon} />
-            <Body style={styles.googleButtonText} weight="bold">Continue with Google</Body>
+        <View
+          style={[
+            styles.bottomContainer,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
+        >
+          <Body style={styles.orText} weight="bold">
+            OR
+          </Body>
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleLogin}
+          >
+            <Ionicons
+              name="logo-google"
+              size={24}
+              color={Colors.textWhite}
+              style={styles.googleIcon}
+            />
+            <Body style={styles.googleButtonText} weight="bold">
+              Continue with Google
+            </Body>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -87,28 +160,28 @@ export default function Login() {
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.padding.xxl,
   },
   formContainer: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   subtitle: {
-    marginBottom: Spacing.margin.xxxxl,
+    marginBottom: Spacing.margin.xxxl,
   },
   inputGroup: {
-    width: '100%',
+    width: "100%",
     gap: Spacing.gap.lg,
     marginBottom: Spacing.margin.xxxl,
   },
   loginButton: {
-    width: '100%',
+    width: "100%",
     height: Spacing.size.buttonHeight.large,
     backgroundColor: Colors.secondary,
     borderRadius: Spacing.radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: Colors.secondary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -123,6 +196,23 @@ const styles = StyleSheet.create({
     color: Colors.textWhite,
     letterSpacing: Typography.letterSpacing.wide,
   },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
+  errorContainer: {
+    width: "100%",
+    marginBottom: Spacing.margin.lg,
+    padding: Spacing.padding.md,
+    backgroundColor: Colors.errorLight,
+    borderRadius: Spacing.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.error,
+    textAlign: "center",
+  },
   signupLink: {
     marginTop: Spacing.margin.xl,
   },
@@ -135,8 +225,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.bold,
   },
   bottomContainer: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   orText: {
     fontFamily: Typography.fontFamily.primary,
@@ -145,13 +235,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.margin.xl,
   },
   googleButton: {
-    width: '100%',
+    width: "100%",
     height: Spacing.size.buttonHeight.medium,
     backgroundColor: Colors.buttonGoogle,
     borderRadius: Spacing.radius.lg,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     borderBottomWidth: Spacing.borderWidth.xthick,
     borderBottomColor: Colors.buttonGoogleDark,
     shadowColor: Colors.buttonGoogle,

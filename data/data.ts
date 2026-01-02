@@ -125,6 +125,7 @@ export enum ExerciseType {
 // Exercise Type Definition
 export interface Exercise {
   question: string;
+  questionAudioUrl?: string; // URL for question audio
   type: ExerciseType;
   optionIds: number[]; // Array of item IDs
   answerId?: number; // ID of the correct item

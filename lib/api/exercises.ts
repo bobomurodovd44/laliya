@@ -167,8 +167,10 @@ export const mapPopulatedExerciseToExercise = (
     : undefined;
 
   // Map the exercise
+  // Note: questionAudio.name is already a full S3 URL (constructed by backend hooks with baseUrl)
   const exercise: Exercise = {
     question: apiExercise.question,
+    questionAudioUrl: apiExercise.questionAudio?.name, // Full S3 URL from backend
     type: mapApiTypeToExerciseType(apiExercise.type),
     optionIds: mappedOptionIds,
     answerId: mappedAnswerId,

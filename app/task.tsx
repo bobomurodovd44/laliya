@@ -47,6 +47,8 @@ export default function Task() {
   const confettiRef = useRef<ConfettiCannon>(null);
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCompletingRef = useRef(false);
+  const previousExerciseOrderRef = useRef<number | null>(null);
+  const isInitialMountRef = useRef(true);
 
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
@@ -76,6 +78,7 @@ export default function Task() {
         setCurrentExercise(exercise);
         setIsLastExercise(exerciseOrder >= cached.exercises.length);
         isCompletingRef.current = false;
+        previousExerciseOrderRef.current = exerciseOrder;
 
         // Map and set items for the current exercise
         const currentApiExercise = cached.apiExercises[exerciseIndex];
@@ -156,6 +159,7 @@ export default function Task() {
         setIsLastExercise(exerciseOrder >= mappedExercises.length);
         setIsCompleted(false);
         isCompletingRef.current = false;
+        previousExerciseOrderRef.current = exerciseOrder;
         setLoading(false);
       } catch (err: any) {
         setError(err.message || "Failed to load exercises");
@@ -238,10 +242,19 @@ export default function Task() {
 
   useFocusEffect(
     useCallback(() => {
-      // Reset state when page comes into focus (but not on initial mount)
-      // This ensures exercises reset when navigating back to the same exercise
-      // Only reset if we already have an exercise loaded (not initial load)
-      if (currentExercise) {
+      // Skip on initial mount
+      if (isInitialMountRef.current) {
+        isInitialMountRef.current = false;
+        previousExerciseOrderRef.current = exerciseOrder;
+        return;
+      }
+
+      // Only reset if we're returning to the same exercise (not navigating to a new one)
+      // This prevents unnecessary remounting when navigating between exercises
+      const isSameExercise = previousExerciseOrderRef.current === exerciseOrder;
+
+      if (isSameExercise && currentExercise) {
+        // Reset state only when returning to the same exercise
         setResetKey((prev) => prev + 1);
         setIsCompleted(false);
         isCompletingRef.current = false;
@@ -249,8 +262,11 @@ export default function Task() {
           clearTimeout(completionTimeoutRef.current);
           completionTimeoutRef.current = null;
         }
+      } else {
+        // Update the ref when exercise changes
+        previousExerciseOrderRef.current = exerciseOrder;
       }
-    }, [currentExercise])
+    }, [currentExercise, exerciseOrder])
   );
 
   const handleComplete = useCallback(() => {
@@ -345,18 +361,14 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId) {
-      InteractionManager.runAfterInteractions(() => {
-        router.push(
-          `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
-        );
-      });
+      router.push(
+        `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
+      );
     }
   }, [isLastExercise, stageId, exerciseOrder, router]);
 
   const handleSubmit = useCallback(() => {
-    InteractionManager.runAfterInteractions(() => {
-      router.push("/");
-    });
+    router.push("/");
   }, [router]);
 
   const progress =

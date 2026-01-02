@@ -91,6 +91,9 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
   // State for recording playback specifically
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
+  // Ref to track if component is unmounting to avoid false errors
+  const isUnmountingRef = React.useRef(false);
+
   // Get item for this exercise
   // For LookAndSay, use answerId if available, otherwise use the first optionId
   const itemId =
@@ -98,25 +101,66 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     (exercise.optionIds.length > 0 ? exercise.optionIds[0] : undefined);
   const item = itemId ? items.find((i) => i.id === itemId) : undefined;
 
+  // Debug logging
+  useEffect(() => {
+    console.log("LookAndSay Debug:", {
+      exerciseId: exercise.order,
+      itemId,
+      itemsCount: items.length,
+      item: item
+        ? {
+            id: item.id,
+            word: item.word,
+            hasImage: !!item.imageUrl,
+            hasAudio: !!item.audioUrl,
+          }
+        : null,
+      questionAudioUrl: exercise.questionAudioUrl,
+      allItems: items.map((i) => ({
+        id: i.id,
+        word: i.word,
+        imageUrl: i.imageUrl,
+        audioUrl: i.audioUrl,
+      })),
+    });
+  }, [exercise, item, itemId]);
+
   useEffect(() => {
     return () => {
+      isUnmountingRef.current = true;
       if (sound) {
-        sound.unloadAsync();
+        // Remove status update listener before cleanup to prevent false errors
+        sound.setOnPlaybackStatusUpdate(null);
+        // Cleanup sound on unmount - suppress any errors
+        sound.unloadAsync().catch(() => {
+          // Silently ignore cleanup errors - they're expected during unmount
+        });
       }
     };
   }, [sound]);
 
-  // Request permissions
+  // Request permissions and check audio playback capabilities
   useEffect(() => {
     (async () => {
       if (Platform.OS !== "web") {
+        // Check microphone permission for recording
         const { status } = await Audio.requestPermissionsAsync();
+        console.log("Audio Permissions Status:", {
+          microphone: status,
+          platform: Platform.OS,
+        });
+
         if (status !== "granted") {
+          console.warn("Microphone permission not granted:", status);
           Alert.alert(
             "Permission needed",
             "Microphone permission is required to record audio"
           );
+        } else {
+          console.log("✓ Microphone permission granted");
         }
+      } else {
+        console.log("Running on web - permissions handled by browser");
       }
     })();
   }, []);
@@ -151,28 +195,210 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
   };
 
   const playItemAudio = async () => {
-    if (!item?.audioUrl) return;
+    // Use exercise.questionAudioUrl if available, otherwise fall back to item.audioUrl
+    const audioUrl = exercise.questionAudioUrl || item?.audioUrl;
+
+    console.log("playItemAudio called:", {
+      questionAudioUrl: exercise.questionAudioUrl,
+      itemAudioUrl: item?.audioUrl,
+      finalAudioUrl: audioUrl,
+    });
+
+    if (!audioUrl || audioUrl.trim() === "") {
+      console.warn("No audio URL available");
+      Alert.alert(
+        "Audio not available",
+        "Audio file is not available for this exercise"
+      );
+      return;
+    }
+
+    // Validate URL format
+    if (
+      !audioUrl.startsWith("http://") &&
+      !audioUrl.startsWith("https://") &&
+      !audioUrl.startsWith("file://")
+    ) {
+      console.error("Invalid audio URL format:", audioUrl);
+      Alert.alert("Invalid URL", "The audio URL format is invalid");
+      return;
+    }
 
     try {
-      // Unload active sound if any
-      if (sound) {
-        await sound.unloadAsync();
+      // Check permissions before playing
+      if (Platform.OS !== "web") {
+        const { status } = await Audio.getPermissionsAsync();
+        console.log("Audio Permission Check Before Playback:", {
+          status,
+          granted: status === "granted",
+          platform: Platform.OS,
+        });
+
+        if (status !== "granted") {
+          console.warn("Audio permission not granted, requesting...");
+          const { status: newStatus } = await Audio.requestPermissionsAsync();
+          console.log("Permission Request Result:", newStatus);
+
+          if (newStatus !== "granted") {
+            Alert.alert(
+              "Permission Required",
+              "Audio playback requires permission. Please grant audio permission in settings."
+            );
+            return;
+          }
+        }
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync({
-        uri: item.audioUrl,
-      });
-      setSound(newSound);
+      // Stop and unload active sound if any
+      if (sound) {
+        try {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch (e) {
+          // Ignore errors during cleanup
+          console.log("Error cleaning up previous sound (ignored):", e);
+        }
+        setSound(null);
+      }
+
       setIsPlaying(true);
-      await newSound.playAsync();
+      console.log("Loading audio from URL:", audioUrl);
+
+      // Set audio mode for playback - ensure it plays even in silent mode
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          // Android specific: ensure audio plays through speaker/headphones
+          shouldDuckAndroid: false, // Don't duck other audio
+        });
+        console.log("✓ Audio mode set successfully for playback");
+      } catch (audioModeError) {
+        console.warn("Error setting audio mode:", audioModeError);
+        // Continue anyway - might still work
+      }
+
+      console.log("Creating audio sound object...");
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true }
+      );
+
+      setSound(newSound);
+      console.log("✓ Audio sound object created");
+
+      // Get initial status
+      const status = await newSound.getStatusAsync();
+      console.log("Audio Status After Creation:", {
+        isLoaded: status.isLoaded,
+        shouldPlay: status.isLoaded ? status.shouldPlay : "N/A",
+        isPlaying: status.isLoaded ? status.isPlaying : "N/A",
+        error: status.isLoaded ? null : "Not loaded",
+        durationMillis: status.isLoaded ? status.durationMillis : "N/A",
+        positionMillis: status.isLoaded ? status.positionMillis : "N/A",
+      });
+
+      if (status.isLoaded) {
+        if (status.shouldPlay && status.isPlaying) {
+          console.log("✓ Audio playback started successfully");
+          console.log("Audio Info:", {
+            duration: status.durationMillis
+              ? `${(status.durationMillis / 1000).toFixed(2)}s`
+              : "unknown",
+            volume: status.volume !== undefined ? status.volume : "default",
+            isMuted: status.isMuted !== undefined ? status.isMuted : false,
+          });
+        } else if (status.shouldPlay && !status.isPlaying) {
+          console.warn(
+            "⚠ Audio should play but isPlaying is false - attempting to play manually"
+          );
+          await newSound.playAsync();
+          console.log("✓ Manual playAsync() called");
+        } else {
+          console.warn(
+            "⚠ Audio loaded but shouldPlay is false - attempting to play manually"
+          );
+          await newSound.playAsync();
+          console.log("✓ Manual playAsync() called");
+        }
+
+        // Check status again after a brief delay to confirm playback
+        setTimeout(async () => {
+          try {
+            const updatedStatus = await newSound.getStatusAsync();
+            if (updatedStatus.isLoaded) {
+              const duration = updatedStatus.durationMillis || 0;
+              const position = updatedStatus.positionMillis || 0;
+              console.log("Audio Status After Playback Attempt:", {
+                isPlaying: updatedStatus.isPlaying,
+                position:
+                  duration > 0
+                    ? `${(position / 1000).toFixed(2)}s / ${(
+                        duration / 1000
+                      ).toFixed(2)}s`
+                    : `${(position / 1000).toFixed(2)}s`,
+                progress:
+                  duration > 0
+                    ? `${((position / duration) * 100).toFixed(1)}%`
+                    : "N/A",
+              });
+
+              if (
+                !updatedStatus.isPlaying &&
+                updatedStatus.positionMillis === 0
+              ) {
+                console.warn(
+                  "⚠ Audio is not playing - check device volume and audio settings"
+                );
+                Alert.alert(
+                  "Audio Not Playing",
+                  "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected"
+                );
+              } else if (updatedStatus.isPlaying) {
+                console.log(
+                  "✓ Audio is playing successfully - if you can't hear it, check device volume"
+                );
+              }
+            }
+          } catch (e) {
+            console.warn("Could not get updated status:", e);
+          }
+        }, 500);
+      } else {
+        console.warn("⚠ Audio not loaded after creation");
+      }
 
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
+        // Don't process status updates if component is unmounting
+        if (isUnmountingRef.current) return;
+
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            console.log("Audio playback finished");
+          }
+        } else {
+          // status.isLoaded is false - only log if we're actively playing
+          // This can happen during cleanup, so we check isUnmountingRef
+          if (isPlaying && !isUnmountingRef.current) {
+            console.warn(
+              "Audio status: isLoaded false (may be loading or error)"
+            );
+            // Don't show alert - let it try to load
+          }
         }
       });
     } catch (error) {
+      console.error("Error playing audio:", error);
       setIsPlaying(false);
+      setSound(null);
+      Alert.alert(
+        "Error",
+        `Failed to play audio: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -220,20 +446,33 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
   };
 
   if (!item) {
+    console.warn("LookAndSay: Item not found", {
+      itemId,
+      itemsCount: items.length,
+      optionIds: exercise.optionIds,
+      answerId: exercise.answerId,
+    });
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <Body>Item not found</Body>
+          <Body>Item not found (ID: {itemId})</Body>
+          <Body style={{ fontSize: 12, marginTop: 10 }}>
+            Available items: {items.map((i) => i.id).join(", ")}
+          </Body>
         </View>
       </View>
     );
   }
 
   if (!item.imageUrl) {
+    console.warn("LookAndSay: Image URL not available", {
+      itemId: item.id,
+      word: item.word,
+    });
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <Body>Image URL not available</Body>
+          <Body>Image URL not available for: {item.word || "unknown"}</Body>
         </View>
       </View>
     );
@@ -247,12 +486,24 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
         <View style={styles.card}>
           {/* Image Area - Takes remaining space */}
           <View style={styles.imageContainer}>
-            {item.imageUrl && (
+            {item.imageUrl ? (
               <ImageWithLoader
                 source={{ uri: item.imageUrl }}
                 style={styles.image}
                 resizeMode="cover"
+                onLoad={() =>
+                  console.log("Image loaded successfully:", item.imageUrl)
+                }
+                onError={() => {
+                  console.warn("Image failed to load:", item.imageUrl);
+                  // Don't show alert - just log the warning
+                  // The ImageWithLoader component will show a placeholder
+                }}
               />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Body>No image available</Body>
+              </View>
             )}
           </View>
 
@@ -422,5 +673,11 @@ const styles = StyleSheet.create({
   },
   playbackButton: {
     // Width/Height handled by customSize prop now
+  },
+  imagePlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F0F0F0",
   },
 });

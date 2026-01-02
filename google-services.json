@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "307432035320",
+    "project_id": "laliya-uz",
+    "storage_bucket": "laliya-uz.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307432035320:android:e3a8e018e7a904bb79bc0d",
+        "android_client_info": {
+          "package_name": "com.synclab.laliya"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "307432035320-hlfr2cjiog70g11n4djmvlik56aehfkc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.synclab.laliya",
+            "certificate_hash": "77dab4645e54292e28c6dfd3065c43997bb0d6d0"
+          }
+        },
+        {
+          "client_id": "307432035320-rshm5utmm57va64ouqfht6s5cmkgt0ut.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZFI3o5NyeODkP8830gBFtUnRhpl3SD_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "307432035320-rshm5utmm57va64ouqfht6s5cmkgt0ut.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

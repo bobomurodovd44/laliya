@@ -1,7 +1,7 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -41,6 +41,9 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
   
+  // Ref to track if component is unmounting to avoid false errors
+  const isUnmountingRef = useRef(false);
+  
   // Animation value for shake effect
   const shake = useSharedValue(0);
 
@@ -53,8 +56,14 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
+      isUnmountingRef.current = true;
       if (sound) {
-        sound.unloadAsync();
+        // Remove status update listener before cleanup to prevent false errors
+        sound.setOnPlaybackStatusUpdate(null);
+        // Cleanup sound on unmount - suppress any errors
+        sound.unloadAsync().catch(() => {
+          // Silently ignore cleanup errors - they're expected during unmount
+        });
       }
     };
   }, [sound]);
@@ -62,15 +71,33 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
   // Shuffle items when exercise changes
   useEffect(() => {
     // Get items inside effect to avoid dependency issues
+    // Map exercise.optionIds to items from items-store
+    // The items-store is populated by task.tsx from API data via mapPopulatedExerciseToExercise
     const currentExerciseItems = exercise.optionIds
       .map(id => items.find(item => item.id === id))
       .filter((item): item is Item => item !== undefined);
+    
+    // Verify we found all options
+    if (currentExerciseItems.length !== exercise.optionIds.length) {
+      const missingIds = exercise.optionIds.filter(
+        id => !items.find(item => item.id === id)
+      );
+      console.warn(
+        `ListenAndPick: Some option IDs not found in items-store. Missing IDs: ${missingIds.join(", ")}`
+      );
+    }
     
     // Reset state
     setSelectedId(null);
     setIsCorrect(null);
     setShowTryAgain(false);
     isCompletedRef.current = false;
+    
+    // Only shuffle if we have items
+    if (currentExerciseItems.length === 0) {
+      setShuffledItems([]);
+      return;
+    }
     
     // Shuffle items - ensure different order each time
     let shuffled = shuffleArray(currentExerciseItems);
@@ -87,28 +114,127 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
   }, [exerciseId, exercise.optionIds]);
 
   const playAnswerAudio = async () => {
-    if (!answerItem?.audioUrl) return;
-    
+    const audioUrl = answerItem?.audioUrl;
+
+    if (!audioUrl || audioUrl.trim() === "") {
+      Alert.alert(
+        "Audio not available",
+        "Audio file is not available for this exercise"
+      );
+      return;
+    }
+
+    // Validate URL format
+    if (
+      !audioUrl.startsWith("http://") &&
+      !audioUrl.startsWith("https://") &&
+      !audioUrl.startsWith("file://")
+    ) {
+      Alert.alert("Invalid URL", "The audio URL format is invalid");
+      return;
+    }
+
     try {
-      // Unload active sound if any
+      // Check permissions before playing
+      if (Platform.OS !== "web") {
+        const { status } = await Audio.getPermissionsAsync();
+
+        if (status !== "granted") {
+          const { status: newStatus } = await Audio.requestPermissionsAsync();
+
+          if (newStatus !== "granted") {
+            Alert.alert(
+              "Permission Required",
+              "Audio playback requires permission. Please grant audio permission in settings."
+            );
+            return;
+          }
+        }
+      }
+
+      // Stop and unload active sound if any
       if (sound) {
-        await sound.unloadAsync();
+        try {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        setSound(null);
+      }
+
+      setIsPlaying(true);
+
+      // Set audio mode for playback - ensure it plays even in silent mode
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          // Android specific: ensure audio plays through speaker/headphones
+          shouldDuckAndroid: false, // Don't duck other audio
+        });
+      } catch (audioModeError) {
+        // Continue anyway - might still work
       }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: answerItem.audioUrl }
+        { uri: audioUrl },
+        { shouldPlay: true }
       );
+
       setSound(newSound);
-      setIsPlaying(true);
-      await newSound.playAsync();
-      
+
+      // Get initial status
+      const status = await newSound.getStatusAsync();
+
+      if (status.isLoaded) {
+        if (status.shouldPlay && !status.isPlaying) {
+          await newSound.playAsync();
+        } else if (!status.shouldPlay) {
+          await newSound.playAsync();
+        }
+
+        // Check status again after a brief delay to confirm playback
+        setTimeout(async () => {
+          try {
+            const updatedStatus = await newSound.getStatusAsync();
+            if (updatedStatus.isLoaded) {
+              if (
+                !updatedStatus.isPlaying &&
+                updatedStatus.positionMillis === 0
+              ) {
+                Alert.alert(
+                  "Audio Not Playing",
+                  "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected"
+                );
+              }
+            }
+          } catch (e) {
+            // Ignore status check errors
+          }
+        }, 500);
+      }
+
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
+        // Don't process status updates if component is unmounting
+        if (isUnmountingRef.current) return;
+
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+          }
         }
       });
     } catch (error) {
       setIsPlaying(false);
+      setSound(null);
+      Alert.alert(
+        "Error",
+        `Failed to play audio: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -148,7 +274,48 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
     };
   });
 
-  if (!answerItem) return <View><Body>Answer item not found</Body></View>;
+  // Validation: Check if answerItem exists and has required properties
+  if (!answerItem) {
+    return (
+      <View style={styles.container}>
+        <Body style={styles.errorText}>
+          Answer item not found (ID: {exercise.answerId})
+        </Body>
+      </View>
+    );
+  }
+
+  if (!answerItem.word) {
+    return (
+      <View style={styles.container}>
+        <Body style={styles.errorText}>
+          Answer item is missing the word property
+        </Body>
+      </View>
+    );
+  }
+
+  if (!answerItem.audioUrl || answerItem.audioUrl.trim() === "") {
+    return (
+      <View style={styles.container}>
+        <Body style={styles.errorText}>
+          Answer item is missing audio URL
+        </Body>
+      </View>
+    );
+  }
+
+  // Validation: Check if all options have imageUrl
+  const optionsWithoutImages = shuffledItems.filter(item => !item.imageUrl || item.imageUrl.trim() === "");
+  if (optionsWithoutImages.length > 0) {
+    return (
+      <View style={styles.container}>
+        <Body style={styles.errorText}>
+          Some options are missing images (IDs: {optionsWithoutImages.map(i => i.id).join(", ")})
+        </Body>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -315,6 +482,12 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF4B4B',
+    textAlign: 'center',
+    padding: 20,
   },
 });
 

@@ -7,10 +7,13 @@ import { ProfileMenuItem } from '../components/ProfileMenuItem';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Body, Title } from '../components/Typography';
 import { Colors, Spacing, Typography } from '../constants';
+import { useAuthStore } from '../lib/store/auth-store';
+import app from '../lib/feathers/feathers-client';
 
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setUnauthenticated } = useAuthStore();
   
   const user = {
     name: 'Laliya',
@@ -18,6 +21,22 @@ export default function Profile() {
     gender: 'Girl',
     level: 3,
     profilePicture: 'https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg',
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Clear Feathers authentication
+      await app.logout();
+      // Clear auth store
+      setUnauthenticated();
+      // Navigate to login (protected routes will handle redirect)
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local auth state
+      setUnauthenticated();
+      router.replace('/login');
+    }
   };
 
   return (
@@ -79,7 +98,7 @@ export default function Profile() {
           <ProfileMenuItem 
             iconName="log-out-outline"
             title="Logout"
-            onPress={() => router.push('/login')}
+            onPress={handleLogout}
           />
           <ProfileMenuItem 
             iconName="trash-outline"

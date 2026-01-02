@@ -7,6 +7,7 @@ import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
+import { useAuthStore } from '../lib/store/auth-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +39,12 @@ function TabIcon({ iconSource, focused }: { iconSource: ImageSourcePropType; foc
 
 function RootLayoutNav() {
   const insets = useSafeAreaInsets();
+  const { isAuthenticated, isInitialized } = useAuthStore();
+
+  // Don't render tabs until auth is initialized
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <Tabs
@@ -66,80 +73,87 @@ function RootLayoutNav() {
         tabBarShowLabel: false,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon iconSource={require('../assets/home.png')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="welcome"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon iconSource={require('../assets/profile.png')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="login"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
-      <Tabs.Screen
-        name="signup"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
-      <Tabs.Screen
-        name="task"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
-      <Tabs.Screen
-        name="add-child"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
-      <Tabs.Screen
-        name="record-audio"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle: { display: 'none' },
-          sceneStyle: { paddingBottom: 0 },
-        }}
-      />
+      {/* Protected routes - only accessible when authenticated */}
+      <Tabs.Protected guard={isAuthenticated}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            headerShown: false,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon iconSource={require('../assets/home.png')} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="welcome"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            headerShown: false,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon iconSource={require('../assets/profile.png')} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="task"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+        <Tabs.Screen
+          name="add-child"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+        <Tabs.Screen
+          name="record-audio"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+      </Tabs.Protected>
+
+      {/* Public routes - only accessible when NOT authenticated */}
+      <Tabs.Protected guard={!isAuthenticated}>
+        <Tabs.Screen
+          name="login"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+        <Tabs.Screen
+          name="signup"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
+      </Tabs.Protected>
     </Tabs>
   );
 }
@@ -149,6 +163,12 @@ export default function RootLayout() {
     FredokaOne: FredokaOne_400Regular,
     BalsamiqSans: BalsamiqSans_400Regular,
   });
+  const { init } = useAuthStore();
+
+  // Initialize auth store on mount
+  useEffect(() => {
+    init();
+  }, [init]);
 
   useEffect(() => {
     if (loaded || error) {

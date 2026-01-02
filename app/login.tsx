@@ -16,10 +16,12 @@ import { Body, Subtitle, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { signInWithEmailPassword } from "../lib/auth/firebase-auth";
 import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
+import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Login() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setAuthenticated } = useAuthStore();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,12 +46,15 @@ export default function Login() {
 
       // Step 2: Authenticate with Feathers backend
       // For login, we pass empty fullName since backend will find existing user
-      await authenticateWithFeathers(accessToken, {
+      const feathersResult = await authenticateWithFeathers(accessToken, {
         fullName: "", // Backend will use existing user's fullName
         role: "user",
       });
 
-      // Step 3: Navigate to home on success
+      // Step 3: Update auth store with user data
+      setAuthenticated(feathersResult.user);
+
+      // Step 4: Navigate to home on success
       router.replace("/");
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");

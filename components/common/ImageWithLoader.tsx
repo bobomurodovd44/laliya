@@ -14,6 +14,7 @@ interface ImageWithLoaderProps {
   resizeMode?: 'cover' | 'contain' | 'stretch' | 'center';
   contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scaleDown';
   tintColor?: string;
+  priority?: 'high' | 'normal' | 'low';
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -24,6 +25,7 @@ export default function ImageWithLoader({
   resizeMode = 'cover',
   contentFit,
   tintColor,
+  priority = 'normal',
   onLoad,
   onError,
 }: ImageWithLoaderProps) {
@@ -33,6 +35,11 @@ export default function ImageWithLoader({
 
   // Determine if source is a URI (remote) or require (local)
   const isRemote = typeof source === 'object' && 'uri' in source;
+  
+  // Generate recycling key from URL for better memory management
+  const recyclingKey = isRemote && source.uri 
+    ? `img_${source.uri.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50)}`
+    : undefined;
 
   useEffect(() => {
     // Reset states when source changes
@@ -111,6 +118,10 @@ export default function ImageWithLoader({
           onError={handleError}
           transition={200}
           cachePolicy="memory-disk"
+          recyclingKey={recyclingKey}
+          allowDownscaling={true}
+          priority={priority}
+          placeholderContentFit="cover"
         />
       </Animated.View>
     </View>

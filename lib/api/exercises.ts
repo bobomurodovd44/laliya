@@ -1,5 +1,5 @@
-import app from "../feathers/feathers-client";
 import { Exercise, ExerciseType, Item } from "../../data/data";
+import app from "../feathers/feathers-client";
 
 export interface PopulatedOption {
   _id: string | {};
@@ -69,7 +69,10 @@ export const fetchExercisesByStageId = async (
   stageId: string
 ): Promise<PopulatedExercise[]> => {
   try {
-    console.log("[fetchExercisesByStageId] Fetching exercises for stageId:", stageId);
+    console.log(
+      "[fetchExercisesByStageId] Fetching exercises for stageId:",
+      stageId
+    );
     const response = await app.service("exercises").find({
       query: {
         stageId: stageId,
@@ -80,7 +83,9 @@ export const fetchExercisesByStageId = async (
     console.log("[fetchExercisesByStageId] Response received:", {
       isArray: Array.isArray(response),
       hasData: !Array.isArray(response) && (response as ExercisesResponse).data,
-      length: Array.isArray(response) ? response.length : (response as ExercisesResponse).data?.length,
+      length: Array.isArray(response)
+        ? response.length
+        : (response as ExercisesResponse).data?.length,
     });
 
     // Handle both paginated and non-paginated responses
@@ -89,9 +94,15 @@ export const fetchExercisesByStageId = async (
       : (response as ExercisesResponse).data || [];
 
     // Sort by order to ensure correct display order
-    const sortedExercises = [...exercisesData].sort((a, b) => a.order - b.order);
+    const sortedExercises = [...exercisesData].sort(
+      (a, b) => a.order - b.order
+    );
 
-    console.log("[fetchExercisesByStageId] Returning", sortedExercises.length, "exercises");
+    console.log(
+      "[fetchExercisesByStageId] Returning",
+      sortedExercises.length,
+      "exercises"
+    );
     return sortedExercises;
   } catch (error: any) {
     console.error("[fetchExercisesByStageId] Error fetching exercises:", error);
@@ -101,16 +112,30 @@ export const fetchExercisesByStageId = async (
 
 /**
  * Maps API exercise type to ExerciseType enum
- * @param apiType - The exercise type from API (e.g., "different")
+ * @param apiType - The exercise type from API (e.g., "odd_one_out", "look_and_say", etc.)
  * @returns ExerciseType enum value
  */
 export const mapApiTypeToExerciseType = (apiType: string): ExerciseType => {
   switch (apiType) {
+    case "odd_one_out":
+      return ExerciseType.ODD_ONE_OUT;
+    case "look_and_say":
+      return ExerciseType.LOOK_AND_SAY;
+    case "shape_match":
+      return ExerciseType.SHAPE_MATCH;
+    case "picture_puzzle":
+      return ExerciseType.PICTURE_PUZZLE;
+    case "listen_and_pick":
+      return ExerciseType.LISTEN_AND_PICK;
+    case "sort_and_group":
+      return ExerciseType.SORT_AND_GROUP;
+    // Legacy support for old "different" type
     case "different":
       return ExerciseType.ODD_ONE_OUT;
-    // Add more mappings as needed
     default:
-      console.warn(`Unknown exercise type: ${apiType}, defaulting to ODD_ONE_OUT`);
+      console.warn(
+        `Unknown exercise type: ${apiType}, defaulting to ODD_ONE_OUT`
+      );
       return ExerciseType.ODD_ONE_OUT;
   }
 };

@@ -1,7 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -24,7 +23,9 @@ import {
   getCachedExercises,
   setCachedExercises,
 } from "../lib/cache/exercises-cache";
+import { PopulatedExercise } from "../lib/api/exercises";
 import { items, setItems } from "../lib/items-store";
+import { imagePreloader } from "../lib/image-preloader";
 
 export default function Task() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function Task() {
 
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
+  const [apiExercises, setApiExercises] = useState<PopulatedExercise[]>([]);
   const [isLastExercise, setIsLastExercise] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export default function Task() {
       console.log("[Task] Using cached exercises for stageId:", stageId);
       
       setStageExercises(cached.exercises);
+      setApiExercises(cached.apiExercises);
       
       // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
       const exerciseIndex = exerciseOrder - 1;
@@ -127,6 +130,7 @@ export default function Task() {
         setCachedExercises(stageId, mappedExercises, apiExercises);
 
         setStageExercises(mappedExercises);
+        setApiExercises(apiExercises);
 
         // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
         const exerciseIndex = exerciseOrder - 1;
@@ -175,11 +179,11 @@ export default function Task() {
 
   // Preload images when exercise changes
   useEffect(() => {
-    if (!currentExercise || !items.length) return;
+    if (!currentExercise || !items.length || !stageExercises.length) return;
 
     const imageUrls: string[] = [];
 
-    // Collect all image URLs from exercise items
+    // Collect all image URLs from current exercise items
     if (currentExercise.optionIds) {
       currentExercise.optionIds.forEach((id) => {
         const item = items.find((i) => i.id === id);
@@ -197,16 +201,45 @@ export default function Task() {
       }
     }
 
-    // Preload all images
+    // Preload current exercise images with high priority
     if (imageUrls.length > 0) {
-      imageUrls.forEach((url) => {
-        Image.prefetch(url).catch((err) => {
-          // Silently fail - images will load normally if prefetch fails
-          console.log("Image prefetch failed:", url, err);
-        });
+      imagePreloader.preloadBatch(imageUrls, "high").catch((err) => {
+        // Silently fail - images will load normally if prefetch fails
+        console.log("[Task] Current exercise image preload failed:", err);
       });
     }
-  }, [currentExercise]);
+
+    // Preload next exercise images in background (if exists)
+    const currentIndex = exerciseOrder - 1;
+    const nextApiExercise = apiExercises[currentIndex + 1];
+    
+    if (nextApiExercise) {
+      const nextImageUrls: string[] = [];
+      
+      // Extract image URLs from next exercise's API data
+      if (nextApiExercise.options) {
+        nextApiExercise.options.forEach((option) => {
+          if (option.img?.name) {
+            nextImageUrls.push(option.img.name);
+          }
+        });
+      }
+
+      // Add next exercise answer image if it exists
+      if (nextApiExercise.answer?.img?.name) {
+        if (!nextImageUrls.includes(nextApiExercise.answer.img.name)) {
+          nextImageUrls.push(nextApiExercise.answer.img.name);
+        }
+      }
+
+      // Preload next exercise images with normal priority (background)
+      if (nextImageUrls.length > 0) {
+        imagePreloader.preloadBatch(nextImageUrls, "normal").catch((err) => {
+          console.log("[Task] Next exercise image preload failed:", err);
+        });
+      }
+    }
+  }, [currentExercise, exerciseOrder, stageExercises, apiExercises]);
 
   useFocusEffect(
     useCallback(() => {

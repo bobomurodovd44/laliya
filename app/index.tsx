@@ -27,6 +27,7 @@ import { Colors, Spacing, Typography } from "../constants";
 import { exercises } from "../data/data";
 import { fetchStages, Stage } from "../lib/api/stages";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
+import { imagePreloader } from "../lib/image-preloader";
 
 interface LessonCard {
   order: number;
@@ -145,6 +146,13 @@ export default function Index() {
         });
         return;
       }
+
+      // Start preloading all images for this stage in the background
+      // This happens while navigating, so images will be ready when user arrives
+      imagePreloader.preloadStage(stageId).catch((err) => {
+        // Silently fail - preloading failures shouldn't block navigation
+        console.log("[Index] Image preloading started in background:", err);
+      });
 
       // Navigate immediately to task page with stage._id (ObjectId string)
       router.push(`/task?stageId=${stageId}&exerciseOrder=1`);

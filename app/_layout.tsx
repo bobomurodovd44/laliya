@@ -50,6 +50,7 @@ function RootLayoutNav() {
     if (isAuthenticated && user) {
       const currentPath = segments[0] || '';
       const isOnAddChildPage = currentPath === 'add-child';
+      const isOnPublicPage = currentPath === 'login' || currentPath === 'signup';
       
       // Check if user is missing childMeta
       const hasChildMeta = user.childMeta && 
@@ -57,9 +58,17 @@ function RootLayoutNav() {
         user.childMeta.age && 
         user.childMeta.gender;
       
-      // Redirect to add-child if missing childMeta and not already on that page
-      if (!hasChildMeta && !isOnAddChildPage) {
-        router.replace('/add-child');
+      // Redirect to add-child if missing childMeta and not already on that page or public pages
+      if (!hasChildMeta && !isOnAddChildPage && !isOnPublicPage) {
+        // Use setTimeout to ensure navigator is ready
+        const timer = setTimeout(() => {
+          try {
+            router.replace('/add-child');
+          } catch (error) {
+            console.warn('Navigation error:', error);
+          }
+        }, 150);
+        return () => clearTimeout(timer);
       }
     }
   }, [isAuthenticated, isInitialized, user, segments, router]);

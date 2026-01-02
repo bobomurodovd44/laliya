@@ -27,11 +27,15 @@ import {
 } from "../lib/cache/exercises-cache";
 import { imagePreloader } from "../lib/image-preloader";
 import { items, setItems } from "../lib/items-store";
+import { useAuthStore } from "../lib/store/auth-store";
+import { checkStageAccess } from "../lib/utils/stage-access";
+import app from "../lib/feathers/feathers-client";
 
 export default function Task() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { user } = useAuthStore();
 
   const stageId = params.stageId as string;
   const exerciseOrder = Number(params.exerciseOrder) || 1;
@@ -62,49 +66,81 @@ export default function Task() {
       return;
     }
 
+    // Check stage access before loading exercises
+    const verifyStageAccess = async () => {
+      try {
+        const stage = await app.service("stages").get(stageId);
+        const isAccessible = await checkStageAccess(stage, user?.currentStageId);
+        
+        if (!isAccessible) {
+          setError("Access denied: This stage is locked. Complete previous stages to unlock.");
+          setLoading(false);
+          setCurrentExercise(null);
+          // Redirect to home after a short delay
+          setTimeout(() => {
+            router.replace("/");
+          }, 2000);
+          return false;
+        }
+        return true;
+      } catch (err: any) {
+        setError(err.message || "Failed to verify stage access");
+        setLoading(false);
+        setCurrentExercise(null);
+        return false;
+      }
+    };
+
     // Check cache first
     const cached = getCachedExercises(stageId);
 
-    if (cached) {
-      // Use cached data - no loading needed
-      setStageExercises(cached.exercises);
-      setApiExercises(cached.apiExercises);
-
-      // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
-      const exerciseIndex = exerciseOrder - 1;
-
-      if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
-        const exercise = cached.exercises[exerciseIndex];
-        setCurrentExercise(exercise);
-        setIsLastExercise(exerciseOrder >= cached.exercises.length);
-        isCompletingRef.current = false;
-        previousExerciseOrderRef.current = exerciseOrder;
-
-        // Map and set items for the current exercise
-        const currentApiExercise = cached.apiExercises[exerciseIndex];
-        if (currentApiExercise) {
-          const { items: exerciseItems } =
-            mapPopulatedExerciseToExercise(currentApiExercise);
-          setItems(exerciseItems);
-        }
-
-        setLoading(false);
-        return;
-      } else {
-        setError(
-          `Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`
-        );
-        setLoading(false);
-        setCurrentExercise(null);
+    const loadData = async () => {
+      // Verify stage access first
+      const hasAccess = await verifyStageAccess();
+      if (!hasAccess) {
         return;
       }
-    }
 
-    // No cache - fetch from API
-    setCurrentExercise(null);
-    setLoading(true);
+      if (cached) {
+        // Use cached data - no loading needed
+        setStageExercises(cached.exercises);
+        setApiExercises(cached.apiExercises);
 
-    const loadExercises = async () => {
+        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+        const exerciseIndex = exerciseOrder - 1;
+
+        if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
+          const exercise = cached.exercises[exerciseIndex];
+          setCurrentExercise(exercise);
+          setIsLastExercise(exerciseOrder >= cached.exercises.length);
+          isCompletingRef.current = false;
+          previousExerciseOrderRef.current = exerciseOrder;
+
+          // Map and set items for the current exercise
+          const currentApiExercise = cached.apiExercises[exerciseIndex];
+          if (currentApiExercise) {
+            const { items: exerciseItems } =
+              mapPopulatedExerciseToExercise(currentApiExercise);
+            setItems(exerciseItems);
+          }
+
+          setLoading(false);
+          return;
+        } else {
+          setError(
+            `Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`
+          );
+          setLoading(false);
+          setCurrentExercise(null);
+          return;
+        }
+      }
+
+      // No cache - fetch from API
+      setCurrentExercise(null);
+      setLoading(true);
+
+      const loadExercises = async () => {
       try {
         // Fetch exercises from API
         const apiExercises = await fetchExercisesByStageId(stageId);
@@ -167,8 +203,11 @@ export default function Task() {
       }
     };
 
-    loadExercises();
-  }, [stageId, exerciseOrder]);
+      await loadExercises();
+    };
+
+    loadData();
+  }, [stageId, exerciseOrder, user?.currentStageId, router]);
 
   // Preload images when exercise changes - use InteractionManager to prevent blocking
   useEffect(() => {
@@ -269,10 +308,26 @@ export default function Task() {
     }, [currentExercise, exerciseOrder])
   );
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     // Only allow completion if not loading and exercise exists
     if (loading || !currentExercise || isCompletingRef.current) {
       return;
+    }
+
+    // Extra safety check: verify stage is still accessible
+    if (stageId) {
+      try {
+        const stage = await app.service("stages").get(stageId);
+        const isAccessible = await checkStageAccess(stage, user?.currentStageId);
+        if (!isAccessible) {
+          setError("Access denied: This stage is locked.");
+          router.replace("/");
+          return;
+        }
+      } catch (err) {
+        // If check fails, still allow completion (don't block user)
+        console.warn("Failed to verify stage access:", err);
+      }
     }
 
     // Mark as completing immediately to prevent multiple calls
@@ -297,7 +352,7 @@ export default function Task() {
         }, 100);
       });
     }
-  }, [currentExercise, loading]);
+  }, [currentExercise, loading, stageId, user?.currentStageId, router]);
 
   const renderExercise = () => {
     if (!currentExercise) return null;

@@ -20,6 +20,8 @@ import { exercises } from "../data/data";
 import { fetchStages, Stage } from "../lib/api/stages";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 import { imagePreloader } from "../lib/image-preloader";
+import { useAuthStore } from "../lib/store/auth-store";
+import { getUserMaxStageOrder, isStageAccessible } from "../lib/utils/stage-access";
 
 interface LessonCard {
   order: number;
@@ -36,9 +38,12 @@ interface LessonCard {
 export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
   const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
+  const [loadingStageAccess, setLoadingStageAccess] = useState(true);
   //
   const stageThemes = useMemo(
     () => [
@@ -54,6 +59,29 @@ export default function Index() {
   const verticalSpacing = 160;
   const cardSize = 135;
   const halfCard = cardSize / 2;
+
+  // Fetch user's max stage order
+  useEffect(() => {
+    const loadStageAccess = async () => {
+      try {
+        setLoadingStageAccess(true);
+        const maxOrder = await getUserMaxStageOrder(user?.currentStageId);
+        setMaxStageOrder(maxOrder);
+      } catch (err) {
+        // Default to 0 if error
+        setMaxStageOrder(0);
+      } finally {
+        setLoadingStageAccess(false);
+      }
+    };
+
+    if (user) {
+      loadStageAccess();
+    } else {
+      setMaxStageOrder(0);
+      setLoadingStageAccess(false);
+    }
+  }, [user?.currentStageId]);
 
   // Fetch stages from backend
   useEffect(() => {
@@ -90,29 +118,32 @@ export default function Index() {
   }, []);
 
   const lessons: (LessonCard & { stageId: string })[] = useMemo(() => {
-    return stages.map((stage, index) => ({
-      order: stage.order,
-      stageId: stage._id,
-      positionStyle:
-        index % 2 === 0
-          ? { top: 20 + index * verticalSpacing, right: "5%" }
-          : { top: 20 + index * verticalSpacing, left: "8%" },
-      isActive: true, // All stages are available
-      exerciseCount:
-        stage.numberOfExercises ??
-        exercises.filter((ex) => ex.stageId === stage.order).length,
-      theme: stageThemes[index % stageThemes.length],
-    }));
-  }, [stages, stageThemes, exercises]);
+    return stages.map((stage, index) => {
+      const isAccessible = isStageAccessible(stage, maxStageOrder);
+      return {
+        order: stage.order,
+        stageId: stage._id,
+        positionStyle:
+          index % 2 === 0
+            ? { top: 20 + index * verticalSpacing, right: "5%" }
+            : { top: 20 + index * verticalSpacing, left: "8%" },
+        isActive: isAccessible, // Only accessible stages are active
+        exerciseCount:
+          stage.numberOfExercises ??
+          exercises.filter((ex) => ex.stageId === stage.order).length,
+        theme: stageThemes[index % stageThemes.length],
+      };
+    });
+  }, [stages, stageThemes, exercises, maxStageOrder]);
 
   // Handler to navigate to task page
   const handleStagePress = useCallback(
     (stageId: string) => {
-      // Find the lesson to check exercise count
+      // Find the lesson to check exercise count and access
       const lesson = lessons.find((l) => l.stageId === stageId);
 
-      // Only navigate if the stage has exercises
-      if (!lesson || lesson.exerciseCount === 0) {
+      // Only navigate if the stage has exercises and is accessible
+      if (!lesson || lesson.exerciseCount === 0 || !lesson.isActive) {
         return;
       }
 
@@ -213,7 +244,7 @@ export default function Index() {
           <View style={styles.starBadge}>
             <Ionicons name="star" size={28} color={Colors.badgeStar} />
             <Body style={styles.starCount} weight="bold">
-              1,240
+              {user?.score?.toLocaleString() || "0"}
             </Body>
           </View>
         </View>
@@ -275,7 +306,8 @@ export default function Index() {
                   <TouchableOpacity
                     style={styles.lessonCardOuter}
                     onPress={() => handleStagePress(lesson.stageId)}
-                    activeOpacity={0.85}
+                    activeOpacity={lesson.isActive ? 0.85 : 1}
+                    disabled={!lesson.isActive}
                   >
                     <LinearGradient
                       colors={[lesson.theme.primary, lesson.theme.secondary]}
@@ -284,11 +316,22 @@ export default function Index() {
                       style={[
                         styles.lessonCard,
                         lesson.isActive && styles.lessonCardActive,
+                        !lesson.isActive && styles.lessonCardDisabled,
                       ]}
                     >
                       <Body style={styles.stageOrderText} weight="bold">
                         {lesson.order}
                       </Body>
+                      {!lesson.isActive && (
+                        <View style={styles.lockIconContainer}>
+                          <Ionicons
+                            name="lock-closed"
+                            size={24}
+                            color="#FFFFFF"
+                            style={styles.lockIcon}
+                          />
+                        </View>
+                      )}
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -423,8 +466,24 @@ const styles = StyleSheet.create({
     borderColor: Colors.backgroundLight,
     borderWidth: Spacing.borderWidth.xthick,
   },
+  lessonCardDisabled: {
+    opacity: 0.5,
+  },
   lessonCardNavigating: {
     opacity: 0.7,
+  },
+  lockIconContainer: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 12,
+    padding: 4,
+  },
+  lockIcon: {
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   cardInnerGlow: {
     position: "absolute",

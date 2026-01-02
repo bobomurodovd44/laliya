@@ -1,47 +1,47 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Input } from '../components/Input';
-import { PageContainer } from '../components/layout/PageContainer';
-import { Body, Title, Subtitle } from '../components/Typography';
-import { Colors, Spacing, Typography } from '../constants';
-import { signUpWithEmailPassword } from '../lib/auth/firebase-auth';
-import { authenticateWithFeathers } from '../lib/auth/feathers-auth';
-import { useAuthStore } from '../lib/store/auth-store';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Input } from "../components/Input";
+import { PageContainer } from "../components/layout/PageContainer";
+import { Body, Subtitle, Title } from "../components/Typography";
+import { Colors, Spacing, Typography } from "../constants";
+import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
+import { signUpWithEmailPassword } from "../lib/auth/firebase-auth";
+import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Signup() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setAuthenticated } = useAuthStore();
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
@@ -55,28 +55,17 @@ export default function Signup() {
       // For signup, we pass fullName and role to create the user in the backend
       const feathersResult = await authenticateWithFeathers(accessToken, {
         fullName: name.trim(),
-        role: 'user',
+        role: "user",
       });
 
       // Step 3: Update auth store with user data
+      // The _layout.tsx will handle redirects based on user state
       setAuthenticated(feathersResult.user);
 
-      // Step 4: Check if user has childMeta and redirect accordingly
-      // New users won't have childMeta, so redirect to add-child
-      const hasChildMeta = feathersResult.user?.childMeta && 
-        feathersResult.user.childMeta.fullName && 
-        feathersResult.user.childMeta.age && 
-        feathersResult.user.childMeta.gender;
-      
-      if (hasChildMeta) {
-        // User has childMeta, go to home
-        router.replace('/');
-      } else {
-        // User missing childMeta, redirect to add-child page
-        router.replace('/add-child');
-      }
+      // Navigate to home - _layout will redirect to add-child if needed
+      router.replace("/");
     } catch (err: any) {
-      setError(err.message || 'Signup failed. Please try again.');
+      setError(err.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -88,13 +77,16 @@ export default function Signup() {
 
   return (
     <PageContainer useFloatingShapes>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView 
+        <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 40 }]}>
@@ -108,7 +100,7 @@ export default function Signup() {
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
-                  setError('');
+                  setError("");
                 }}
                 autoCapitalize="words"
               />
@@ -119,7 +111,7 @@ export default function Signup() {
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
-                  setError('');
+                  setError("");
                 }}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -131,7 +123,7 @@ export default function Signup() {
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
-                  setError('');
+                  setError("");
                 }}
                 isPassword
               />
@@ -144,32 +136,50 @@ export default function Signup() {
             ) : null}
 
             <TouchableOpacity
-              style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+              style={[
+                styles.signupButton,
+                loading && styles.signupButtonDisabled,
+              ]}
               onPress={handleSignup}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color={Colors.textWhite} />
               ) : (
-                <Body style={styles.signupButtonText} weight="bold">SIGN UP</Body>
+                <Body style={styles.signupButtonText} weight="bold">
+                  SIGN UP
+                </Body>
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.loginLink} 
-              onPress={() => router.push('/login')}
+
+            <TouchableOpacity
+              style={styles.loginLink}
+              onPress={() => router.push("/login")}
             >
               <Body style={styles.loginLinkText}>
-                Already have an account? <Body style={styles.loginLinkHighlight}>Login</Body>
+                Already have an account?{" "}
+                <Body style={styles.loginLinkHighlight}>Login</Body>
               </Body>
             </TouchableOpacity>
           </View>
 
           <View style={styles.bottomContainer}>
-            <Body style={styles.orText} weight="bold">OR</Body>
-            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
-              <Ionicons name="logo-google" size={24} color={Colors.textWhite} style={styles.googleIcon} />
-              <Body style={styles.googleButtonText} weight="bold">Continue with Google</Body>
+            <Body style={styles.orText} weight="bold">
+              OR
+            </Body>
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleSignup}
+            >
+              <Ionicons
+                name="logo-google"
+                size={24}
+                color={Colors.textWhite}
+                style={styles.googleIcon}
+              />
+              <Body style={styles.googleButtonText} weight="bold">
+                Continue with Google
+              </Body>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -181,28 +191,28 @@ export default function Signup() {
 const styles = StyleSheet.create({
   contentContainer: {
     flexGrow: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.padding.xxl,
   },
   formContainer: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   subtitle: {
     marginBottom: Spacing.margin.xxxxl,
   },
   inputGroup: {
-    width: '100%',
+    width: "100%",
     gap: Spacing.gap.lg,
     marginBottom: Spacing.margin.xxxl,
   },
   signupButton: {
-    width: '100%',
+    width: "100%",
     height: Spacing.size.buttonHeight.large,
     backgroundColor: Colors.secondary,
     borderRadius: Spacing.radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: Colors.secondary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -222,7 +232,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   errorContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: Spacing.margin.lg,
     padding: Spacing.padding.md,
     backgroundColor: Colors.errorLight,
@@ -233,7 +243,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: Typography.fontSize.sm,
     color: Colors.error,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loginLink: {
     marginBottom: Spacing.margin.xl,
@@ -247,8 +257,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.bold,
   },
   bottomContainer: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   orText: {
     fontFamily: Typography.fontFamily.primary,
@@ -257,13 +267,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.margin.xl,
   },
   googleButton: {
-    width: '100%',
+    width: "100%",
     height: Spacing.size.buttonHeight.medium,
     backgroundColor: Colors.buttonGoogle,
     borderRadius: Spacing.radius.lg,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     borderBottomWidth: Spacing.borderWidth.xthick,
     borderBottomColor: Colors.buttonGoogleDark,
     shadowColor: Colors.buttonGoogle,

@@ -52,21 +52,11 @@ export default function Login() {
       });
 
       // Step 3: Update auth store with user data
+      // The _layout.tsx will handle redirects based on user state
       setAuthenticated(feathersResult.user);
-
-      // Step 4: Check if user has childMeta and redirect accordingly
-      const hasChildMeta = feathersResult.user?.childMeta && 
-        feathersResult.user.childMeta.fullName && 
-        feathersResult.user.childMeta.age && 
-        feathersResult.user.childMeta.gender;
       
-      if (hasChildMeta) {
-        // User has childMeta, go to home
-        router.replace("/");
-      } else {
-        // User missing childMeta, redirect to add-child page
-        router.replace("/add-child");
-      }
+      // Navigate to home - _layout will redirect to add-child if needed
+      router.replace("/");
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");
     } finally {

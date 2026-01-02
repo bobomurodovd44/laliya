@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -23,7 +24,7 @@ import {
   getCachedExercises,
   setCachedExercises,
 } from "../lib/cache/exercises-cache";
-import { setItems } from "../lib/items-store";
+import { items, setItems } from "../lib/items-store";
 
 export default function Task() {
   const router = useRouter();
@@ -41,6 +42,8 @@ export default function Task() {
   const [error, setError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const confettiRef = useRef<ConfettiCannon>(null);
+  const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isCompletingRef = useRef(false);
 
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
@@ -70,6 +73,7 @@ export default function Task() {
         const exercise = cached.exercises[exerciseIndex];
         setCurrentExercise(exercise);
         setIsLastExercise(exerciseOrder >= cached.exercises.length);
+        isCompletingRef.current = false;
         
         // Map and set items for the current exercise
         const currentApiExercise = cached.apiExercises[exerciseIndex];
@@ -157,6 +161,7 @@ export default function Task() {
         setCurrentExercise(exercise);
         setIsLastExercise(exerciseOrder >= mappedExercises.length);
         setIsCompleted(false);
+        isCompletingRef.current = false;
         setLoading(false);
       } catch (err: any) {
         console.error("Error loading exercises:", err);
@@ -168,6 +173,41 @@ export default function Task() {
     loadExercises();
   }, [stageId, exerciseOrder]);
 
+  // Preload images when exercise changes
+  useEffect(() => {
+    if (!currentExercise || !items.length) return;
+
+    const imageUrls: string[] = [];
+
+    // Collect all image URLs from exercise items
+    if (currentExercise.optionIds) {
+      currentExercise.optionIds.forEach((id) => {
+        const item = items.find((i) => i.id === id);
+        if (item?.imageUrl) {
+          imageUrls.push(item.imageUrl);
+        }
+      });
+    }
+
+    // Add answer item image if it exists
+    if (currentExercise.answerId) {
+      const answerItem = items.find((i) => i.id === currentExercise.answerId);
+      if (answerItem?.imageUrl && !imageUrls.includes(answerItem.imageUrl)) {
+        imageUrls.push(answerItem.imageUrl);
+      }
+    }
+
+    // Preload all images
+    if (imageUrls.length > 0) {
+      imageUrls.forEach((url) => {
+        Image.prefetch(url).catch((err) => {
+          // Silently fail - images will load normally if prefetch fails
+          console.log("Image prefetch failed:", url, err);
+        });
+      });
+    }
+  }, [currentExercise]);
+
   useFocusEffect(
     useCallback(() => {
       // Reset state when page comes into focus (but not on initial mount)
@@ -176,22 +216,41 @@ export default function Task() {
       if (currentExercise) {
         setResetKey((prev) => prev + 1);
         setIsCompleted(false);
+        isCompletingRef.current = false;
+        if (completionTimeoutRef.current) {
+          clearTimeout(completionTimeoutRef.current);
+          completionTimeoutRef.current = null;
+        }
       }
     }, [currentExercise])
   );
 
   const handleComplete = useCallback(() => {
     // Only allow completion if not loading and exercise exists
-    if (loading || !currentExercise) {
+    if (loading || !currentExercise || isCompletingRef.current) {
       return;
     }
 
-    setIsCompleted(true);
+    // Mark as completing immediately to prevent multiple calls
+    isCompletingRef.current = true;
 
-    // Only trigger confetti if not loading and not LOOK_AND_SAY type
-    if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-      confettiRef.current?.start();
+    // Clear any existing timeout
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current);
     }
+
+    // Use requestAnimationFrame to ensure UI updates happen first
+    requestAnimationFrame(() => {
+      setIsCompleted(true);
+
+      // Only trigger confetti if not loading and not LOOK_AND_SAY type
+      if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
+        // Small delay for confetti to ensure state is updated
+        setTimeout(() => {
+          confettiRef.current?.start();
+        }, 50);
+      }
+    });
   }, [currentExercise, loading]);
 
   const renderExercise = () => {

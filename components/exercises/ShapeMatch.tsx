@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Dimensions, Image, StyleSheet, View } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -19,6 +19,7 @@ import Animated, {
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
 import { Body, Title } from "../Typography";
+import ImageWithLoader from "../common/ImageWithLoader";
 
 interface ShapeMatchProps {
   exercise: Exercise;
@@ -139,6 +140,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   useEffect(() => {
     // Reset all state
     setIsCompleted(false);
+    isCompletedRef.current = false;
     targetPositionRef.current = null;
 
     // Get new random color for the shape
@@ -151,13 +153,22 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     setRemountKey((prev) => prev + 1); // Force re-measurement
   }, [exerciseId, exerciseItems, ensureShuffled]);
 
+  // Guard to prevent multiple onComplete calls
+  const isCompletedRef = useRef(false);
+
   // Handle correct match - complete the exercise
   const handleCorrectMatch = useCallback(() => {
-    if (isCompleted) return; // Prevent multiple completions
+    if (isCompleted || isCompletedRef.current) return; // Prevent multiple completions
 
+    // Mark as completed immediately
+    isCompletedRef.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
-    onComplete();
+    
+    // Call onComplete asynchronously to prevent blocking
+    requestAnimationFrame(() => {
+      onComplete();
+    });
   }, [isCompleted, onComplete]);
 
   const handleWrongMatch = useCallback(() => {
@@ -407,7 +418,7 @@ function DraggableCard({
         onLayout={measureCard}
       >
         {item.imageUrl ? (
-          <Image
+          <ImageWithLoader
             source={{ uri: item.imageUrl }}
             style={[styles.cardImage, { width: cardSize, height: cardSize }]}
             resizeMode="cover"
@@ -481,17 +492,17 @@ function TargetCard({
     >
       {item.imageUrl ? (
         <View style={styles.blurContainer}>
-          <Image
+          <ImageWithLoader
             source={{ uri: item.imageUrl }}
             style={[
               styles.cardImage,
               {
                 width: cardSize,
                 height: cardSize,
-                tintColor: isCompleted ? undefined : shapeColor,
               },
             ]}
             resizeMode="contain"
+            tintColor={isCompleted ? undefined : shapeColor}
           />
         </View>
       ) : (

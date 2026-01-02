@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -51,6 +51,9 @@ export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzlePro
 }
 
 function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSolved: () => void, question: string }) {
+  // Guard to prevent multiple onSolved calls
+  const isSolvedRef = useRef(false);
+  
   // Initialize game state with valid starting positions
   const [gameState] = useState(() => {
     // 1. Fisher-Yates Shuffle
@@ -90,10 +93,23 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
   }, [piecesPlacement]);
 
   useEffect(() => {
-    if (isSolved) {
-       onSolved();
+    if (isSolved && !isSolvedRef.current) {
+      // Mark as solved immediately
+      isSolvedRef.current = true;
+      
+      // Call onSolved asynchronously to prevent blocking
+      requestAnimationFrame(() => {
+        onSolved();
+      });
     }
   }, [isSolved, onSolved]);
+  
+  // Reset guard when puzzle resets (if needed)
+  useEffect(() => {
+    if (!isSolved) {
+      isSolvedRef.current = false;
+    }
+  }, [isSolved]);
 
   const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
       setPiecesPlacement(prev => {

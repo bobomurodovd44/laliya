@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,6 +11,7 @@ import { Exercise, Item } from '../../data/data';
 import { items } from '../../lib/items-store';
 import { Body, Title } from '../Typography';
 import TryAgainModal from '../TryAgainModal';
+import ImageWithLoader from '../common/ImageWithLoader';
 
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -33,6 +34,9 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   const [showTryAgain, setShowTryAgain] = useState(false);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
   
+  // Guard to prevent multiple onComplete calls
+  const isCompletedRef = useRef(false);
+  
   // Animation value for shake effect
   const shake = useSharedValue(0);
 
@@ -50,6 +54,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     setSelectedId(null);
     setIsCorrect(null);
     setShowTryAgain(false);
+    isCompletedRef.current = false;
     
     // Shuffle items - ensure different order each time
     let shuffled = shuffleArray(currentExerciseItems);
@@ -65,16 +70,22 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     setShuffledItems(shuffled);
   }, [exerciseId, exercise.optionIds]);
 
-  const handleSelect = (itemId: number) => {
+  const handleSelect = useCallback((itemId: number) => {
     // If already completed, do nothing
-    if (isCorrect === true) return;
+    if (isCorrect === true || isCompletedRef.current) return;
 
     setSelectedId(itemId);
     
     if (itemId === exercise.answerId) {
+      // Mark as completed immediately to prevent multiple calls
+      isCompletedRef.current = true;
       setIsCorrect(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      onComplete();
+      
+      // Call onComplete asynchronously to prevent blocking
+      requestAnimationFrame(() => {
+        onComplete();
+      });
     } else {
       setIsCorrect(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -89,7 +100,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
         withTiming(0, { duration: 50 })
       );
     }
-  };
+  }, [isCorrect, exercise.answerId, onComplete]);
 
   const shakeStyle = useAnimatedStyle(() => {
     return {
@@ -132,7 +143,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
                   disabled={isCorrect === true}
                 >
                   {item.imageUrl && (
-                    <Image
+                    <ImageWithLoader
                       source={{ uri: item.imageUrl }}
                       style={styles.image}
                       resizeMode="cover"

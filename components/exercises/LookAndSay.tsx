@@ -1,6 +1,6 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -14,6 +14,7 @@ import { Exercise } from '../../data/data';
 import { items } from '../../lib/items-store';
 import { Body, Title } from '../Typography';
 import { DuoButton } from '../DuoButton';
+import ImageWithLoader from '../common/ImageWithLoader';
 
 interface LookAndSayProps {
   exercise: Exercise;
@@ -216,7 +217,7 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
           {/* Image Area - Takes remaining space */}
           <View style={styles.imageContainer}>
              {item.imageUrl && (
-                <Image
+                <ImageWithLoader
                 source={{ uri: item.imageUrl }}
                 style={styles.image}
                 resizeMode="cover"

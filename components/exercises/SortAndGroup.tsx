@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -14,6 +14,7 @@ import { categories, Exercise, Item } from '../../data/data';
 import { items } from '../../lib/items-store';
 import { Colors, Spacing, Typography } from '../../constants';
 import { Body, Title } from '../Typography';
+import ImageWithLoader from '../common/ImageWithLoader';
 
 interface SortAndGroupProps {
   exercise: Exercise;
@@ -96,6 +97,9 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
   
   // Track if completed
   const [isCompleted, setIsCompleted] = useState(false);
+  
+  // Guard to prevent multiple onComplete calls
+  const isCompletedRef = useRef(false);
 
   // Position refs for category drop zones
   const topCategoryPositionRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -118,6 +122,7 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
     });
     setItemPlacements(placements);
     setIsCompleted(false);
+    isCompletedRef.current = false;
   }, [exerciseId, exerciseItems, category1, category2]);
 
   // Check if all items are correctly placed
@@ -138,10 +143,16 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
 
   // Update completion status
   useEffect(() => {
-    if (checkCompletion() && !isCompleted) {
+    if (checkCompletion() && !isCompleted && !isCompletedRef.current) {
+      // Mark as completed immediately
+      isCompletedRef.current = true;
       setIsCompleted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      onComplete();
+      
+      // Call onComplete asynchronously to prevent blocking
+      requestAnimationFrame(() => {
+        onComplete();
+      });
     }
   }, [itemPlacements, checkCompletion, isCompleted, onComplete]);
 
@@ -271,7 +282,7 @@ function CategoryDropZone({ category, cardSize, onLayout, isCompleted, itemsInCa
         {itemsInCategory.map((item) => (
           <View key={item.id} style={[styles.placedCard, { width: cardSize, height: cardSize }]}>
             {item.imageUrl && (
-              <Image
+              <ImageWithLoader
                 source={{ uri: item.imageUrl }}
                 style={styles.placedImage}
                 resizeMode="cover"
@@ -445,7 +456,7 @@ function DraggableCard({
         onLayout={measureCard}
       >
         {item.imageUrl ? (
-          <Image
+          <ImageWithLoader
             source={{ uri: item.imageUrl }}
             style={styles.cardImage}
             resizeMode="cover"

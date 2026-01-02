@@ -9,8 +9,8 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
   useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -99,7 +99,9 @@ export default function Index() {
           ? { top: 20 + index * verticalSpacing, right: "5%" }
           : { top: 20 + index * verticalSpacing, left: "8%" },
       isActive: true, // All stages are available
-      exerciseCount: stage.numberOfExercises ?? exercises.filter((ex) => ex.stageId === stage.order).length,
+      exerciseCount:
+        stage.numberOfExercises ??
+        exercises.filter((ex) => ex.stageId === stage.order).length,
       theme: stageThemes[index % stageThemes.length],
     }));
   }, [stages, stageThemes, exercises]);
@@ -233,7 +235,9 @@ export default function Index() {
             <View
               style={[
                 styles.pathContainer,
-                { height: Math.max(lessons.length * verticalSpacing + 260, 720) },
+                {
+                  height: Math.max(lessons.length * verticalSpacing + 260, 720),
+                },
               ]}
             >
               <Svg style={StyleSheet.absoluteFill} pointerEvents="none">

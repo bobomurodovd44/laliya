@@ -165,10 +165,8 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
     
-    // Call onComplete asynchronously to prevent blocking
-    requestAnimationFrame(() => {
-      onComplete();
-    });
+    // Call onComplete directly
+    onComplete();
   }, [isCompleted, onComplete]);
 
   const handleWrongMatch = useCallback(() => {

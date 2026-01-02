@@ -125,10 +125,8 @@ export default function ListenAndPick({ exercise, onComplete }: ListenAndPickPro
       setIsCorrect(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Call onComplete asynchronously to prevent blocking
-      requestAnimationFrame(() => {
-        onComplete();
-      });
+      // Call onComplete directly
+      onComplete();
     } else {
       setIsCorrect(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

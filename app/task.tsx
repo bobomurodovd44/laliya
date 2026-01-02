@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
+import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -11,6 +11,7 @@ import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
 import SortAndGroup from "../components/exercises/SortAndGroup";
 import { PageContainer } from "../components/layout/PageContainer";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 import { ProgressBar } from "../components/ProgressBar";
 import { Body } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
@@ -177,68 +178,75 @@ export default function Task() {
     loadExercises();
   }, [stageId, exerciseOrder]);
 
-  // Preload images when exercise changes
+  // Preload images when exercise changes - use InteractionManager to prevent blocking
   useEffect(() => {
     if (!currentExercise || !items.length || !stageExercises.length) return;
 
-    const imageUrls: string[] = [];
+    // Defer image preloading to prevent blocking UI
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      const imageUrls: string[] = [];
 
-    // Collect all image URLs from current exercise items
-    if (currentExercise.optionIds) {
-      currentExercise.optionIds.forEach((id) => {
-        const item = items.find((i) => i.id === id);
-        if (item?.imageUrl) {
-          imageUrls.push(item.imageUrl);
-        }
-      });
-    }
-
-    // Add answer item image if it exists
-    if (currentExercise.answerId) {
-      const answerItem = items.find((i) => i.id === currentExercise.answerId);
-      if (answerItem?.imageUrl && !imageUrls.includes(answerItem.imageUrl)) {
-        imageUrls.push(answerItem.imageUrl);
-      }
-    }
-
-    // Preload current exercise images with high priority
-    if (imageUrls.length > 0) {
-      imagePreloader.preloadBatch(imageUrls, "high").catch((err) => {
-        // Silently fail - images will load normally if prefetch fails
-        console.log("[Task] Current exercise image preload failed:", err);
-      });
-    }
-
-    // Preload next exercise images in background (if exists)
-    const currentIndex = exerciseOrder - 1;
-    const nextApiExercise = apiExercises[currentIndex + 1];
-    
-    if (nextApiExercise) {
-      const nextImageUrls: string[] = [];
-      
-      // Extract image URLs from next exercise's API data
-      if (nextApiExercise.options) {
-        nextApiExercise.options.forEach((option) => {
-          if (option.img?.name) {
-            nextImageUrls.push(option.img.name);
+      // Collect all image URLs from current exercise items
+      if (currentExercise.optionIds) {
+        currentExercise.optionIds.forEach((id) => {
+          const item = items.find((i) => i.id === id);
+          if (item?.imageUrl) {
+            imageUrls.push(item.imageUrl);
           }
         });
       }
 
-      // Add next exercise answer image if it exists
-      if (nextApiExercise.answer?.img?.name) {
-        if (!nextImageUrls.includes(nextApiExercise.answer.img.name)) {
-          nextImageUrls.push(nextApiExercise.answer.img.name);
+      // Add answer item image if it exists
+      if (currentExercise.answerId) {
+        const answerItem = items.find((i) => i.id === currentExercise.answerId);
+        if (answerItem?.imageUrl && !imageUrls.includes(answerItem.imageUrl)) {
+          imageUrls.push(answerItem.imageUrl);
         }
       }
 
-      // Preload next exercise images with normal priority (background)
-      if (nextImageUrls.length > 0) {
-        imagePreloader.preloadBatch(nextImageUrls, "normal").catch((err) => {
-          console.log("[Task] Next exercise image preload failed:", err);
+      // Preload current exercise images with high priority
+      if (imageUrls.length > 0) {
+        imagePreloader.preloadBatch(imageUrls, "high").catch((err) => {
+          // Silently fail - images will load normally if prefetch fails
+          console.log("[Task] Current exercise image preload failed:", err);
         });
       }
-    }
+
+      // Preload next exercise images in background (if exists)
+      const currentIndex = exerciseOrder - 1;
+      const nextApiExercise = apiExercises[currentIndex + 1];
+      
+      if (nextApiExercise) {
+        const nextImageUrls: string[] = [];
+        
+        // Extract image URLs from next exercise's API data
+        if (nextApiExercise.options) {
+          nextApiExercise.options.forEach((option) => {
+            if (option.img?.name) {
+              nextImageUrls.push(option.img.name);
+            }
+          });
+        }
+
+        // Add next exercise answer image if it exists
+        if (nextApiExercise.answer?.img?.name) {
+          if (!nextImageUrls.includes(nextApiExercise.answer.img.name)) {
+            nextImageUrls.push(nextApiExercise.answer.img.name);
+          }
+        }
+
+        // Preload next exercise images with normal priority (background)
+        if (nextImageUrls.length > 0) {
+          imagePreloader.preloadBatch(nextImageUrls, "normal").catch((err) => {
+            console.log("[Task] Next exercise image preload failed:", err);
+          });
+        }
+      }
+    });
+
+    return () => {
+      interaction.cancel();
+    };
   }, [currentExercise, exerciseOrder, stageExercises, apiExercises]);
 
   useFocusEffect(
@@ -272,18 +280,13 @@ export default function Task() {
       clearTimeout(completionTimeoutRef.current);
     }
 
-    // Use requestAnimationFrame to ensure UI updates happen first
-    requestAnimationFrame(() => {
-      setIsCompleted(true);
+    // Update state immediately
+    setIsCompleted(true);
 
-      // Only trigger confetti if not loading and not LOOK_AND_SAY type
-      if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-        // Small delay for confetti to ensure state is updated
-        setTimeout(() => {
-          confettiRef.current?.start();
-        }, 50);
-      }
-    });
+    // Trigger confetti immediately if not LOOK_AND_SAY type
+    if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
+      confettiRef.current?.start();
+    }
   }, [currentExercise, loading]);
 
   const renderExercise = () => {
@@ -348,14 +351,18 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId) {
-      router.push(
-        `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
-      );
+      InteractionManager.runAfterInteractions(() => {
+        router.push(
+          `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
+        );
+      });
     }
   }, [isLastExercise, stageId, exerciseOrder, router]);
 
   const handleSubmit = useCallback(() => {
-    router.push("/");
+    InteractionManager.runAfterInteractions(() => {
+      router.push("/");
+    });
   }, [router]);
 
   const progress =
@@ -366,12 +373,11 @@ export default function Task() {
       <PageContainer>
         <View
           style={[
-            styles.errorContainer,
+            styles.loadingContainer,
             { paddingTop: insets.top + Spacing.padding.xxl },
           ]}
         >
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Body style={styles.loadingText}>Loading exercises...</Body>
+          <LoadingSpinner message="Loading exercises..." size="large" />
         </View>
       </PageContainer>
     );
@@ -457,6 +463,11 @@ const styles = StyleSheet.create({
     padding: Spacing.padding.lg,
     paddingBottom: Spacing.padding.xxl,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
@@ -467,10 +478,5 @@ const styles = StyleSheet.create({
     color: Colors.error,
     textAlign: "center",
     padding: Spacing.padding.lg,
-  },
-  loadingText: {
-    marginTop: Spacing.margin.md,
-    color: Colors.secondary,
-    fontSize: Spacing.size.icon.medium,
   },
 });

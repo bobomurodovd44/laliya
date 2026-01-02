@@ -149,10 +149,8 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
       setIsCompleted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Call onComplete asynchronously to prevent blocking
-      requestAnimationFrame(() => {
-        onComplete();
-      });
+      // Call onComplete directly
+      onComplete();
     }
   }, [itemPlacements, checkCompletion, isCompleted, onComplete]);
 

@@ -9,7 +9,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Image,
   ScrollView,
@@ -22,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { FloatingShapesBackground } from "../components/layout/FloatingShapesBackground";
 import { PageContainer } from "../components/layout/PageContainer";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 import { Body } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { exercises } from "../data/data";
@@ -266,8 +266,7 @@ export default function Index() {
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Body style={styles.loadingText}>Loading stages...</Body>
+            <LoadingSpinner message="Loading stages..." size="large" />
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -588,11 +587,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.padding.xxl,
     minHeight: 400,
-  },
-  loadingText: {
-    marginTop: Spacing.margin.md,
-    color: Colors.secondary,
-    fontSize: Typography.fontSize.lg,
   },
   errorContainer: {
     flex: 1,

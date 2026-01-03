@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -54,7 +54,6 @@ interface StageGroup {
   stageOrder: number;
   answerCount: number;
   latestAnswerDate: number;
-  sampleImageUrl?: string;
 }
 
 export default function ChildAnswers() {
@@ -66,6 +65,18 @@ export default function ChildAnswers() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stage color themes for gradients
+  const stageThemes = useMemo(
+    () => [
+      Colors.gradientOrange,
+      Colors.gradientPurple,
+      Colors.gradientGreen,
+      Colors.gradientRed,
+      Colors.gradientBlue,
+    ],
+    []
+  );
 
   // Fetch answers and group by stages
   const fetchStages = useCallback(async () => {
@@ -107,7 +118,6 @@ export default function ChildAnswers() {
           stageOrder: number;
           answers: Answer[];
           latestDate: number;
-          sampleImageUrl?: string;
         }
       >();
 
@@ -123,20 +133,12 @@ export default function ChildAnswers() {
           if (answer.createdAt > existing.latestDate) {
             existing.latestDate = answer.createdAt;
           }
-          // Update sample image if available
-          if (
-            !existing.sampleImageUrl &&
-            answer.exercise?.options?.[0]?.img?.name
-          ) {
-            existing.sampleImageUrl = answer.exercise.options[0].img.name;
-          }
         } else {
           stageMap.set(stageId, {
             stageId,
             stageOrder,
             answers: [answer],
             latestDate: answer.createdAt,
-            sampleImageUrl: answer.exercise?.options?.[0]?.img?.name,
           });
         }
       });
@@ -148,7 +150,6 @@ export default function ChildAnswers() {
           stageOrder: group.stageOrder,
           answerCount: group.answers.length,
           latestAnswerDate: group.latestDate,
-          sampleImageUrl: group.sampleImageUrl,
         }))
         .sort((a, b) => a.stageOrder - b.stageOrder);
 
@@ -166,24 +167,6 @@ export default function ChildAnswers() {
     fetchStages();
   }, [fetchStages]);
 
-  // Format date
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return "Today";
-    } else if (diffDays === 1) {
-      return "Yesterday";
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
   // Handle stage press
   const handleStagePress = useCallback(
     (stageId: string) => {
@@ -198,45 +181,40 @@ export default function ChildAnswers() {
   // Render stage card
   const renderStageCard = useCallback(
     ({ item: stage }: { item: StageGroup }) => {
+      const theme = stageThemes[(stage.stageOrder - 1) % stageThemes.length];
       return (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => handleStagePress(stage.stageId)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderLeft}>
-              {stage.sampleImageUrl && (
-                <Image
-                  source={{ uri: stage.sampleImageUrl }}
-                  style={styles.exerciseImage}
-                  contentFit="cover"
-                  transition={200}
-                />
-              )}
-              <View style={styles.cardInfo}>
-                <Body weight="bold" style={styles.exerciseTitle}>
-                  Stage {stage.stageOrder}
-                </Body>
-                <Body style={styles.stageInfo}>
-                  {stage.answerCount}{" "}
-                  {stage.answerCount === 1 ? "answer" : "answers"}
-                </Body>
-                <Body style={styles.dateInfo}>
-                  {formatDate(stage.latestAnswerDate)}
-                </Body>
+        <View style={styles.cardContainer}>
+          <TouchableOpacity
+            onPress={() => handleStagePress(stage.stageId)}
+            activeOpacity={0.85}
+            style={styles.cardTouchable}
+          >
+            <LinearGradient
+              colors={[theme.primary, theme.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.card}
+            >
+              <View style={styles.cardContent}>
+                <View style={styles.stageTitleContainer}>
+                  <Title size="medium" style={styles.stageTitle}>
+                    Stage {stage.stageOrder}
+                  </Title>
+                </View>
+                <View style={styles.chevronContainer}>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={36}
+                    color={Colors.textWhite}
+                  />
+                </View>
               </View>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={24}
-              color={Colors.textSecondary}
-            />
-          </View>
-        </TouchableOpacity>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       );
     },
-    [handleStagePress]
+    [handleStagePress, stageThemes]
   );
 
   // Handle refresh
@@ -253,11 +231,11 @@ export default function ChildAnswers() {
   }, [fetchStages]);
 
   return (
-    <PageContainer>
+    <PageContainer useFloatingShapes={true} floatingShapesCount={5}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.push("/profile")}
           activeOpacity={0.7}
         >
           <View style={styles.backButtonContainer}>
@@ -381,72 +359,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: Spacing.padding.xl,
   },
-  card: {
-    backgroundColor: Colors.backgroundLight,
-    borderRadius: Spacing.radius.lg,
-    padding: Spacing.padding.lg,
+  cardContainer: {
     marginBottom: Spacing.margin.md,
+    borderRadius: Spacing.radius.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  cardTouchable: {
+    borderRadius: Spacing.radius.xl,
+    overflow: "hidden",
+  },
+  card: {
+    borderRadius: Spacing.radius.xl,
+    padding: Spacing.padding.lg,
     borderWidth: Spacing.borderWidth.medium,
-    borderColor: Colors.borderDark,
+    borderColor: "rgba(255, 255, 255, 0.3)",
     borderBottomWidth: Spacing.borderWidth.xxthick,
   },
-  cardHeader: {
-    marginBottom: Spacing.margin.md,
-  },
-  cardHeaderLeft: {
+  cardContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  exerciseImage: {
-    width: 60,
-    height: 60,
-    borderRadius: Spacing.radius.md,
-    marginRight: Spacing.margin.md,
-    backgroundColor: Colors.backgroundDark,
-  },
-  cardInfo: {
+  stageTitleContainer: {
     flex: 1,
-  },
-  exerciseTitle: {
-    fontSize: Typography.fontSize.lg,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.margin.xs,
-  },
-  stageInfo: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.margin.xs,
-  },
-  dateInfo: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.textTertiary,
-  },
-  audioSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: Spacing.padding.md,
-    borderTopWidth: Spacing.borderWidth.thin,
-    borderTopColor: Colors.borderDark,
-  },
-  playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.badgeLevel,
-    justifyContent: "center",
-    alignItems: "center",
     marginRight: Spacing.margin.md,
   },
-  audioInfo: {
-    flex: 1,
+  stageTitle: {
+    color: Colors.textWhite,
+    textAlign: "left",
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
-  audioLabel: {
-    fontSize: Typography.fontSize.md,
-    color: Colors.textSecondary,
-  },
-  footerLoader: {
-    paddingVertical: Spacing.padding.lg,
-    alignItems: "center",
+  chevronContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: Spacing.radius.xxl,
+    padding: Spacing.padding.xs,
   },
   errorText: {
     fontSize: Typography.fontSize.md,

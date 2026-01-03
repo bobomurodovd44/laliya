@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   },
   word: {
     fontFamily: "FredokaOne",
-    fontSize: 42,
+    fontSize: 32,
     color: "#4A4A4A",
     flexShrink: 1,
   },

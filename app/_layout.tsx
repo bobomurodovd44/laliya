@@ -1,9 +1,10 @@
 import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
 import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
@@ -11,7 +12,7 @@ import { useAuthStore } from '../lib/store/auth-store';
 
 SplashScreen.preventAutoHideAsync();
 
-function TabIcon({ iconSource, focused }: { iconSource: ImageSourcePropType; focused: boolean }) {
+function TabIcon({ iconName, focused }: { iconName: keyof typeof MaterialIcons.glyphMap; focused: boolean }) {
   return (
     <View style={[
       styles.iconContainer,
@@ -24,14 +25,11 @@ function TabIcon({ iconSource, focused }: { iconSource: ImageSourcePropType; foc
           <View style={styles.glowEffect} />
         </>
       )}
-      <Image 
-        source={iconSource}
-        style={{ 
-          width: 40, 
-          height: 40, 
-          zIndex: 1,
-        }}
-        resizeMode="contain"
+      <MaterialIcons 
+        name={iconName}
+        size={36}
+        color={focused ? '#FFFFFF' : '#B8B8B8'}
+        style={{ zIndex: 1 }}
       />
     </View>
   );
@@ -104,7 +102,7 @@ function RootLayoutNav() {
             title: 'Home',
             headerShown: false,
             tabBarIcon: ({ focused }) => (
-              <TabIcon iconSource={require('../assets/home.png')} focused={focused} />
+              <TabIcon iconName="home" focused={focused} />
             ),
           }}
         />
@@ -123,7 +121,7 @@ function RootLayoutNav() {
             title: 'Profile',
             headerShown: false,
             tabBarIcon: ({ focused }) => (
-              <TabIcon iconSource={require('../assets/profile.png')} focused={focused} />
+              <TabIcon iconName="person" focused={focused} />
             ),
           }}
         />
@@ -216,9 +214,9 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'transparent',
     position: 'relative',
   },
@@ -231,7 +229,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 22.5,
+    borderRadius: 28,
     backgroundColor: '#4DA6FF',
   },
   glowEffect: {
@@ -240,7 +238,7 @@ const styles = StyleSheet.create({
     left: -2,
     right: -2,
     bottom: -2,
-    borderRadius: 24.5,
+    borderRadius: 30,
     backgroundColor: '#4DA6FF',
     opacity: 0.2,
     zIndex: -1,

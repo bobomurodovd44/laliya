@@ -19,6 +19,7 @@ import { Body, Title } from "../Typography";
 interface LookAndSayProps {
   exercise: Exercise;
   onComplete: () => void;
+  onRecordingComplete?: (recordedUri: string | null) => void;
 }
 
 // Ring Component for Ripple Effect
@@ -81,7 +82,11 @@ const Ring = ({
   );
 };
 
-export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
+export default function LookAndSay({
+  exercise,
+  onComplete,
+  onRecordingComplete,
+}: LookAndSayProps) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
@@ -158,6 +163,12 @@ export default function LookAndSay({ exercise, onComplete }: LookAndSayProps) {
     const uri = recording.getURI();
     setRecordedUri(uri);
     setRecording(null);
+    
+    // Notify parent component about recorded URI
+    if (onRecordingComplete) {
+      onRecordingComplete(uri);
+    }
+    
     onComplete();
   };
 

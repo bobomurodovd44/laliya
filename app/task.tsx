@@ -41,6 +41,7 @@ import {
   checkStageAccess,
   getUserMaxStageOrder,
 } from "../lib/utils/stage-access";
+import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 
 export default function Task() {
   const router = useRouter();
@@ -67,6 +68,7 @@ export default function Task() {
   const currentStageIdRef = useRef<string | null>(null);
   const isInitialMountRef = useRef(true);
   const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
+  const recordedAudioUriRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
@@ -98,6 +100,8 @@ export default function Task() {
       setResetKey((prev) => prev + 1);
       // Clear current stageId ref to prevent rendering old exercises
       currentStageIdRef.current = null;
+      // Clear recorded audio URI when stage changes
+      recordedAudioUriRef.current = null;
     }
     previousStageIdRef.current = stageId;
 
@@ -466,6 +470,7 @@ export default function Task() {
       });
     }
 
+
     // Extra safety check: verify stage is still accessible (non-blocking, in background)
     if (stageId) {
       // Don't await - run in background to not block UI
@@ -514,6 +519,10 @@ export default function Task() {
             key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
+            onRecordingComplete={(recordedUri) => {
+              // Store recorded URI for later upload
+              recordedAudioUriRef.current = recordedUri;
+            }}
           />
         );
       case ExerciseType.SHAPE_MATCH:
@@ -555,6 +564,46 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {
+      // Upload audio for LookAndSay exercise in background (non-blocking)
+      if (
+        currentExercise.type === ExerciseType.LOOK_AND_SAY &&
+        recordedAudioUriRef.current &&
+        user?._id
+      ) {
+        // Fire and forget - don't block navigation
+        (async () => {
+          try {
+            // Get exercise ID from API exercises
+            const currentApiExercise = apiExercises[exerciseOrder - 1];
+            if (!currentApiExercise?._id) {
+              console.warn("Exercise ID not found for audio upload");
+              return;
+            }
+
+            // Convert _id to string (it can be string or ObjectId)
+            const exerciseId =
+              typeof currentApiExercise._id === "string"
+                ? currentApiExercise._id
+                : String(currentApiExercise._id);
+
+            // Convert user._id to string
+            const userId =
+              typeof user._id === "string" ? user._id : String(user._id);
+
+            await uploadAudioMultipart(
+              recordedAudioUriRef.current!,
+              userId,
+              exerciseId
+            );
+            // Clear recorded URI after upload
+            recordedAudioUriRef.current = null;
+          } catch (err) {
+            // Silent fail - don't block user experience
+            console.warn("Failed to upload audio:", err);
+          }
+        })();
+      }
+
       // Calculate next order immediately
       const nextOrder = exerciseOrder + 1;
 
@@ -584,6 +633,8 @@ export default function Task() {
           // Reset completion state for new exercise
           setIsCompleted(false);
           setResetKey((prev) => prev + 1);
+          // Clear recorded audio URI when moving to next exercise
+          recordedAudioUriRef.current = null;
         }
       }
     }
@@ -596,9 +647,50 @@ export default function Task() {
     updateUserScore,
     stageExercises,
     apiExercises,
+    user?._id,
   ]);
 
   const handleSubmit = useCallback(async () => {
+    // Upload audio for LookAndSay exercise in background (non-blocking)
+    if (
+      currentExercise?.type === ExerciseType.LOOK_AND_SAY &&
+      recordedAudioUriRef.current &&
+      user?._id
+    ) {
+      // Fire and forget - don't block navigation
+      (async () => {
+        try {
+          // Get exercise ID from API exercises
+          const currentApiExercise = apiExercises[exerciseOrder - 1];
+          if (!currentApiExercise?._id) {
+            console.warn("Exercise ID not found for audio upload");
+            return;
+          }
+
+          // Convert _id to string (it can be string or ObjectId)
+          const exerciseId =
+            typeof currentApiExercise._id === "string"
+              ? currentApiExercise._id
+              : String(currentApiExercise._id);
+
+          // Convert user._id to string
+          const userId =
+            typeof user._id === "string" ? user._id : String(user._id);
+
+          await uploadAudioMultipart(
+            recordedAudioUriRef.current!,
+            userId,
+            exerciseId
+          );
+          // Clear recorded URI after upload
+          recordedAudioUriRef.current = null;
+        } catch (err) {
+          // Silent fail - don't block user experience
+          console.warn("Failed to upload audio:", err);
+        }
+      })();
+    }
+
     // Navigate IMMEDIATELY - don't wait for anything
     router.push("/");
 
@@ -655,6 +747,8 @@ export default function Task() {
     stageId,
     user,
     setAuthenticated,
+    exerciseOrder,
+    apiExercises,
   ]);
 
   const progress = useMemo(

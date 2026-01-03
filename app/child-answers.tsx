@@ -98,18 +98,25 @@ export default function ChildAnswers() {
           ? response
           : response.data || [];
 
+        // Filter to only show look_and_say exercises
+        const filteredAnswersData = answersData.filter(
+          (item: Answer) => item.exercise?.type === "look_and_say"
+        );
+
         const total = Array.isArray(response)
-          ? answersData.length
-          : response.total || answersData.length;
+          ? filteredAnswersData.length
+          : response.total || filteredAnswersData.length;
 
         if (append) {
-          setAnswers((prev) => [...prev, ...answersData]);
+          setAnswers((prev) => [...prev, ...filteredAnswersData]);
         } else {
-          setAnswers(answersData);
+          setAnswers(filteredAnswersData);
         }
 
-        setHasMore(answersData.length === LIMIT && total > currentSkip + LIMIT);
-        setSkip(currentSkip + answersData.length);
+        setHasMore(
+          filteredAnswersData.length === LIMIT && total > currentSkip + LIMIT
+        );
+        setSkip(currentSkip + filteredAnswersData.length);
       } catch (err: any) {
         setError(err.message || "Failed to load answers");
         console.error("Error fetching answers:", err);

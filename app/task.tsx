@@ -28,6 +28,7 @@ import {
   PopulatedExercise,
 } from "../lib/api/exercises";
 import {
+  clearExercisesCache,
   getCachedExercises,
   setCachedExercises,
 } from "../lib/cache/exercises-cache";
@@ -62,6 +63,7 @@ export default function Task() {
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCompletingRef = useRef(false);
   const previousExerciseOrderRef = useRef<number | null>(null);
+  const previousStageIdRef = useRef<string | null>(null);
   const isInitialMountRef = useRef(true);
   const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
 
@@ -76,6 +78,18 @@ export default function Task() {
       setCurrentExercise(null);
       return;
     }
+
+    // If stageId changed, clear old stage cache and show loading immediately
+    if (previousStageIdRef.current && previousStageIdRef.current !== stageId) {
+      // Clear old stage cache to prevent showing old exercises
+      clearExercisesCache(previousStageIdRef.current);
+      // Clear current exercise immediately to prevent flash of old content
+      setCurrentExercise(null);
+      setStageExercises([]);
+      setApiExercises([]);
+      setLoading(true);
+    }
+    previousStageIdRef.current = stageId;
 
     // Check stage access before loading exercises (cached per stageId)
     const verifyStageAccess = async () => {
@@ -413,25 +427,6 @@ export default function Task() {
       return;
     }
 
-    // Extra safety check: verify stage is still accessible
-    if (stageId) {
-      try {
-        const stage = await app.service("stages").get(stageId);
-        const isAccessible = await checkStageAccess(
-          stage,
-          user?.currentStageId
-        );
-        if (!isAccessible) {
-          setError("Access denied: This stage is locked.");
-          router.replace("/");
-          return;
-        }
-      } catch (err) {
-        // If check fails, still allow completion (don't block user)
-        console.warn("Failed to verify stage access:", err);
-      }
-    }
-
     // Mark as completing immediately to prevent multiple calls
     isCompletingRef.current = true;
 
@@ -440,7 +435,7 @@ export default function Task() {
       clearTimeout(completionTimeoutRef.current);
     }
 
-    // Enable button immediately for instant feedback
+    // Enable button IMMEDIATELY for instant feedback - this is the key fix
     setIsCompleted(true);
 
     // Defer confetti with InteractionManager to prevent blocking UI
@@ -453,6 +448,28 @@ export default function Task() {
           confettiRef.current?.start();
         }, 100);
       });
+    }
+
+    // Extra safety check: verify stage is still accessible (non-blocking, in background)
+    if (stageId) {
+      // Don't await - run in background to not block UI
+      (async () => {
+        try {
+          const stage = await app.service("stages").get(stageId);
+          const isAccessible = await checkStageAccess(
+            stage,
+            user?.currentStageId
+          );
+          if (!isAccessible) {
+            setError("Access denied: This stage is locked.");
+            router.replace("/");
+            return;
+          }
+        } catch (err) {
+          // If check fails, still allow completion (don't block user)
+          console.warn("Failed to verify stage access:", err);
+        }
+      })();
     }
   }, [currentExercise, loading, stageId, user?.currentStageId, router]);
 
@@ -518,13 +535,40 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {
+      // Reset completion state immediately for instant UI feedback
+      setIsCompleted(false);
+
       // Update user score optimistically (non-blocking, background sync)
       updateUserScore(currentExercise.score);
 
-      // Navigate immediately without waiting for API call
-      router.push(
-        `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
-      );
+      // Use optimistic state update for instant navigation feel
+      const nextOrder = exerciseOrder + 1;
+
+      // Update state optimistically before navigation
+      const nextIndex = nextOrder - 1;
+      if (nextIndex < stageExercises.length && stageExercises.length > 0) {
+        const nextExercise = stageExercises[nextIndex];
+        if (nextExercise) {
+          // Pre-set the next exercise for instant display
+          setCurrentExercise(nextExercise);
+          setIsLastExercise(nextOrder >= stageExercises.length);
+
+          // Set items immediately if available
+          const nextApiExercise = apiExercises[nextIndex];
+          if (nextApiExercise) {
+            const { items: exerciseItems } =
+              mapPopulatedExerciseToExercise(nextApiExercise);
+            setItems(exerciseItems);
+          }
+
+          // Reset completion state for new exercise
+          setIsCompleted(false);
+          setResetKey((prev) => prev + 1);
+        }
+      }
+
+      // Navigate after state update
+      router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
     }
   }, [
     isLastExercise,
@@ -533,6 +577,8 @@ export default function Task() {
     router,
     currentExercise,
     updateUserScore,
+    stageExercises,
+    apiExercises,
   ]);
 
   const handleSubmit = useCallback(async () => {

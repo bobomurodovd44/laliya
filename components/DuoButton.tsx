@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import {
   Animated,
   Platform,
@@ -124,92 +124,129 @@ function DuoButtonComponent({
   const shadowScaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
+  // Memoize animation configs to prevent recreation
+  const pressInConfig = useMemo(() => ({
+    pressAnim: {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 100, // Increased speed for faster response
+      bounciness: 0,
+    },
+    scaleAnim: {
+      toValue: 0.96, // Less scale for smoother feel
+      useNativeDriver: true,
+      speed: 100,
+      bounciness: 0,
+    },
+    shadowScaleAnim: {
+      toValue: 0.99,
+      useNativeDriver: true,
+      speed: 100,
+      bounciness: 0,
+    },
+    opacityAnim: {
+      toValue: 0.85,
+      duration: 80, // Faster duration
+      useNativeDriver: true,
+    },
+  }), []);
+
+  const pressOutConfig = useMemo(() => ({
+    pressAnim: {
+      toValue: 0,
+      useNativeDriver: true,
+      speed: 30, // Faster bounce back
+      bounciness: 12, // Reduced bounciness for faster response
+    },
+    scaleAnim: {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 12,
+    },
+    shadowScaleAnim: {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 12,
+    },
+    opacityAnim: {
+      toValue: 1,
+      duration: 120, // Faster duration
+      useNativeDriver: true,
+    },
+  }), []);
+
+  // Debounce haptic feedback to prevent lag
+  const hapticTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handlePressIn = useCallback(() => {
     if (disabled) return;
     
-    // Haptic feedback
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    // Animate press down with smooth, responsive feel
-    Animated.parallel([
-      Animated.spring(pressAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 80,
-        bounciness: 0,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 0.95,
-        useNativeDriver: true,
-        speed: 80,
-        bounciness: 0,
-      }),
-      Animated.spring(shadowScaleAnim, {
-        toValue: 0.98,
-        useNativeDriver: true,
-        speed: 80,
-        bounciness: 0,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handlePressOut = () => {
-    if (disabled) return;
-
-    // Animate press up with satisfying bounce
-    Animated.parallel([
-      Animated.spring(pressAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        speed: 25,
-        bounciness: 15,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 25,
-        bounciness: 15,
-      }),
-      Animated.spring(shadowScaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 25,
-        bounciness: 15,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handlePress = () => {
-    if (disabled) return;
-    
-    // Light haptic on release
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Defer haptic feedback using requestAnimationFrame to prevent blocking
+    if (hapticTimeoutRef.current) {
+      clearTimeout(hapticTimeoutRef.current);
     }
     
+    // Use requestAnimationFrame to defer haptic feedback
+    requestAnimationFrame(() => {
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // Changed to Light for less lag
+      }
+    });
+
+    // Animate press down with optimized config
+    Animated.parallel([
+      Animated.spring(pressAnim, pressInConfig.pressAnim),
+      Animated.spring(scaleAnim, pressInConfig.scaleAnim),
+      Animated.spring(shadowScaleAnim, pressInConfig.shadowScaleAnim),
+      Animated.timing(opacityAnim, pressInConfig.opacityAnim),
+    ]).start();
+  }, [disabled, pressAnim, scaleAnim, shadowScaleAnim, opacityAnim, pressInConfig]);
+
+  const handlePressOut = useCallback(() => {
+    if (disabled) return;
+
+    // Animate press up with optimized config
+    Animated.parallel([
+      Animated.spring(pressAnim, pressOutConfig.pressAnim),
+      Animated.spring(scaleAnim, pressOutConfig.scaleAnim),
+      Animated.spring(shadowScaleAnim, pressOutConfig.shadowScaleAnim),
+      Animated.timing(opacityAnim, pressOutConfig.opacityAnim),
+    ]).start();
+  }, [disabled, pressAnim, scaleAnim, shadowScaleAnim, opacityAnim, pressOutConfig]);
+
+  const handlePress = useCallback(() => {
+    if (disabled) return;
+    
+    // Call onPress immediately without haptic to prevent lag
     onPress?.();
-  };
+    
+    // Optional: Light haptic on release (deferred)
+    requestAnimationFrame(() => {
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    });
+  }, [disabled, onPress]);
 
   // Interpolate press animation with smoother curve
   const shadowDepth = shape === 'circle' ? circleShadowDepth : sizeStyle.shadowDepth;
   // For circles, start slightly above center to account for shadow, then press down
   const initialOffset = shape === 'circle' ? -(shadowDepth * 0.5) : 0;
-  const translateY = pressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [initialOffset, initialOffset + shadowDepth - 1],
-  });
+  const translateY = useMemo(
+    () => pressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [initialOffset, initialOffset + shadowDepth - 1],
+    }),
+    [pressAnim, initialOffset, shadowDepth]
+  );
+
+  // Memoize icon size calculation
+  const calculatedIconSize = useMemo(
+    () => iconSize || (size === 'large' ? 32 : size === 'medium' ? 24 : 20),
+    [iconSize, size]
+  );
 
   return (
     <Animated.View 
@@ -273,7 +310,7 @@ function DuoButtonComponent({
             {icon && (
               <Ionicons 
                 name={icon} 
-                size={iconSize || (size === 'large' ? 32 : size === 'medium' ? 24 : 20)} 
+                size={calculatedIconSize} 
                 color="white" 
                 style={shape === 'circle' && !title ? styles.circleIcon : undefined}
               />
@@ -295,7 +332,21 @@ function DuoButtonComponent({
   );
 }
 
-export const DuoButton = React.memo(DuoButtonComponent);
+// Optimize memo comparison
+export const DuoButton = React.memo(DuoButtonComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.color === nextProps.color &&
+    prevProps.size === nextProps.size &&
+    prevProps.disabled === nextProps.disabled &&
+    prevProps.icon === nextProps.icon &&
+    prevProps.iconSize === nextProps.iconSize &&
+    prevProps.shape === nextProps.shape &&
+    prevProps.customSize === nextProps.customSize &&
+    prevProps.style === nextProps.style
+  );
+});
 DuoButton.displayName = 'DuoButton';
 
 const styles = StyleSheet.create({

@@ -130,7 +130,7 @@ const mapOptionToItem = (option: PopulatedOption, numericId: number): Item => {
   const imageUrl = option.img?.name?.trim() || "";
   const audioUrl = option.audio?.name?.trim() || "";
   const syllablesAudioUrl = option.syllablesAudio?.name?.trim() || "";
-  
+
   return {
     id: numericId,
     word: option.word,

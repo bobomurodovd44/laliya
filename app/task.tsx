@@ -36,7 +36,10 @@ import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
 import { setItems } from "../lib/items-store";
 import { useAuthStore } from "../lib/store/auth-store";
-import { checkStageAccess } from "../lib/utils/stage-access";
+import {
+  checkStageAccess,
+  getUserMaxStageOrder,
+} from "../lib/utils/stage-access";
 
 export default function Task() {
   const router = useRouter();
@@ -543,7 +546,7 @@ export default function Task() {
       // Fire and forget - don't block navigation
       (async () => {
         try {
-          const currentStage = await app.service("stages").get(stageId);
+          const completedStage = await app.service("stages").get(stageId);
           let allStages = getCachedStages();
 
           if (!allStages) {
@@ -554,15 +557,19 @@ export default function Task() {
               : (stagesResponse as any).data || [];
           }
 
-          // Find the next stage by order
-          const nextStage = allStages?.find(
-            (stage: any) => stage.order === currentStage.order + 1
+          // Get user's current stage order (their actual progress)
+          const userCurrentStageOrder = await getUserMaxStageOrder(
+            user.currentStageId
           );
 
-          // If next stage exists, update currentStageId
-          // Note: We only update if nextStage.order is greater than current stage order
+          // Find the next stage by order after the completed stage
+          const nextStage = allStages?.find(
+            (stage: any) => stage.order === completedStage.order + 1
+          );
+
+          // Only update if nextStage exists AND is ahead of user's current progress
           // This prevents level from decreasing if user goes back to earlier stages
-          if (nextStage && nextStage.order > currentStage.order) {
+          if (nextStage && nextStage.order > userCurrentStageOrder) {
             const updatedUser = await app.service("users").patch(user._id, {
               currentStageId: nextStage._id,
             });

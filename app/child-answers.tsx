@@ -1,14 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { Image } from "expo-image";
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -292,11 +287,7 @@ export default function ChildAnswers() {
           activeOpacity={0.7}
         >
           <View style={styles.backButtonContainer}>
-            <Ionicons
-              name="arrow-back"
-              size={28}
-              color={Colors.textWhite}
-            />
+            <Ionicons name="arrow-back" size={28} color={Colors.textWhite} />
           </View>
         </TouchableOpacity>
         <Title size="medium" style={styles.headerTitle}>
@@ -314,11 +305,7 @@ export default function ChildAnswers() {
               loading && styles.refreshButtonDisabled,
             ]}
           >
-            <Ionicons
-              name="refresh"
-              size={28}
-              color={Colors.textWhite}
-            />
+            <Ionicons name="refresh" size={28} color={Colors.textWhite} />
           </View>
         </TouchableOpacity>
       </View>
@@ -434,7 +421,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.padding.lg,
-    paddingBottom: Spacing.padding.xxxl,
+    paddingBottom: Spacing.padding.xxl,
   },
   centerContainer: {
     flex: 1,
@@ -531,4 +518,3 @@ const styles = StyleSheet.create({
     marginTop: Spacing.margin.lg,
   },
 });
-

@@ -37,11 +37,11 @@ import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
 import { setItems } from "../lib/items-store";
 import { useAuthStore } from "../lib/store/auth-store";
+import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 import {
   checkStageAccess,
   getUserMaxStageOrder,
 } from "../lib/utils/stage-access";
-import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 
 export default function Task() {
   const router = useRouter();
@@ -470,7 +470,6 @@ export default function Task() {
       });
     }
 
-
     // Extra safety check: verify stage is still accessible (non-blocking, in background)
     if (stageId) {
       // Don't await - run in background to not block UI
@@ -594,7 +593,7 @@ export default function Task() {
               userId,
               exerciseId
             );
-            
+
             // Save/update answer in answers service if audio upload succeeded
             if (mediaId) {
               try {
@@ -603,32 +602,32 @@ export default function Task() {
                   query: {
                     userId: userId,
                     exerciseId: exerciseId,
-                    $limit: 1
-                  }
+                    $limit: 1,
+                  },
                 });
-                
+
                 const existingAnswer = Array.isArray(existingAnswers)
                   ? existingAnswers[0]
                   : existingAnswers.data?.[0];
-                
+
                 if (existingAnswer) {
                   // Update existing answer with new audioId
                   await app.service("answers").patch(existingAnswer._id, {
-                    audioId: mediaId
+                    audioId: mediaId,
                   });
                 } else {
                   // Create new answer
                   await app.service("answers").create({
                     audioId: mediaId,
                     userId: userId,
-                    exerciseId: exerciseId
+                    exerciseId: exerciseId,
                   });
                 }
               } catch (answerErr) {
                 // Silent fail - don't block user experience
               }
             }
-            
+
             // Clear recorded URI after upload
             recordedAudioUriRef.current = null;
           } catch (err) {
@@ -714,7 +713,7 @@ export default function Task() {
             userId,
             exerciseId
           );
-          
+
           // Save/update answer in answers service if audio upload succeeded
           if (mediaId) {
             try {
@@ -723,32 +722,32 @@ export default function Task() {
                 query: {
                   userId: userId,
                   exerciseId: exerciseId,
-                  $limit: 1
-                }
+                  $limit: 1,
+                },
               });
-              
+
               const existingAnswer = Array.isArray(existingAnswers)
                 ? existingAnswers[0]
                 : existingAnswers.data?.[0];
-              
+
               if (existingAnswer) {
                 // Update existing answer with new audioId
                 await app.service("answers").patch(existingAnswer._id, {
-                  audioId: mediaId
+                  audioId: mediaId,
                 });
               } else {
                 // Create new answer
                 await app.service("answers").create({
                   audioId: mediaId,
                   userId: userId,
-                  exerciseId: exerciseId
+                  exerciseId: exerciseId,
                 });
               }
             } catch (answerErr) {
               // Silent fail - don't block user experience
             }
           }
-          
+
           // Clear recorded URI after upload
           recordedAudioUriRef.current = null;
         } catch (err) {

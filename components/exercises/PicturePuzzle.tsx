@@ -73,9 +73,6 @@ export default function PicturePuzzle({
   );
 }
 
-// Module-level cache to persist shuffle state across remounts
-const puzzleShuffleCache = new Map<string, number[]>();
-
 function PuzzleLogic({
   imageUrl,
   onSolved,
@@ -88,47 +85,40 @@ function PuzzleLogic({
   // Guard to prevent multiple onSolved calls
   const isSolvedRef = useRef(false);
 
-  // Get or create initial placement from module-level cache
-  const getInitialPlacement = useMemo(() => {
-    // Check if we have cached shuffle for this imageUrl
-    if (puzzleShuffleCache.has(imageUrl)) {
-      return puzzleShuffleCache.get(imageUrl)!;
+  // Fisher-Yates shuffle algorithm for true randomization
+  const shuffleArray = (array: number[]): number[] => {
+    const shuffled = [...array]; // Create a copy to avoid mutating
+    let currentIndex = shuffled.length,
+      randomIndex;
+    while (currentIndex !== 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      [shuffled[currentIndex], shuffled[randomIndex]] = [
+        shuffled[randomIndex],
+        shuffled[currentIndex],
+      ];
+    }
+    return shuffled;
+  };
+
+  // Create a fresh shuffle each time the component mounts
+  const [piecesPlacement, setPiecesPlacement] = useState<number[]>(() => {
+    // Generate fresh random shuffle on every mount
+    let slots = shuffleArray([0, 1, 2, 3]);
+
+    // Check if solved (all equal to index) - if so, reshuffle
+    let attempts = 0;
+    while (slots.every((val, index) => val === index) && attempts < 10) {
+      slots = shuffleArray([0, 1, 2, 3]);
+      attempts++;
     }
 
-    // Create new shuffle
-    let slots = [0, 1, 2, 3];
-
-    const shuffle = (array: number[]) => {
-      let currentIndex = array.length,
-        randomIndex;
-      while (currentIndex !== 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex--;
-        [array[currentIndex], array[randomIndex]] = [
-          array[randomIndex],
-          array[currentIndex],
-        ];
-      }
-      return array;
-    };
-
-    slots = shuffle(slots);
-
-    // Check if solved (all equal to index)
-    const isSolved = slots.every((val, index) => val === index);
-    if (isSolved) {
-      // Force swap first two
+    // Final safety check - if still solved, force swap first two
+    if (slots.every((val, index) => val === index)) {
       [slots[0], slots[1]] = [slots[1], slots[0]];
     }
 
-    // Cache the result
-    puzzleShuffleCache.set(imageUrl, slots);
     return slots;
-  }, [imageUrl]);
-
-  const [piecesPlacement, setPiecesPlacement] = useState<number[]>(() => {
-    // Initialize with shuffled placement - this only runs once per mount
-    return getInitialPlacement;
   });
 
   const isSolved = useMemo(() => {
@@ -154,6 +144,27 @@ function PuzzleLogic({
       isSolvedRef.current = false;
     }
   }, [isSolved]);
+
+  // Generate fresh shuffle when imageUrl changes
+  useEffect(() => {
+    // Generate fresh random shuffle when image changes
+    let slots = shuffleArray([0, 1, 2, 3]);
+
+    // Check if solved (all equal to index) - if so, reshuffle
+    let attempts = 0;
+    while (slots.every((val, index) => val === index) && attempts < 10) {
+      slots = shuffleArray([0, 1, 2, 3]);
+      attempts++;
+    }
+
+    // Final safety check - if still solved, force swap first two
+    if (slots.every((val, index) => val === index)) {
+      [slots[0], slots[1]] = [slots[1], slots[0]];
+    }
+
+    setPiecesPlacement(slots);
+    isSolvedRef.current = false; // Reset solved state when image changes
+  }, [imageUrl]);
 
   const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
     setPiecesPlacement((prev) => {

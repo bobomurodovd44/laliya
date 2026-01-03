@@ -3,7 +3,14 @@ import { Audio } from "expo-av";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -51,6 +58,7 @@ export default function ChildAnswers() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -272,10 +280,18 @@ export default function ChildAnswers() {
   };
 
   // Handle refresh
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
     setSkip(0);
     setHasMore(true);
-    fetchAnswers(0, false);
+
+    // Ensure minimum refresh time for better UX
+    await Promise.all([
+      fetchAnswers(0, false),
+      new Promise((resolve) => setTimeout(resolve, 500)),
+    ]);
+
+    setRefreshing(false);
   }, [fetchAnswers]);
 
   return (
@@ -293,21 +309,7 @@ export default function ChildAnswers() {
         <Title size="medium" style={styles.headerTitle}>
           Child Answers
         </Title>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          disabled={loading}
-          activeOpacity={0.7}
-        >
-          <View
-            style={[
-              styles.refreshButtonContainer,
-              loading && styles.refreshButtonDisabled,
-            ]}
-          >
-            <Ionicons name="refresh" size={28} color={Colors.textWhite} />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       {loading && answers.length === 0 ? (
@@ -351,6 +353,22 @@ export default function ChildAnswers() {
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.badgeLevel}
+              colors={[Colors.badgeLevel, Colors.accentBlue]}
+              progressBackgroundColor={Colors.backgroundLight}
+              progressViewOffset={
+                Platform.OS === "android" ? insets.top + 80 : insets.top + 60
+              }
+              {...(Platform.OS === "ios" && {
+                title: refreshing ? "Refreshing..." : "Pull to refresh",
+                titleColor: Colors.textSecondary,
+              })}
+            />
+          }
         />
       )}
     </PageContainer>
@@ -392,32 +410,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  refreshButton: {
-    padding: Spacing.padding.xs,
-  },
-  refreshButtonContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: Colors.secondaryDark,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  refreshButtonDisabled: {
-    backgroundColor: Colors.textTertiary,
-    borderColor: Colors.textTertiary,
-    opacity: 0.6,
-  },
   headerTitle: {
     textAlign: "center",
+  },
+  headerSpacer: {
+    width: 48,
   },
   listContent: {
     paddingHorizontal: Spacing.padding.lg,

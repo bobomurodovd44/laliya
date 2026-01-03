@@ -1,5 +1,11 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,11 +31,12 @@ import {
   getCachedExercises,
   setCachedExercises,
 } from "../lib/cache/exercises-cache";
+import { getCachedStages } from "../lib/cache/stages-cache";
+import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
-import { items, setItems } from "../lib/items-store";
+import { setItems } from "../lib/items-store";
 import { useAuthStore } from "../lib/store/auth-store";
 import { checkStageAccess } from "../lib/utils/stage-access";
-import app from "../lib/feathers/feathers-client";
 
 export default function Task() {
   const router = useRouter();
@@ -53,6 +60,7 @@ export default function Task() {
   const isCompletingRef = useRef(false);
   const previousExerciseOrderRef = useRef<number | null>(null);
   const isInitialMountRef = useRef(true);
+  const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
@@ -66,14 +74,40 @@ export default function Task() {
       return;
     }
 
-    // Check stage access before loading exercises
+    // Check stage access before loading exercises (cached per stageId)
     const verifyStageAccess = async () => {
+      // Check cache first - only verify if stageId or user's currentStageId changed
+      const cacheKey = `${stageId}-${user?.currentStageId || "none"}`;
+      const cachedAccess = stageAccessCacheRef.current.get(cacheKey);
+
+      if (cachedAccess !== undefined) {
+        if (!cachedAccess) {
+          setError(
+            "Access denied: This stage is locked. Complete previous stages to unlock."
+          );
+          setLoading(false);
+          setCurrentExercise(null);
+          setTimeout(() => {
+            router.replace("/");
+          }, 2000);
+        }
+        return cachedAccess;
+      }
+
       try {
         const stage = await app.service("stages").get(stageId);
-        const isAccessible = await checkStageAccess(stage, user?.currentStageId);
-        
+        const isAccessible = await checkStageAccess(
+          stage,
+          user?.currentStageId
+        );
+
+        // Cache the result
+        stageAccessCacheRef.current.set(cacheKey, isAccessible);
+
         if (!isAccessible) {
-          setError("Access denied: This stage is locked. Complete previous stages to unlock.");
+          setError(
+            "Access denied: This stage is locked. Complete previous stages to unlock."
+          );
           setLoading(false);
           setCurrentExercise(null);
           // Redirect to home after a short delay
@@ -141,97 +175,103 @@ export default function Task() {
       setLoading(true);
 
       const loadExercises = async () => {
-      try {
-        // Fetch exercises from API
-        const apiExercises = await fetchExercisesByStageId(stageId);
+        try {
+          // Fetch exercises from API
+          const apiExercises = await fetchExercisesByStageId(stageId);
 
-        if (apiExercises.length === 0) {
-          setError("No exercises found for this stage");
+          if (apiExercises.length === 0) {
+            setError("No exercises found for this stage");
+            setLoading(false);
+            return;
+          }
+
+          // Map all exercises
+          const mappedExercises: Exercise[] = [];
+          apiExercises.forEach((apiExercise) => {
+            const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
+            mappedExercises.push(exercise);
+          });
+
+          // Cache the exercises
+          setCachedExercises(stageId, mappedExercises, apiExercises);
+
+          setStageExercises(mappedExercises);
+          setApiExercises(apiExercises);
+
+          // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
+          const exerciseIndex = exerciseOrder - 1;
+
+          if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
+            setError(
+              `Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`
+            );
+            setLoading(false);
+            return;
+          }
+
+          const exercise = mappedExercises[exerciseIndex];
+
+          if (!exercise) {
+            setError("Exercise not found");
+            setLoading(false);
+            return;
+          }
+
+          // Map and set items for the current exercise
+          const currentApiExercise = apiExercises[exerciseIndex];
+          if (currentApiExercise) {
+            const { items: exerciseItems } =
+              mapPopulatedExerciseToExercise(currentApiExercise);
+            setItems(exerciseItems);
+          }
+
+          setCurrentExercise(exercise);
+          setIsLastExercise(exerciseOrder >= mappedExercises.length);
+          setIsCompleted(false);
+          isCompletingRef.current = false;
+          previousExerciseOrderRef.current = exerciseOrder;
           setLoading(false);
-          return;
-        }
-
-        // Map all exercises
-        const mappedExercises: Exercise[] = [];
-        apiExercises.forEach((apiExercise) => {
-          const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
-          mappedExercises.push(exercise);
-        });
-
-        // Cache the exercises
-        setCachedExercises(stageId, mappedExercises, apiExercises);
-
-        setStageExercises(mappedExercises);
-        setApiExercises(apiExercises);
-
-        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
-        const exerciseIndex = exerciseOrder - 1;
-
-        if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
-          setError(
-            `Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`
-          );
+        } catch (err: any) {
+          setError(err.message || "Failed to load exercises");
           setLoading(false);
-          return;
         }
-
-        const exercise = mappedExercises[exerciseIndex];
-
-        if (!exercise) {
-          setError("Exercise not found");
-          setLoading(false);
-          return;
-        }
-
-        // Map and set items for the current exercise
-        const currentApiExercise = apiExercises[exerciseIndex];
-        if (currentApiExercise) {
-          const { items: exerciseItems } =
-            mapPopulatedExerciseToExercise(currentApiExercise);
-          setItems(exerciseItems);
-        }
-
-        setCurrentExercise(exercise);
-        setIsLastExercise(exerciseOrder >= mappedExercises.length);
-        setIsCompleted(false);
-        isCompletingRef.current = false;
-        previousExerciseOrderRef.current = exerciseOrder;
-        setLoading(false);
-      } catch (err: any) {
-        setError(err.message || "Failed to load exercises");
-        setLoading(false);
-      }
-    };
+      };
 
       await loadExercises();
     };
 
     loadData();
+    // Clear stage access cache when stageId or user's currentStageId changes
+    // This ensures we re-verify access when these change
   }, [stageId, exerciseOrder, user?.currentStageId, router]);
 
   // Preload images when exercise changes - use InteractionManager to prevent blocking
   useEffect(() => {
-    if (!currentExercise || !items.length || !stageExercises.length) return;
+    if (!currentExercise || !apiExercises.length || !stageExercises.length)
+      return;
 
     // Defer image preloading to prevent blocking UI
     const interaction = InteractionManager.runAfterInteractions(() => {
+      const currentIndex = exerciseOrder - 1;
+      const currentApiExercise = apiExercises[currentIndex];
+
+      if (!currentApiExercise) return;
+
       const imageUrls: string[] = [];
 
-      // Collect all image URLs from current exercise items
-      if (currentExercise.optionIds) {
-        currentExercise.optionIds.forEach((id) => {
-          const item = items.find((i) => i.id === id);
-          if (item?.imageUrl) {
-            imageUrls.push(item.imageUrl);
+      // Extract image URLs from current exercise's API data (more efficient than using items array)
+      if (currentApiExercise.options) {
+        currentApiExercise.options.forEach((option) => {
+          if (option.img?.name) {
+            imageUrls.push(option.img.name);
           }
         });
       }
 
-      // Add answer item image if it exists
-      if (currentExercise.answerId) {
-        const answerItem = items.find((i) => i.id === currentExercise.answerId);
-        if (answerItem?.imageUrl && !imageUrls.includes(answerItem.imageUrl)) {
-          imageUrls.push(answerItem.imageUrl);
+      // Add current exercise answer image if it exists
+      if (currentApiExercise.answer?.img?.name) {
+        if (!imageUrls.includes(currentApiExercise.answer.img.name)) {
+          imageUrls.push(currentApiExercise.answer.img.name);
         }
       }
 
@@ -243,7 +283,6 @@ export default function Task() {
       }
 
       // Preload next exercise images in background (if exists)
-      const currentIndex = exerciseOrder - 1;
       const nextApiExercise = apiExercises[currentIndex + 1];
 
       if (nextApiExercise) {
@@ -277,7 +316,12 @@ export default function Task() {
     return () => {
       interaction.cancel();
     };
-  }, [currentExercise, exerciseOrder, stageExercises, apiExercises]);
+  }, [
+    currentExercise,
+    exerciseOrder,
+    apiExercises.length,
+    stageExercises.length,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -308,36 +352,51 @@ export default function Task() {
     }, [currentExercise, exerciseOrder])
   );
 
-  // Helper function to update user score
-  const updateUserScore = useCallback(async (exerciseScore: number) => {
-    // Validate inputs
-    if (!user?._id) {
-      console.warn("Cannot update score: User not logged in");
-      return;
-    }
+  // Helper function to update user score (optimistic update)
+  const updateUserScore = useCallback(
+    (exerciseScore: number) => {
+      // Validate inputs
+      if (!user?._id) {
+        console.warn("Cannot update score: User not logged in");
+        return;
+      }
 
-    if (!exerciseScore || exerciseScore <= 0) {
-      console.warn("Cannot update score: Invalid exercise score", exerciseScore);
-      return;
-    }
+      if (!exerciseScore || exerciseScore <= 0) {
+        console.warn(
+          "Cannot update score: Invalid exercise score",
+          exerciseScore
+        );
+        return;
+      }
 
-    try {
       // Calculate new score
       const currentScore = user.score || 0;
       const newScore = currentScore + exerciseScore;
 
-      // Update user score via API
-      const updatedUser = await app.service("users").patch(user._id, {
+      // Optimistic update: immediately update auth store for instant UI feedback
+      setAuthenticated({
+        ...user,
         score: newScore,
       });
 
-      // Update auth store with new user data
-      setAuthenticated(updatedUser);
-    } catch (err: any) {
-      // Log error but don't block navigation
-      console.error("Failed to update user score:", err);
-    }
-  }, [user, setAuthenticated]);
+      // Fire API call in background without blocking navigation
+      app
+        .service("users")
+        .patch(user._id, {
+          score: newScore,
+        })
+        .then((updatedUser) => {
+          // Sync with server response to ensure consistency
+          setAuthenticated(updatedUser);
+        })
+        .catch((err: any) => {
+          // Log error but don't revert optimistic update (user already navigated)
+          // Score will sync correctly on next app load
+          console.error("Failed to update user score:", err);
+        });
+    },
+    [user, setAuthenticated]
+  );
 
   const handleComplete = useCallback(async () => {
     // Only allow completion if not loading and exercise exists
@@ -349,7 +408,10 @@ export default function Task() {
     if (stageId) {
       try {
         const stage = await app.service("stages").get(stageId);
-        const isAccessible = await checkStageAccess(stage, user?.currentStageId);
+        const isAccessible = await checkStageAccess(
+          stage,
+          user?.currentStageId
+        );
         if (!isAccessible) {
           setError("Access denied: This stage is locked.");
           router.replace("/");
@@ -385,7 +447,7 @@ export default function Task() {
     }
   }, [currentExercise, loading, stageId, user?.currentStageId, router]);
 
-  const renderExercise = () => {
+  const renderExercise = useMemo(() => {
     if (!currentExercise) return null;
 
     // Create a unique key that includes resetKey to force remount when page is focused
@@ -443,23 +505,31 @@ export default function Task() {
       default:
         return <Body style={styles.errorText}>Unknown exercise type</Body>;
     }
-  };
+  }, [currentExercise, resetKey, handleComplete]);
 
-  const handleNext = useCallback(async () => {
+  const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {
-      // Update user score before navigation (non-blocking)
-      await updateUserScore(currentExercise.score);
-      
+      // Update user score optimistically (non-blocking, background sync)
+      updateUserScore(currentExercise.score);
+
+      // Navigate immediately without waiting for API call
       router.push(
         `/task?stageId=${stageId}&exerciseOrder=${exerciseOrder + 1}`
       );
     }
-  }, [isLastExercise, stageId, exerciseOrder, router, currentExercise, updateUserScore]);
+  }, [
+    isLastExercise,
+    stageId,
+    exerciseOrder,
+    router,
+    currentExercise,
+    updateUserScore,
+  ]);
 
   const handleSubmit = useCallback(async () => {
     if (currentExercise) {
-      // Update user score before redirect (non-blocking)
-      await updateUserScore(currentExercise.score);
+      // Update user score optimistically (non-blocking, background sync)
+      updateUserScore(currentExercise.score);
     }
 
     // Update currentStageId to the next stage
@@ -467,24 +537,29 @@ export default function Task() {
       try {
         // Fetch the current stage
         const currentStage = await app.service("stages").get(stageId);
-        
-        // Fetch all stages
-        const stagesResponse = await app.service("stages").find();
-        const allStages = Array.isArray(stagesResponse) 
-          ? stagesResponse 
-          : (stagesResponse as any).data || [];
-        
-        // Find the next stage by order
-        const nextStage = allStages.find(
+
+        // Use cached stages if available, otherwise fetch from API
+        let allStages = getCachedStages();
+
+        if (!allStages) {
+          // Cache miss - fetch from API
+          const stagesResponse = await app.service("stages").find();
+          allStages = Array.isArray(stagesResponse)
+            ? stagesResponse
+            : (stagesResponse as any).data || [];
+        }
+
+        // Find the next stage by order (allStages is guaranteed to be non-null here)
+        const nextStage = allStages?.find(
           (stage: any) => stage.order === currentStage.order + 1
         );
-        
+
         // If next stage exists, update currentStageId
         if (nextStage) {
           const updatedUser = await app.service("users").patch(user._id, {
             currentStageId: nextStage._id,
           });
-          
+
           // Update auth store with new user data
           setAuthenticated(updatedUser);
         }
@@ -493,12 +568,22 @@ export default function Task() {
         console.error("Failed to update currentStageId:", err);
       }
     }
-    
-    router.push("/");
-  }, [router, currentExercise, updateUserScore, stageId, user, setAuthenticated]);
 
-  const progress =
-    stageExercises.length > 0 ? exerciseOrder / stageExercises.length : 0;
+    router.push("/");
+  }, [
+    router,
+    currentExercise,
+    updateUserScore,
+    stageId,
+    user,
+    setAuthenticated,
+  ]);
+
+  const progress = useMemo(
+    () =>
+      stageExercises.length > 0 ? exerciseOrder / stageExercises.length : 0,
+    [exerciseOrder, stageExercises.length]
+  );
 
   if (loading) {
     return (
@@ -536,7 +621,7 @@ export default function Task() {
         <ProgressBar progress={progress} />
       </View>
 
-      <View style={styles.content}>{renderExercise()}</View>
+      <View style={styles.content}>{renderExercise}</View>
 
       <View
         style={[

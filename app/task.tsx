@@ -80,7 +80,10 @@ export default function Task() {
     }
 
     // If stageId changed, clear old stage cache and show loading immediately
-    if (previousStageIdRef.current && previousStageIdRef.current !== stageId) {
+    const stageIdChanged =
+      previousStageIdRef.current && previousStageIdRef.current !== stageId;
+
+    if (stageIdChanged && previousStageIdRef.current) {
       // Clear old stage cache to prevent showing old exercises
       clearExercisesCache(previousStageIdRef.current);
       // Clear current exercise immediately to prevent flash of old content
@@ -142,8 +145,8 @@ export default function Task() {
       }
     };
 
-    // Check cache first
-    const cached = getCachedExercises(stageId);
+    // Check cache first - but only if stageId hasn't changed
+    const cached = !stageIdChanged ? getCachedExercises(stageId) : null;
 
     const loadData = async () => {
       // Verify stage access first
@@ -152,7 +155,13 @@ export default function Task() {
         return;
       }
 
-      if (cached) {
+      // If stageId changed, don't use cache - fetch fresh data
+      if (stageIdChanged) {
+        setCurrentExercise(null);
+        setLoading(true);
+      }
+
+      if (cached && !stageIdChanged) {
         // Use cached data - no loading needed
         setStageExercises(cached.exercises);
         setApiExercises(cached.apiExercises);

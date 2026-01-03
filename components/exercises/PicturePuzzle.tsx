@@ -1,17 +1,17 @@
-import { Image } from 'expo-image';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Image } from "expo-image";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
-} from 'react-native-reanimated';
-import { Exercise } from '../../data/data';
-import { items } from '../../lib/items-store';
-import { Body, Title } from '../Typography';
+} from "react-native-reanimated";
+import { Exercise } from "../../data/data";
+import { items } from "../../lib/items-store";
+import { Body, Title } from "../Typography";
 
 interface PicturePuzzleProps {
   exercise: Exercise;
@@ -20,7 +20,7 @@ interface PicturePuzzleProps {
 
 // 2x2 Grid = 4 pieces
 const GRID_SIZE = 2;
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 const CONTAINER_PADDING = 20;
 const BOARD_SIZE = Math.min(SCREEN_WIDTH - CONTAINER_PADDING * 2, 320);
 const PIECE_SIZE = BOARD_SIZE / GRID_SIZE;
@@ -32,12 +32,19 @@ const PIECES_CONFIG = [
   { id: 3, r: 1, c: 1 },
 ];
 
-export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzleProps) {
+export default function PicturePuzzle({
+  exercise,
+  onComplete,
+}: PicturePuzzleProps) {
   // Get the first option ID from optionIds array
   const firstOptionId = exercise.optionIds?.[0];
-  
+
   // Validate that optionIds exists and has at least one element
-  if (!exercise.optionIds || exercise.optionIds.length === 0 || firstOptionId === undefined) {
+  if (
+    !exercise.optionIds ||
+    exercise.optionIds.length === 0 ||
+    firstOptionId === undefined
+  ) {
     return (
       <View style={styles.container}>
         <Body style={styles.question}>No options available</Body>
@@ -57,33 +64,52 @@ export default function PicturePuzzle({ exercise, onComplete }: PicturePuzzlePro
   }
 
   return (
-    <PuzzleLogic 
+    <PuzzleLogic
       key={item.imageUrl}
-      imageUrl={item.imageUrl} 
-      onSolved={onComplete} 
+      imageUrl={item.imageUrl}
+      onSolved={onComplete}
       question={exercise.question}
     />
   );
 }
 
-function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSolved: () => void, question: string }) {
+// Module-level cache to persist shuffle state across remounts
+const puzzleShuffleCache = new Map<string, number[]>();
+
+function PuzzleLogic({
+  imageUrl,
+  onSolved,
+  question,
+}: {
+  imageUrl: string;
+  onSolved: () => void;
+  question: string;
+}) {
   // Guard to prevent multiple onSolved calls
   const isSolvedRef = useRef(false);
-  
-  // Initialize game state with valid starting positions - memoized per imageUrl
-  // This ensures shuffle only happens once per unique image
-  const gameState = useMemo(() => {
-    // 1. Fisher-Yates Shuffle
+
+  // Get or create initial placement from module-level cache
+  const getInitialPlacement = useMemo(() => {
+    // Check if we have cached shuffle for this imageUrl
+    if (puzzleShuffleCache.has(imageUrl)) {
+      return puzzleShuffleCache.get(imageUrl)!;
+    }
+
+    // Create new shuffle
     let slots = [0, 1, 2, 3];
-    
+
     const shuffle = (array: number[]) => {
-        let currentIndex = array.length, randomIndex;
-        while (currentIndex !== 0) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex--;
-            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-        }
-        return array;
+      let currentIndex = array.length,
+        randomIndex;
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [array[currentIndex], array[randomIndex]] = [
+          array[randomIndex],
+          array[currentIndex],
+        ];
+      }
+      return array;
     };
 
     slots = shuffle(slots);
@@ -91,37 +117,37 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
     // Check if solved (all equal to index)
     const isSolved = slots.every((val, index) => val === index);
     if (isSolved) {
-        // Force swap first two
-        [slots[0], slots[1]] = [slots[1], slots[0]];
+      // Force swap first two
+      [slots[0], slots[1]] = [slots[1], slots[0]];
     }
 
-    return {
-        initialPlacement: slots, 
-    };
-  }, [imageUrl]); // Only reshuffle when imageUrl changes
+    // Cache the result
+    puzzleShuffleCache.set(imageUrl, slots);
+    return slots;
+  }, [imageUrl]);
 
   const [piecesPlacement, setPiecesPlacement] = useState<number[]>(() => {
     // Initialize with shuffled placement - this only runs once per mount
-    return gameState ? gameState.initialPlacement : [];
+    return getInitialPlacement;
   });
 
   const isSolved = useMemo(() => {
-     if (piecesPlacement.length === 0) return false;
-     return piecesPlacement.every((slotIndex, pieceId) => slotIndex === pieceId);
+    if (piecesPlacement.length === 0) return false;
+    return piecesPlacement.every((slotIndex, pieceId) => slotIndex === pieceId);
   }, [piecesPlacement]);
 
   useEffect(() => {
     if (isSolved && !isSolvedRef.current) {
       // Mark as solved immediately
       isSolvedRef.current = true;
-      
+
       // Call onSolved asynchronously to prevent blocking
       requestAnimationFrame(() => {
         onSolved();
       });
     }
   }, [isSolved, onSolved]);
-  
+
   // Reset guard when puzzle resets (if needed)
   useEffect(() => {
     if (!isSolved) {
@@ -130,235 +156,251 @@ function PuzzleLogic({ imageUrl, onSolved, question }: { imageUrl: string, onSol
   }, [isSolved]);
 
   const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
-      setPiecesPlacement(prev => {
-          const newPlacement = [...prev];
-          
-          // Find if any piece is currently at the target slot
-          const existingPieceId = newPlacement.findIndex(slot => slot === targetSlotIndex);
-          const oldSlotOfDraggedPiece = newPlacement[draggedPieceId];
+    setPiecesPlacement((prev) => {
+      const newPlacement = [...prev];
 
-          if (existingPieceId !== -1 && existingPieceId !== draggedPieceId) {
-             // SWAP: Move the existing piece to the dragged piece's old slot
-             newPlacement[existingPieceId] = oldSlotOfDraggedPiece;
-          }
-          
-          // Move dragged piece to target slot
-          newPlacement[draggedPieceId] = targetSlotIndex;
-          
-          return newPlacement;
-      });
+      // Find if any piece is currently at the target slot
+      const existingPieceId = newPlacement.findIndex(
+        (slot) => slot === targetSlotIndex
+      );
+      const oldSlotOfDraggedPiece = newPlacement[draggedPieceId];
+
+      if (existingPieceId !== -1 && existingPieceId !== draggedPieceId) {
+        // SWAP: Move the existing piece to the dragged piece's old slot
+        newPlacement[existingPieceId] = oldSlotOfDraggedPiece;
+      }
+
+      // Move dragged piece to target slot
+      newPlacement[draggedPieceId] = targetSlotIndex;
+
+      return newPlacement;
+    });
   };
-
-  if (!gameState) return null;
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-       <Title size="medium" style={styles.title}>Picture Puzzle</Title>
-       <Body style={styles.question}>{question}</Body>
+      <Title size="medium" style={styles.title}>
+        Picture Puzzle
+      </Title>
+      <Body style={styles.question}>{question}</Body>
 
-       {/* Board Container */}
-       <View style={[
-           styles.board, 
-           { width: BOARD_SIZE, height: BOARD_SIZE },
-           // Clip overflow ONLY when solved, so we get rounded corners on final image
-           { overflow: isSolved ? 'hidden' : 'visible' } 
-        ]}>
-          
-             {/* Render Pieces */}
-          {PIECES_CONFIG.map((piece, i) => (
-             <DraggablePiece 
-                key={piece.id}
-                id={piece.id}
-                correctRow={piece.r}
-                correctCol={piece.c}
-                currentSlot={piecesPlacement[piece.id]}
-                imageUrl={imageUrl}
-                onDrop={handleDrop}
-                enabled={!isSolved}
-                isCorrect={piecesPlacement[piece.id] === piece.id}
-             />
-          ))}
-
-       </View>
+      {/* Board Container */}
+      <View
+        style={[
+          styles.board,
+          { width: BOARD_SIZE, height: BOARD_SIZE },
+          // Clip overflow ONLY when solved, so we get rounded corners on final image
+          { overflow: isSolved ? "hidden" : "visible" },
+        ]}
+      >
+        {/* Render Pieces */}
+        {PIECES_CONFIG.map((piece, i) => (
+          <DraggablePiece
+            key={piece.id}
+            id={piece.id}
+            correctRow={piece.r}
+            correctCol={piece.c}
+            currentSlot={piecesPlacement[piece.id]}
+            imageUrl={imageUrl}
+            onDrop={handleDrop}
+            enabled={!isSolved}
+            isCorrect={piecesPlacement[piece.id] === piece.id}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
-const DraggablePiece = ({ 
-    id, correctRow, correctCol, currentSlot, imageUrl, onDrop, enabled, isCorrect
+const DraggablePiece = ({
+  id,
+  correctRow,
+  correctCol,
+  currentSlot,
+  imageUrl,
+  onDrop,
+  enabled,
+  isCorrect,
 }: {
-    id: number, correctRow: number, correctCol: number, currentSlot: number, imageUrl: string,
-    onDrop: (pieceId: number, slotIndex: number) => void,
-    enabled: boolean,
-    isCorrect: boolean
+  id: number;
+  correctRow: number;
+  correctCol: number;
+  currentSlot: number;
+  imageUrl: string;
+  onDrop: (pieceId: number, slotIndex: number) => void;
+  enabled: boolean;
+  isCorrect: boolean;
 }) => {
-    // Calculate target position based on currentSlot
-    const destX = (currentSlot % 2) * PIECE_SIZE;
-    const destY = Math.floor(currentSlot / 2) * PIECE_SIZE;
+  // Calculate target position based on currentSlot
+  const destX = (currentSlot % 2) * PIECE_SIZE;
+  const destY = Math.floor(currentSlot / 2) * PIECE_SIZE;
 
-    const tx = useSharedValue(destX);
-    const ty = useSharedValue(destY);
-    const ctx = useSharedValue({ x: 0, y: 0 });
-    const scale = useSharedValue(1);
-    const isDragging = useSharedValue(false);
-    const isCorrectSv = useSharedValue(isCorrect);
+  const tx = useSharedValue(destX);
+  const ty = useSharedValue(destY);
+  const ctx = useSharedValue({ x: 0, y: 0 });
+  const scale = useSharedValue(1);
+  const isDragging = useSharedValue(false);
+  const isCorrectSv = useSharedValue(isCorrect);
 
-    useEffect(() => {
-        isCorrectSv.value = isCorrect;
-    }, [isCorrect]);
+  useEffect(() => {
+    isCorrectSv.value = isCorrect;
+  }, [isCorrect]);
 
-    // Reactive Position: If parent moves us (e.g. swap), animate to new spot
-    // checking !isDragging to avoid fighting the user
-    useEffect(() => {
-         // We use requestAnimationFrame or just plain calls, but we need to check shared value.
-         // Since isDragging is modified on UI thread, there's a slight async gap, 
-         // but logic flow ensures we only get new props AFTER drop (drag end).
-         tx.value = withSpring(destX, { damping: 15 });
-         ty.value = withSpring(destY, { damping: 15 });
-    }, [destX, destY]);
+  // Reactive Position: If parent moves us (e.g. swap), animate to new spot
+  // checking !isDragging to avoid fighting the user
+  useEffect(() => {
+    // We use requestAnimationFrame or just plain calls, but we need to check shared value.
+    // Since isDragging is modified on UI thread, there's a slight async gap,
+    // but logic flow ensures we only get new props AFTER drop (drag end).
+    tx.value = withSpring(destX, { damping: 15 });
+    ty.value = withSpring(destY, { damping: 15 });
+  }, [destX, destY]);
 
-    // Dynamic Z-Index: 
-    // - Dragging: 100 
-    // - Incorrect: 10 (Float above correctly placed ones)
-    // - Correct: 1 (Sits at the bottom)
-    const z = useDerivedValue(() => {
-        if (isDragging.value) return 100;
-        return isCorrectSv.value ? 1 : 10;
-    });
+  // Dynamic Z-Index:
+  // - Dragging: 100
+  // - Incorrect: 10 (Float above correctly placed ones)
+  // - Correct: 1 (Sits at the bottom)
+  const z = useDerivedValue(() => {
+    if (isDragging.value) return 100;
+    return isCorrectSv.value ? 1 : 10;
+  });
 
-    const gesture = useMemo(() => {
-        return Gesture.Pan()
-            .enabled(enabled)
-            .onStart(() => {
-                ctx.value = { x: tx.value, y: ty.value };
-                scale.value = withSpring(1.08); 
-                isDragging.value = true;
-            })
-            .onUpdate((e) => {
-                tx.value = e.translationX + ctx.value.x;
-                ty.value = e.translationY + ctx.value.y;
-            })
-            .onEnd(() => {
-                scale.value = withSpring(1);
-                isDragging.value = false;
-                
-                const currentX = tx.value;
-                const currentY = ty.value;
-                
-                let bestSlot = -1;
-                let minDist = 10000;
-                
-                for(let i=0; i<4; i++) {
-                        const sr = Math.floor(i / 2);
-                        const sc = i % 2;
-                        const sx = sc * PIECE_SIZE;
-                        const sy = sr * PIECE_SIZE;
-                        
-                        const pieceCenterX = currentX + PIECE_SIZE/2;
-                        const pieceCenterY = currentY + PIECE_SIZE/2;
-                        const slotCenterX = sx + PIECE_SIZE/2;
-                        const slotCenterY = sy + PIECE_SIZE/2;
+  const gesture = useMemo(() => {
+    return Gesture.Pan()
+      .enabled(enabled)
+      .onStart(() => {
+        ctx.value = { x: tx.value, y: ty.value };
+        scale.value = withSpring(1.08);
+        isDragging.value = true;
+      })
+      .onUpdate((e) => {
+        tx.value = e.translationX + ctx.value.x;
+        ty.value = e.translationY + ctx.value.y;
+      })
+      .onEnd(() => {
+        scale.value = withSpring(1);
+        isDragging.value = false;
 
-                        const dist = Math.sqrt(Math.pow(pieceCenterX - slotCenterX, 2) + Math.pow(pieceCenterY - slotCenterY, 2));
+        const currentX = tx.value;
+        const currentY = ty.value;
 
-                        if (dist < PIECE_SIZE * 0.5) { 
-                            if(dist < minDist) {
-                                minDist = dist;
-                                bestSlot = i;
-                            }
-                        }
-                }
-                
-                if (bestSlot !== -1) {
-                    const sr = Math.floor(bestSlot / 2);
-                    const sc = bestSlot % 2;
-                    // Snap visually immediately for better feeling
-                    tx.value = withSpring(sc * PIECE_SIZE, { damping: 15 });
-                    ty.value = withSpring(sr * PIECE_SIZE, { damping: 15 });
-                    runOnJS(onDrop)(id, bestSlot);
-                } else {
-                    // Snap back to START if no valid drop
-                    tx.value = withSpring(ctx.value.x);
-                    ty.value = withSpring(ctx.value.y);
-                }
-            });
-    }, [enabled, id, onDrop]);
+        let bestSlot = -1;
+        let minDist = 10000;
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [
-                { translateX: tx.value },
-                { translateY: ty.value },
-                { scale: scale.value }
-            ],
-            zIndex: z.value,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            shadowColor: '#000',
-            shadowOffset: {
-                width: 0,
-                height: isDragging.value ? 10 : 2,
-            },
-            shadowOpacity: isDragging.value ? 0.4 : 0.15,
-            shadowRadius: isDragging.value ? 12 : 3,
-            elevation: isDragging.value ? 15 : (z.value === 1 ? 1 : 5), 
-        };
-    });
+        for (let i = 0; i < 4; i++) {
+          const sr = Math.floor(i / 2);
+          const sc = i % 2;
+          const sx = sc * PIECE_SIZE;
+          const sy = sr * PIECE_SIZE;
 
-    const innerStyle = {
-        width: BOARD_SIZE,
-        height: BOARD_SIZE,
-        transform: [
-            { translateX: -correctCol * PIECE_SIZE },
-            { translateY: -correctRow * PIECE_SIZE },
-        ],
+          const pieceCenterX = currentX + PIECE_SIZE / 2;
+          const pieceCenterY = currentY + PIECE_SIZE / 2;
+          const slotCenterX = sx + PIECE_SIZE / 2;
+          const slotCenterY = sy + PIECE_SIZE / 2;
+
+          const dist = Math.sqrt(
+            Math.pow(pieceCenterX - slotCenterX, 2) +
+              Math.pow(pieceCenterY - slotCenterY, 2)
+          );
+
+          if (dist < PIECE_SIZE * 0.5) {
+            if (dist < minDist) {
+              minDist = dist;
+              bestSlot = i;
+            }
+          }
+        }
+
+        if (bestSlot !== -1) {
+          const sr = Math.floor(bestSlot / 2);
+          const sc = bestSlot % 2;
+          // Snap visually immediately for better feeling
+          tx.value = withSpring(sc * PIECE_SIZE, { damping: 15 });
+          ty.value = withSpring(sr * PIECE_SIZE, { damping: 15 });
+          runOnJS(onDrop)(id, bestSlot);
+        } else {
+          // Snap back to START if no valid drop
+          tx.value = withSpring(ctx.value.x);
+          ty.value = withSpring(ctx.value.y);
+        }
+      });
+  }, [enabled, id, onDrop]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: tx.value },
+        { translateY: ty.value },
+        { scale: scale.value },
+      ],
+      zIndex: z.value,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: isDragging.value ? 10 : 2,
+      },
+      shadowOpacity: isDragging.value ? 0.4 : 0.15,
+      shadowRadius: isDragging.value ? 12 : 3,
+      elevation: isDragging.value ? 15 : z.value === 1 ? 1 : 5,
     };
+  });
 
-    return (
-        <GestureDetector gesture={gesture}>
-            <Animated.View style={[styles.pieceContainer, animatedStyle]}>
-                <View style={enabled ? styles.activePiece : styles.lockedPiece}>
-                    <Image 
-                        source={{ uri: imageUrl }} 
-                        style={innerStyle}
-                        contentFit="cover"
-                        transition={200}
-                    />
-                    {enabled && <View style={styles.borderOverlay} />}
-                </View>
-            </Animated.View>
-        </GestureDetector>
-    );
+  const innerStyle = {
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+    transform: [
+      { translateX: -correctCol * PIECE_SIZE },
+      { translateY: -correctRow * PIECE_SIZE },
+    ],
+  };
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.pieceContainer, animatedStyle]}>
+        <View style={enabled ? styles.activePiece : styles.lockedPiece}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={innerStyle}
+            contentFit="cover"
+            transition={200}
+          />
+          {enabled && <View style={styles.borderOverlay} />}
+        </View>
+      </Animated.View>
+    </GestureDetector>
+  );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 20,
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   title: {
-    fontFamily: 'FredokaOne',
+    fontFamily: "FredokaOne",
     fontSize: 28,
-    color: '#FF1493',
+    color: "#FF1493",
     marginBottom: 8,
   },
   question: {
-    fontFamily: 'BalsamiqSans',
+    fontFamily: "BalsamiqSans",
     fontSize: 18,
-    color: '#666',
+    color: "#666",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   board: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     borderRadius: 16,
     borderWidth: 0,
-    position: 'relative',
+    position: "relative",
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -370,23 +412,23 @@ const styles = StyleSheet.create({
     // Removed padding to eliminate gaps
   },
   activePiece: {
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
-    backgroundColor: '#FFF',
-    borderRadius: 8, 
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+    backgroundColor: "#FFF",
+    borderRadius: 8,
   },
   lockedPiece: {
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
     borderRadius: 0, // Zero radius to join seamlessly
   },
   borderOverlay: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
     borderRadius: 8,
     zIndex: 10,
-  }
+  },
 });

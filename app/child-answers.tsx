@@ -186,7 +186,7 @@ export default function ChildAnswers() {
         <View style={styles.cardContainer}>
           <TouchableOpacity
             onPress={() => handleStagePress(stage.stageId)}
-            activeOpacity={0.85}
+            activeOpacity={1}
             style={styles.cardTouchable}
           >
             <LinearGradient

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -112,10 +112,17 @@ export default function StageAnswers() {
     }
   }, [user?._id, stageId]);
 
-  // Fetch answers on mount and when dependencies change
+  // Reset index when stageId changes
   useEffect(() => {
-    fetchAnswers();
-  }, [fetchAnswers]);
+    setCurrentIndex(0);
+  }, [stageId]);
+
+  // Fetch answers every time the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnswers();
+    }, [fetchAnswers])
+  );
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -126,7 +133,7 @@ export default function StageAnswers() {
         sound.unloadAsync().catch(() => {});
       }
     };
-  }, []);
+  }, [sound]);
 
   // Update selected mark and reset audio when current answer changes
   useEffect(() => {
@@ -134,14 +141,6 @@ export default function StageAnswers() {
       setSelectedMark(currentAnswer.mark || null);
     }
     setIsPlaying(false);
-
-    // Cleanup sound when answer changes
-    return () => {
-      if (sound) {
-        sound.setOnPlaybackStatusUpdate(null);
-        sound.unloadAsync().catch(() => {});
-      }
-    };
   }, [currentAnswer]);
 
   // Request audio permissions
@@ -165,7 +164,7 @@ export default function StageAnswers() {
     }
   }, []);
 
-  // Play answer audio - simple pattern from LookAndSay.tsx
+  // Play answer audio - toggle playback logic from LookAndSay
   const playAnswerAudio = useCallback(async () => {
     if (!currentAnswer?.audio?.name) {
       Alert.alert(
@@ -177,133 +176,103 @@ export default function StageAnswers() {
 
     const audioUrl = currentAnswer.audio.name;
 
-    // Validate URL format
-    if (
-      !audioUrl.startsWith("http://") &&
-      !audioUrl.startsWith("https://") &&
-      !audioUrl.startsWith("file://")
-    ) {
-      Alert.alert("Invalid URL", "The audio URL format is invalid");
+    // If currently playing, stop it
+    if (isPlaying && sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      } catch (err) {
+        // Error stopping sound
+      }
+      setSound(null);
+      setIsPlaying(false);
       return;
     }
 
     try {
-      // Check permissions before playing
-      if (Platform.OS !== "web") {
-        const { status } = await Audio.getPermissionsAsync();
-
-        if (status !== "granted") {
-          const { status: newStatus } = await Audio.requestPermissionsAsync();
-
-          if (newStatus !== "granted") {
-            Alert.alert(
-              "Permission Required",
-              "Audio playback requires permission. Please grant audio permission in settings."
-            );
-            return;
-          }
-        }
-      }
-
-      // Stop and unload active sound if any
+      // Unload any prior sound
       if (sound) {
         try {
-          await sound.stopAsync();
           await sound.unloadAsync();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-        setSound(null);
+        } catch (e) {}
       }
 
-      setIsPlaying(true);
-
-      // Set audio mode for playback - ensure it plays even in silent mode
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: false,
-        });
-      } catch (audioModeError) {
-        // Continue anyway - might still work
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true }
-      );
-
+      const { sound: newSound } = await Audio.Sound.createAsync({
+        uri: audioUrl,
+      });
       setSound(newSound);
-
-      // Get initial status
-      const status = await newSound.getStatusAsync();
-
-      if (status.isLoaded) {
-        if (status.shouldPlay && !status.isPlaying) {
-          await newSound.playAsync();
-        } else if (!status.shouldPlay) {
-          await newSound.playAsync();
-        }
-      }
+      setIsPlaying(true);
+      await newSound.playAsync();
 
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        // Don't process status updates if component is unmounting
-        if (isUnmountingRef.current) return;
-
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-          }
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
         }
       });
     } catch (error) {
       setIsPlaying(false);
       setSound(null);
-      Alert.alert(
-        "Error",
-        `Failed to play audio: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      console.error("Error playing audio:", error);
     }
-  }, [currentAnswer, sound]);
+  }, [currentAnswer, sound, isPlaying]);
 
-  // Handle next button
-  const handleNext = useCallback(async () => {
-    if (!currentAnswer) return;
-
-    // Save mark if selected
-    if (selectedMark !== null && selectedMark !== currentAnswer.mark) {
+  // Save mark helper function
+  const saveMark = useCallback(async (answer: Answer, mark: number | null) => {
+    if (mark !== null && mark !== answer.mark) {
       try {
-        await app.service("answers").patch(currentAnswer._id, {
-          mark: selectedMark,
+        await app.service("answers").patch(answer._id, {
+          mark: mark,
         });
         setAnswers((prev) =>
           prev.map((ans) =>
-            ans._id === currentAnswer._id ? { ...ans, mark: selectedMark } : ans
+            ans._id === answer._id ? { ...ans, mark: mark } : ans
           )
         );
       } catch (err) {
         console.error("Error saving mark:", err);
       }
     }
+  }, []);
+
+  // Handle prev button
+  const handlePrev = useCallback(async () => {
+    if (!currentAnswer || currentIndex === 0) return;
+
+    // Save mark if selected
+    await saveMark(currentAnswer, selectedMark);
+
+    // Move to previous answer
+    setCurrentIndex(currentIndex - 1);
+  }, [currentAnswer, selectedMark, currentIndex, saveMark]);
+
+  // Handle next button
+  const handleNext = useCallback(async () => {
+    if (!currentAnswer) return;
+
+    // Save mark if selected
+    await saveMark(currentAnswer, selectedMark);
 
     // Move to next answer
     if (currentIndex < answers.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      router.back();
+      router.push("/child-answers");
     }
-  }, [currentAnswer, selectedMark, currentIndex, answers.length, router]);
+  }, [
+    currentAnswer,
+    selectedMark,
+    currentIndex,
+    answers.length,
+    router,
+    saveMark,
+  ]);
 
   // Render header
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.back()}
+        onPress={() => router.push("/child-answers")}
         activeOpacity={0.7}
       >
         <View style={styles.backButtonContainer}>
@@ -342,7 +311,7 @@ export default function StageAnswers() {
           </Body>
           <DuoButton
             title="Go Back"
-            onPress={() => router.back()}
+            onPress={() => router.push("/child-answers")}
             color="blue"
             size="medium"
           />
@@ -408,14 +377,36 @@ export default function StageAnswers() {
             />
           </View>
 
-          {/* Next Button */}
-          <View style={styles.nextButtonContainer}>
-            <DuoButton
-              title={currentIndex < answers.length - 1 ? "Next" : "Finish"}
-              onPress={handleNext}
-              color="green"
-              size="large"
-            />
+          {/* Navigation Buttons */}
+          <View style={styles.navigationButtonsContainer}>
+            {currentIndex > 0 && (
+              <View style={styles.buttonWrapper}>
+                <DuoButton
+                  title=""
+                  onPress={handlePrev}
+                  color="blue"
+                  size="large"
+                  icon="chevron-back"
+                  shape="rectangle"
+                  iconSize={28}
+                />
+              </View>
+            )}
+            <View style={styles.buttonWrapper}>
+              <DuoButton
+                title=""
+                onPress={handleNext}
+                color="green"
+                size="large"
+                icon={
+                  currentIndex < answers.length - 1
+                    ? "chevron-forward"
+                    : "checkmark"
+                }
+                shape="rectangle"
+                iconSize={28}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -555,6 +546,20 @@ const styles = StyleSheet.create({
   ratingContainer: {
     alignItems: "center",
     gap: Spacing.margin.md,
+  },
+  navigationButtonsContainer: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.padding.lg,
+    gap: Spacing.margin.lg,
+  },
+  buttonWrapper: {
+    flex: 1,
+    maxWidth: 150,
+    alignItems: "center",
+    justifyContent: "center",
   },
   nextButtonContainer: {
     width: "100%",

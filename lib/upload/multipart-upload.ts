@@ -157,14 +157,10 @@ export const uploadAudioMultipart = async (
       fileType: contentType,
     });
 
-    console.log("Upload complete response:", completeResponse);
-    console.log("Upload complete response type:", typeof completeResponse);
-
     // Backend returns Media ID (ObjectId string)
     const mediaId = completeResponse;
     // Ensure mediaId is a string (handle both ObjectId and string cases)
     const mediaIdString = mediaId ? String(mediaId) : null;
-    console.log("Media ID string:", mediaIdString);
     return mediaIdString;
   } catch (error) {
     console.error("Multipart upload error:", error);

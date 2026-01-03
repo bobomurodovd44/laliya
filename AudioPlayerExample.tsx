@@ -35,7 +35,6 @@ export default function AudioPlayerExample({ audioSource }: AudioPlayerProps) {
 
         // Handle audio finish
         if (status.didJustFinish) {
-          console.log("Audio finished playing");
           setIsPlaying(false);
 
           // Reset position and unload audio

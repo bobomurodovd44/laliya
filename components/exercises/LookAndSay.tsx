@@ -387,9 +387,11 @@ export default function LookAndSay({
 
           {/* Footer Area: Word + Play Button */}
           <View style={styles.cardFooter}>
-            <Title size="xlarge" style={styles.word}>
-              {item.word}
-            </Title>
+            <View style={styles.wordContainer}>
+              <Title size="large" style={styles.word} numberOfLines={2}>
+                {item.word}
+              </Title>
+            </View>
             <DuoButton
               title=""
               onPress={playItemAudio}
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
     aspectRatio: 0.8,
     backgroundColor: "white",
     borderRadius: 40,
-    padding: 12, // Reduced padding
+    padding: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -486,7 +488,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     flex: 1,
     width: "100%",
-    marginBottom: 10,
+    marginBottom: 6,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 24, // Slightly less round, more standard
@@ -505,15 +507,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16, // Adjusted padding
+    paddingHorizontal: 8,
     paddingTop: 8,
     borderTopWidth: 2,
     borderTopColor: "#f0f0f0",
+    gap: 12,
+  },
+  wordContainer: {
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
   },
   word: {
     fontFamily: "FredokaOne",
-    fontSize: 48,
+    fontSize: 36,
     color: "#4A4A4A",
+    flexShrink: 1,
   },
   audioButton: {
     // Width/Height handled by customSize prop now

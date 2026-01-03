@@ -164,12 +164,6 @@ export default function Profile() {
             title="Logout"
             onPress={handleLogout}
           />
-          <ProfileMenuItem
-            iconName="trash-outline"
-            title="Delete Account"
-            variant="danger"
-            onPress={() => {}}
-          />
         </View>
 
         <View style={styles.bottomSpacer} />

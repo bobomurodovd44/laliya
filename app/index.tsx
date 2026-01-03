@@ -167,7 +167,7 @@ export default function Index() {
 
   // Handler to navigate to task page
   const handleStagePress = useCallback(
-    async (stageId: string) => {
+    (stageId: string) => {
       // Find the lesson to check exercise count and access
       const lesson = lessons.find((l) => l.stageId === stageId);
 
@@ -176,61 +176,62 @@ export default function Index() {
         return;
       }
 
-      // Check if exercises are already cached
+      // Navigate IMMEDIATELY - don't wait for anything
+      router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
+
+      // Preload exercises and images in background (fire and forget)
       const cached = getCachedExercises(stageId);
 
       if (!cached) {
-        // Fetch exercises and cache images BEFORE navigation
-        try {
-          const { fetchExercisesByStageId, mapPopulatedExerciseToExercise } =
-            await import("../lib/api/exercises");
-          const apiExercises = await fetchExercisesByStageId(stageId);
+        // Fetch exercises and cache images in background
+        (async () => {
+          try {
+            const { fetchExercisesByStageId, mapPopulatedExerciseToExercise } =
+              await import("../lib/api/exercises");
+            const apiExercises = await fetchExercisesByStageId(stageId);
 
-          // Map exercises
-          const mappedExercises = apiExercises.map(
-            (apiEx) => mapPopulatedExerciseToExercise(apiEx).exercise
-          );
+            // Map exercises
+            const mappedExercises = apiExercises.map(
+              (apiEx) => mapPopulatedExerciseToExercise(apiEx).exercise
+            );
 
-          // Cache exercises
-          const { setCachedExercises } = await import(
-            "../lib/cache/exercises-cache"
-          );
-          setCachedExercises(stageId, mappedExercises, apiExercises);
+            // Cache exercises
+            const { setCachedExercises } = await import(
+              "../lib/cache/exercises-cache"
+            );
+            setCachedExercises(stageId, mappedExercises, apiExercises);
 
-          // Extract and preload all images
-          const imageUrls: string[] = [];
-          apiExercises.forEach((apiExercise) => {
-            apiExercise.options?.forEach((option) => {
-              if (option.img?.name && option.img.name.trim() !== "") {
-                imageUrls.push(option.img.name);
+            // Extract and preload all images
+            const imageUrls: string[] = [];
+            apiExercises.forEach((apiExercise) => {
+              apiExercise.options?.forEach((option) => {
+                if (option.img?.name && option.img.name.trim() !== "") {
+                  imageUrls.push(option.img.name);
+                }
+              });
+              if (
+                apiExercise.answer?.img?.name &&
+                apiExercise.answer.img.name.trim() !== ""
+              ) {
+                imageUrls.push(apiExercise.answer.img.name);
               }
             });
-            if (
-              apiExercise.answer?.img?.name &&
-              apiExercise.answer.img.name.trim() !== ""
-            ) {
-              imageUrls.push(apiExercise.answer.img.name);
-            }
-          });
 
-          // Preload images in background (don't wait)
-          if (imageUrls.length > 0) {
-            const uniqueUrls = Array.from(new Set(imageUrls));
-            imagePreloader.preloadBatch(uniqueUrls, "high").catch((err) => {
-              console.error("Failed to preload images:", err);
-            });
+            // Preload images in background (don't wait)
+            if (imageUrls.length > 0) {
+              const uniqueUrls = Array.from(new Set(imageUrls));
+              imagePreloader.preloadBatch(uniqueUrls, "high").catch((err) => {
+                console.error("Failed to preload images:", err);
+              });
+            }
+          } catch (err) {
+            console.error("Failed to preload exercises:", err);
           }
-        } catch (err) {
-          console.error("Failed to preload exercises:", err);
-          // Still navigate even if preload fails
-        }
+        })();
       } else {
-        // Exercises cached, but ensure images are preloaded
+        // Exercises cached, but ensure images are preloaded in background
         imagePreloader.preloadStage(stageId).catch(() => {});
       }
-
-      // Navigate to task page
-      router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
     },
     [lessons, router]
   );

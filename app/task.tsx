@@ -455,18 +455,14 @@ export default function Task() {
       clearTimeout(completionTimeoutRef.current);
     }
 
-    // Enable button IMMEDIATELY for instant feedback - this is the key fix
+    // Enable button IMMEDIATELY for instant feedback - synchronous state update
     setIsCompleted(true);
 
-    // Defer confetti with InteractionManager to prevent blocking UI
-    // This ensures button state updates complete before starting heavy animation
+    // Start confetti immediately without delays for faster feedback
+    // Use requestAnimationFrame to ensure it doesn't block button state update
     if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-      // Use InteractionManager to defer until after interactions complete
-      InteractionManager.runAfterInteractions(() => {
-        // Add small delay to ensure button render completes
-        setTimeout(() => {
-          confettiRef.current?.start();
-        }, 100);
+      requestAnimationFrame(() => {
+        confettiRef.current?.start();
       });
     }
 
@@ -559,16 +555,16 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {
-      // Reset completion state immediately for instant UI feedback
-      setIsCompleted(false);
+      // Calculate next order immediately
+      const nextOrder = exerciseOrder + 1;
+
+      // Navigate IMMEDIATELY for fastest transition
+      router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
 
       // Update user score optimistically (non-blocking, background sync)
       updateUserScore(currentExercise.score);
 
-      // Use optimistic state update for instant navigation feel
-      const nextOrder = exerciseOrder + 1;
-
-      // Update state optimistically before navigation
+      // Update state optimistically for instant display (non-blocking)
       const nextIndex = nextOrder - 1;
       if (nextIndex < stageExercises.length && stageExercises.length > 0) {
         const nextExercise = stageExercises[nextIndex];
@@ -590,9 +586,6 @@ export default function Task() {
           setResetKey((prev) => prev + 1);
         }
       }
-
-      // Navigate after state update
-      router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
     }
   }, [
     isLastExercise,
@@ -606,12 +599,15 @@ export default function Task() {
   ]);
 
   const handleSubmit = useCallback(async () => {
+    // Navigate IMMEDIATELY - don't wait for anything
+    router.push("/");
+
+    // Update user score optimistically (non-blocking, background sync)
     if (currentExercise) {
-      // Update user score optimistically (non-blocking, background sync)
       updateUserScore(currentExercise.score);
     }
 
-    // Update currentStageId and level in background
+    // Update currentStageId and level in background (fire and forget)
     if (stageId && user?._id) {
       // Fire and forget - don't block navigation
       (async () => {
@@ -652,9 +648,6 @@ export default function Task() {
         }
       })();
     }
-
-    // Navigate immediately without waiting
-    router.push("/");
   }, [
     router,
     currentExercise,

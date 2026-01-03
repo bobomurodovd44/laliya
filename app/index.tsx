@@ -326,9 +326,17 @@ export default function Index() {
           </View>
         </View>
         <View style={styles.levelBadge}>
-          <Body style={styles.levelText} weight="bold">
-            Level {maxStageOrder || 0}
-          </Body>
+          <View style={styles.levelBadgeContent}>
+            <Ionicons
+              name="trophy"
+              size={20}
+              color={Colors.badgeLevel}
+              style={{ marginRight: Spacing.margin.xs }}
+            />
+            <Body style={styles.levelText} weight="bold">
+              {maxStageOrder || 0}
+            </Body>
+          </View>
         </View>
       </View>
 
@@ -516,6 +524,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.padding.lg,
     paddingVertical: Spacing.padding.md,
     borderRadius: Spacing.radius.xl,
+  },
+  levelBadgeContent: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   levelText: {
     fontSize: Typography.fontSize.lg,

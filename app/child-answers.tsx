@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -29,7 +28,9 @@ interface Answer {
   exercise?: {
     question: string;
     type: string;
+    stageId?: string;
     stage?: {
+      _id: string;
       order: number;
     };
     options?: Array<{
@@ -48,157 +49,122 @@ interface Answer {
   };
 }
 
-const LIMIT = 10;
+interface StageGroup {
+  stageId: string;
+  stageOrder: number;
+  answerCount: number;
+  latestAnswerDate: number;
+  sampleImageUrl?: string;
+}
 
 export default function ChildAnswers() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
-  const [answers, setAnswers] = useState<Answer[]>([]);
+  const [stages, setStages] = useState<StageGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [skip, setSkip] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  // Fetch answers from service
-  const fetchAnswers = useCallback(
-    async (currentSkip: number, append: boolean = false) => {
-      if (!user?._id) {
-        setError("User not found");
-        setLoading(false);
-        return;
-      }
+  // Fetch answers and group by stages
+  const fetchStages = useCallback(async () => {
+    if (!user?._id) {
+      setError("User not found");
+      setLoading(false);
+      return;
+    }
 
-      try {
-        if (!append) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
+    try {
+      setLoading(true);
+      setError(null);
+
+      const userId = typeof user._id === "string" ? user._id : String(user._id);
+
+      // Fetch all look_and_say answers (no pagination limit)
+      const response = await app.service("answers").find({
+        query: {
+          userId: userId,
+          $sort: { createdAt: -1 },
+          $limit: 1000, // Large limit to get all answers
+        },
+      });
+
+      const answersData = Array.isArray(response)
+        ? response
+        : response.data || [];
+
+      // Filter to only show look_and_say exercises
+      const filteredAnswersData = answersData.filter(
+        (item: Answer) => item.exercise?.type === "look_and_say"
+      );
+
+      // Group answers by stageId
+      const stageMap = new Map<
+        string,
+        {
+          stageId: string;
+          stageOrder: number;
+          answers: Answer[];
+          latestDate: number;
+          sampleImageUrl?: string;
         }
-        setError(null);
+      >();
 
-        const userId =
-          typeof user._id === "string" ? user._id : String(user._id);
+      filteredAnswersData.forEach((answer: Answer) => {
+        const stageId = answer.exercise?.stageId || answer.exercise?.stage?._id;
+        if (!stageId) return;
 
-        const response = await app.service("answers").find({
-          query: {
-            userId: userId,
-            $sort: { createdAt: -1 },
-            $limit: LIMIT,
-            $skip: currentSkip,
-          },
-        });
+        const stageOrder = answer.exercise?.stage?.order || 0;
+        const existing = stageMap.get(stageId);
 
-        const answersData = Array.isArray(response)
-          ? response
-          : response.data || [];
-
-        // Filter to only show look_and_say exercises
-        const filteredAnswersData = answersData.filter(
-          (item: Answer) => item.exercise?.type === "look_and_say"
-        );
-
-        const total = Array.isArray(response)
-          ? filteredAnswersData.length
-          : response.total || filteredAnswersData.length;
-
-        if (append) {
-          setAnswers((prev) => [...prev, ...filteredAnswersData]);
+        if (existing) {
+          existing.answers.push(answer);
+          if (answer.createdAt > existing.latestDate) {
+            existing.latestDate = answer.createdAt;
+          }
+          // Update sample image if available
+          if (
+            !existing.sampleImageUrl &&
+            answer.exercise?.options?.[0]?.img?.name
+          ) {
+            existing.sampleImageUrl = answer.exercise.options[0].img.name;
+          }
         } else {
-          setAnswers(filteredAnswersData);
+          stageMap.set(stageId, {
+            stageId,
+            stageOrder,
+            answers: [answer],
+            latestDate: answer.createdAt,
+            sampleImageUrl: answer.exercise?.options?.[0]?.img?.name,
+          });
         }
+      });
 
-        setHasMore(
-          filteredAnswersData.length === LIMIT && total > currentSkip + LIMIT
-        );
-        setSkip(currentSkip + filteredAnswersData.length);
-      } catch (err: any) {
-        setError(err.message || "Failed to load answers");
-        console.error("Error fetching answers:", err);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [user?._id]
-  );
+      // Convert map to array and sort by stage order
+      const stagesArray: StageGroup[] = Array.from(stageMap.values())
+        .map((group) => ({
+          stageId: group.stageId,
+          stageOrder: group.stageOrder,
+          answerCount: group.answers.length,
+          latestAnswerDate: group.latestDate,
+          sampleImageUrl: group.sampleImageUrl,
+        }))
+        .sort((a, b) => a.stageOrder - b.stageOrder);
+
+      setStages(stagesArray);
+    } catch (err: any) {
+      setError(err.message || "Failed to load stages");
+      console.error("Error fetching stages:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?._id]);
 
   // Initial load
   useEffect(() => {
-    fetchAnswers(0, false);
-  }, [fetchAnswers]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [sound]);
-
-  // Load more answers
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !loading) {
-      fetchAnswers(skip, true);
-    }
-  }, [loadingMore, hasMore, loading, skip, fetchAnswers]);
-
-  // Handle audio playback
-  const handlePlayPause = useCallback(
-    async (answer: Answer) => {
-      if (!answer.audio?.name) {
-        return;
-      }
-
-      try {
-        // If clicking the same audio, toggle play/pause
-        if (playingAudioId === answer._id && sound) {
-          const status = await sound.getStatusAsync();
-          if (status.isLoaded) {
-            if (status.isPlaying) {
-              await sound.pauseAsync();
-              setPlayingAudioId(null);
-            } else {
-              await sound.playAsync();
-            }
-          }
-          return;
-        }
-
-        // Stop current audio if playing
-        if (sound) {
-          await sound.unloadAsync();
-          setSound(null);
-        }
-
-        // Load and play new audio
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: answer.audio.name },
-          { shouldPlay: true }
-        );
-
-        setSound(newSound);
-        setPlayingAudioId(answer._id);
-
-        // Handle playback finish
-        newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setPlayingAudioId(null);
-          }
-        });
-      } catch (err) {
-        console.error("Error playing audio:", err);
-        setPlayingAudioId(null);
-      }
-    },
-    [playingAudioId, sound]
-  );
+    fetchStages();
+  }, [fetchStages]);
 
   // Format date
   const formatDate = (timestamp: number) => {
@@ -218,19 +184,31 @@ export default function ChildAnswers() {
     }
   };
 
-  // Render answer card
-  const renderAnswerCard = useCallback(
-    ({ item: answer }: { item: Answer }) => {
-      const isPlaying = playingAudioId === answer._id;
-      const imageUrl = answer.exercise?.options?.[0]?.img?.name;
+  // Handle stage press
+  const handleStagePress = useCallback(
+    (stageId: string) => {
+      router.push({
+        pathname: "/stage-answers",
+        params: { stageId },
+      } as any);
+    },
+    [router]
+  );
 
+  // Render stage card
+  const renderStageCard = useCallback(
+    ({ item: stage }: { item: StageGroup }) => {
       return (
-        <View style={styles.card}>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => handleStagePress(stage.stageId)}
+          activeOpacity={0.7}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.cardHeaderLeft}>
-              {imageUrl && (
+              {stage.sampleImageUrl && (
                 <Image
-                  source={{ uri: imageUrl }}
+                  source={{ uri: stage.sampleImageUrl }}
                   style={styles.exerciseImage}
                   contentFit="cover"
                   transition={200}
@@ -238,68 +216,41 @@ export default function ChildAnswers() {
               )}
               <View style={styles.cardInfo}>
                 <Body weight="bold" style={styles.exerciseTitle}>
-                  {answer.exercise?.question || "Look and Say"}
+                  Stage {stage.stageOrder}
                 </Body>
-                {answer.exercise?.stage && (
-                  <Body style={styles.stageInfo}>
-                    Stage {answer.exercise.stage.order}
-                  </Body>
-                )}
+                <Body style={styles.stageInfo}>
+                  {stage.answerCount}{" "}
+                  {stage.answerCount === 1 ? "answer" : "answers"}
+                </Body>
                 <Body style={styles.dateInfo}>
-                  {formatDate(answer.createdAt)}
+                  {formatDate(stage.latestAnswerDate)}
                 </Body>
               </View>
             </View>
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={Colors.textSecondary}
+            />
           </View>
-
-          <View style={styles.audioSection}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={() => handlePlayPause(answer)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={24}
-                color={Colors.textWhite}
-              />
-            </TouchableOpacity>
-            <View style={styles.audioInfo}>
-              <Body style={styles.audioLabel}>
-                {isPlaying ? "Playing..." : "Tap to play"}
-              </Body>
-            </View>
-          </View>
-        </View>
+        </TouchableOpacity>
       );
     },
-    [playingAudioId, handlePlayPause]
+    [handleStagePress]
   );
-
-  // Render footer (loading more indicator)
-  const renderFooter = () => {
-    if (!loadingMore) return null;
-    return (
-      <View style={styles.footerLoader}>
-        <LoadingSpinner size="small" />
-      </View>
-    );
-  };
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    setSkip(0);
-    setHasMore(true);
 
     // Ensure minimum refresh time for better UX
     await Promise.all([
-      fetchAnswers(0, false),
+      fetchStages(),
       new Promise((resolve) => setTimeout(resolve, 500)),
     ]);
 
     setRefreshing(false);
-  }, [fetchAnswers]);
+  }, [fetchStages]);
 
   return (
     <PageContainer>
@@ -319,23 +270,23 @@ export default function ChildAnswers() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {loading && answers.length === 0 ? (
+      {loading && stages.length === 0 ? (
         <View style={styles.centerContainer}>
-          <LoadingSpinner message="Loading answers..." />
+          <LoadingSpinner message="Loading stages..." />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
           <Body style={styles.errorText}>{error}</Body>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={() => fetchAnswers(0, false)}
+            onPress={() => fetchStages()}
           >
             <Body weight="bold" style={styles.retryButtonText}>
               Retry
             </Body>
           </TouchableOpacity>
         </View>
-      ) : answers.length === 0 ? (
+      ) : stages.length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons
             name="musical-notes-outline"
@@ -349,16 +300,13 @@ export default function ChildAnswers() {
         </View>
       ) : (
         <FlatList
-          data={answers}
-          renderItem={renderAnswerCard}
-          keyExtractor={(item) => item._id}
+          data={stages}
+          renderItem={renderStageCard}
+          keyExtractor={(item) => item.stageId}
           contentContainerStyle={[
             styles.listContent,
             { paddingTop: insets.top + 100 },
           ]}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

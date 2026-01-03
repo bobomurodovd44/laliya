@@ -5,6 +5,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Platform,
   StyleSheet,
   TouchableOpacity,
@@ -14,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
-import StarRating from "../components/StarRating";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import app from "../lib/feathers/feathers-client";
@@ -59,12 +59,13 @@ export default function StageAnswers() {
 
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedMark, setSelectedMark] = useState<number | null>(null);
+  const [selectedMark, setSelectedMark] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const isUnmountingRef = useRef(false);
+  const toggleAnim = useRef(new Animated.Value(0)).current;
 
   const currentAnswer = answers[currentIndex];
   const imageUrl = currentAnswer?.exercise?.options?.[0]?.img?.name;
@@ -102,7 +103,8 @@ export default function StageAnswers() {
 
       setAnswers(filteredAnswers);
       if (filteredAnswers.length > 0) {
-        setSelectedMark(filteredAnswers[0].mark || null);
+        // Treat null/undefined as 0 (undone)
+        setSelectedMark(filteredAnswers[0].mark ?? 0);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load answers");
@@ -138,10 +140,14 @@ export default function StageAnswers() {
   // Update selected mark and reset audio when current answer changes
   useEffect(() => {
     if (currentAnswer) {
-      setSelectedMark(currentAnswer.mark || null);
+      // Treat null/undefined as 0 (undone)
+      const newMark = currentAnswer.mark ?? 0;
+      setSelectedMark(newMark);
+      // Update animation immediately
+      toggleAnim.setValue(newMark === 1 ? 1 : 0);
     }
     setIsPlaying(false);
-  }, [currentAnswer]);
+  }, [currentAnswer, toggleAnim]);
 
   // Request audio permissions
   const requestAudioPermissions = useCallback(async (): Promise<boolean> => {
@@ -217,8 +223,10 @@ export default function StageAnswers() {
   }, [currentAnswer, sound, isPlaying]);
 
   // Save mark helper function
-  const saveMark = useCallback(async (answer: Answer, mark: number | null) => {
-    if (mark !== null && mark !== answer.mark) {
+  const saveMark = useCallback(async (answer: Answer, mark: number) => {
+    // Compare with answer.mark, treating null/undefined as 0
+    const currentMark = answer.mark ?? 0;
+    if (mark !== currentMark) {
       try {
         await app.service("answers").patch(answer._id, {
           mark: mark,
@@ -233,6 +241,23 @@ export default function StageAnswers() {
       }
     }
   }, []);
+
+  // Toggle handler for switch
+  const handleToggleMark = useCallback((value: boolean) => {
+    const newMark = value ? 1 : 0;
+    setSelectedMark(newMark);
+  }, []);
+
+  // Update animation when selectedMark changes - bouncy and fun!
+  useEffect(() => {
+    Animated.spring(toggleAnim, {
+      toValue: selectedMark === 1 ? 1 : 0,
+      useNativeDriver: true,
+      tension: 50, // Lower = more bouncy
+      friction: 6, // Lower = more bouncy
+      velocity: 0.5,
+    }).start();
+  }, [selectedMark, toggleAnim]);
 
   // Handle prev button
   const handlePrev = useCallback(async () => {
@@ -368,13 +393,71 @@ export default function StageAnswers() {
 
         {/* Bottom Controls */}
         <View style={styles.controls}>
-          {/* Star Rating */}
+          {/* Done/Undone Toggle - Super fun child-friendly toggle! */}
           <View style={styles.ratingContainer}>
-            <StarRating
-              value={selectedMark}
-              onChange={setSelectedMark}
-              size={40}
-            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleToggleMark(!(selectedMark === 1))}
+              style={styles.toggleContainer}
+            >
+              {/* Track background with fun colors */}
+              <Animated.View
+                style={[
+                  styles.toggleTrack,
+                  {
+                    backgroundColor: toggleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["#FFB6C1", "#90EE90"], // Pink to light green
+                    }),
+                  },
+                ]}
+              >
+                {/* Thumb with fun emoji/icon */}
+                <Animated.View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [
+                        {
+                          translateX: toggleAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [6, 62], // Move from left to right
+                          }),
+                        },
+                        {
+                          scale: toggleAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 1.1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.toggleThumbInner,
+                      {
+                        backgroundColor: toggleAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["#FFE4E1", "#FFD700"], // Light pink to gold
+                        }),
+                      },
+                    ]}
+                  >
+                    {selectedMark === 1 ? (
+                      <Ionicons name="checkmark" size={32} color="#FF8C00" />
+                    ) : (
+                      <Ionicons
+                        name="ellipse-outline"
+                        size={28}
+                        color="#FF69B4"
+                      />
+                    )}
+                  </Animated.View>
+                </Animated.View>
+              </Animated.View>
+            </TouchableOpacity>
           </View>
 
           {/* Navigation Buttons */}
@@ -545,7 +628,62 @@ const styles = StyleSheet.create({
   },
   ratingContainer: {
     alignItems: "center",
-    gap: Spacing.margin.md,
+    gap: Spacing.margin.lg,
+  },
+  toggleLabelContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleLabel: {
+    fontSize: 28,
+    fontWeight: "800",
+    fontFamily: "BalsamiqSans",
+    color: Colors.textPrimary,
+    textAlign: "center",
+    textShadowColor: "rgba(255, 215, 0, 0.3)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  toggleContainer: {
+    width: 140,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleTrack: {
+    width: 140,
+    height: 70,
+    borderRadius: 35,
+    padding: 6,
+    justifyContent: "center",
+    position: "relative",
+    shadowColor: "#FF69B4",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  toggleThumb: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    position: "absolute",
+  },
+  toggleThumbInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
   },
   navigationButtonsContainer: {
     width: "100%",

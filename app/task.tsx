@@ -576,7 +576,6 @@ export default function Task() {
             // Get exercise ID from API exercises
             const currentApiExercise = apiExercises[exerciseOrder - 1];
             if (!currentApiExercise?._id) {
-              console.warn("Exercise ID not found for audio upload");
               return;
             }
 
@@ -590,16 +589,50 @@ export default function Task() {
             const userId =
               typeof user._id === "string" ? user._id : String(user._id);
 
-            await uploadAudioMultipart(
+            const mediaId = await uploadAudioMultipart(
               recordedAudioUriRef.current!,
               userId,
               exerciseId
             );
+            
+            // Save/update answer in answers service if audio upload succeeded
+            if (mediaId) {
+              try {
+                // Check if answer already exists for this user and exercise
+                const existingAnswers = await app.service("answers").find({
+                  query: {
+                    userId: userId,
+                    exerciseId: exerciseId,
+                    $limit: 1
+                  }
+                });
+                
+                const existingAnswer = Array.isArray(existingAnswers)
+                  ? existingAnswers[0]
+                  : existingAnswers.data?.[0];
+                
+                if (existingAnswer) {
+                  // Update existing answer with new audioId
+                  await app.service("answers").patch(existingAnswer._id, {
+                    audioId: mediaId
+                  });
+                } else {
+                  // Create new answer
+                  await app.service("answers").create({
+                    audioId: mediaId,
+                    userId: userId,
+                    exerciseId: exerciseId
+                  });
+                }
+              } catch (answerErr) {
+                // Silent fail - don't block user experience
+              }
+            }
+            
             // Clear recorded URI after upload
             recordedAudioUriRef.current = null;
           } catch (err) {
             // Silent fail - don't block user experience
-            console.warn("Failed to upload audio:", err);
           }
         })();
       }
@@ -650,7 +683,7 @@ export default function Task() {
     user?._id,
   ]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     // Upload audio for LookAndSay exercise in background (non-blocking)
     if (
       currentExercise?.type === ExerciseType.LOOK_AND_SAY &&
@@ -663,7 +696,6 @@ export default function Task() {
           // Get exercise ID from API exercises
           const currentApiExercise = apiExercises[exerciseOrder - 1];
           if (!currentApiExercise?._id) {
-            console.warn("Exercise ID not found for audio upload");
             return;
           }
 
@@ -677,16 +709,50 @@ export default function Task() {
           const userId =
             typeof user._id === "string" ? user._id : String(user._id);
 
-          await uploadAudioMultipart(
+          const mediaId = await uploadAudioMultipart(
             recordedAudioUriRef.current!,
             userId,
             exerciseId
           );
+          
+          // Save/update answer in answers service if audio upload succeeded
+          if (mediaId) {
+            try {
+              // Check if answer already exists for this user and exercise
+              const existingAnswers = await app.service("answers").find({
+                query: {
+                  userId: userId,
+                  exerciseId: exerciseId,
+                  $limit: 1
+                }
+              });
+              
+              const existingAnswer = Array.isArray(existingAnswers)
+                ? existingAnswers[0]
+                : existingAnswers.data?.[0];
+              
+              if (existingAnswer) {
+                // Update existing answer with new audioId
+                await app.service("answers").patch(existingAnswer._id, {
+                  audioId: mediaId
+                });
+              } else {
+                // Create new answer
+                await app.service("answers").create({
+                  audioId: mediaId,
+                  userId: userId,
+                  exerciseId: exerciseId
+                });
+              }
+            } catch (answerErr) {
+              // Silent fail - don't block user experience
+            }
+          }
+          
           // Clear recorded URI after upload
           recordedAudioUriRef.current = null;
         } catch (err) {
           // Silent fail - don't block user experience
-          console.warn("Failed to upload audio:", err);
         }
       })();
     }

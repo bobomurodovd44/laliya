@@ -155,6 +155,11 @@ export default function Profile() {
 
         <View style={styles.section}>
           <ProfileMenuItem
+            iconName="musical-notes-outline"
+            title="Child Answers"
+            onPress={() => router.push("/child-answers")}
+          />
+          <ProfileMenuItem
             iconName="log-out-outline"
             title="Logout"
             onPress={handleLogout}

@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Dimensions, Platform, StyleSheet, View } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -109,7 +109,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
       const currentExerciseItems = exercise.optionIds
         .map((id) => items.find((item) => item.id === id))
         .filter((item): item is Item => item !== undefined);
-      
+
       // Always update state (even if empty) to trigger re-render
       setExerciseItems(currentExerciseItems);
 
@@ -131,13 +131,14 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     const intervalId = setInterval(() => {
       attempts++;
       readItems();
-      
+
       // Stop polling if we found all required items or max attempts reached
       const currentExerciseItems = exercise.optionIds
         .map((id) => items.find((item) => item.id === id))
         .filter((item): item is Item => item !== undefined);
-      const hasAllItems = currentExerciseItems.length === exercise.optionIds.length;
-      
+      const hasAllItems =
+        currentExerciseItems.length === exercise.optionIds.length;
+
       if (hasAllItems || attempts >= maxAttempts) {
         clearInterval(intervalId);
       }
@@ -206,7 +207,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     isCompletedRef.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
-    
+
     // Call onComplete directly
     onComplete();
   }, [isCompleted, onComplete]);
@@ -327,14 +328,14 @@ function DraggableCard({
     isCompletedRef.current = false;
     // Re-measure after reset
     setTimeout(() => {
-      viewRef.current?.measureInWindow((x, y) => {
+      viewRef.current?.measureInWindow((x: number, y: number) => {
         startPositionRef.current = { x, y };
       });
     }, 100);
   }, [item.id]);
 
   const measureCard = () => {
-    viewRef.current?.measureInWindow((x, y) => {
+    viewRef.current?.measureInWindow((x: number, y: number) => {
       startPositionRef.current = { x, y };
     });
   };
@@ -458,7 +459,13 @@ function DraggableCard({
   };
 
   return (
-    <Animated.View ref={viewRef} onLayout={measureCard} collapsable={false} style={[cardDynamicStyle, wrapperAnimatedStyle]} pointerEvents="box-none">
+    <Animated.View
+      ref={viewRef}
+      onLayout={measureCard}
+      collapsable={false}
+      style={[cardDynamicStyle, wrapperAnimatedStyle]}
+      pointerEvents="box-none"
+    >
       <GestureDetector gesture={gesture}>
         <Animated.View
           style={[
@@ -468,18 +475,18 @@ function DraggableCard({
             animatedStyle,
           ]}
         >
-        {item.imageUrl && item.imageUrl.trim() !== "" ? (
-          <ImageWithLoader
-            source={{ uri: item.imageUrl }}
-            style={[styles.cardImage, { width: cardSize, height: cardSize }]}
-            resizeMode="contain"
-            priority="high"
-          />
-        ) : (
-          <View
-            style={[styles.cardImage, { backgroundColor: "transparent" }]}
-          />
-        )}
+          {item.imageUrl && item.imageUrl.trim() !== "" ? (
+            <ImageWithLoader
+              source={{ uri: item.imageUrl }}
+              style={[styles.cardImage, { width: cardSize, height: cardSize }]}
+              resizeMode="contain"
+              priority="high"
+            />
+          ) : (
+            <View
+              style={[styles.cardImage, { backgroundColor: "transparent" }]}
+            />
+          )}
         </Animated.View>
       </GestureDetector>
     </Animated.View>
@@ -516,7 +523,7 @@ function TargetCard({
   const viewRef = useRef<any>(null);
 
   const handleLayout = () => {
-    viewRef.current?.measureInWindow((x, y) => {
+    viewRef.current?.measureInWindow((x: number, y: number) => {
       onLayout(x, y);
     });
   };
@@ -535,7 +542,12 @@ function TargetCard({
   };
 
   return (
-    <View ref={viewRef} onLayout={handleLayout} collapsable={false} style={cardDynamicStyle}>
+    <View
+      ref={viewRef}
+      onLayout={handleLayout}
+      collapsable={false}
+      style={cardDynamicStyle}
+    >
       <Animated.View
         style={[
           styles.card,
@@ -545,27 +557,27 @@ function TargetCard({
           animatedStyle,
         ]}
       >
-      {item.imageUrl && item.imageUrl.trim() !== "" ? (
-        <View style={styles.blurContainer}>
-          <ImageWithLoader
-            source={{ uri: item.imageUrl }}
-            style={[
-              styles.cardImage,
-              {
-                width: cardSize,
-                height: cardSize,
-              },
-            ]}
-            resizeMode="contain"
-            tintColor={isCompleted ? undefined : shapeColor}
-            priority="high"
+        {item.imageUrl && item.imageUrl.trim() !== "" ? (
+          <View style={styles.blurContainer}>
+            <ImageWithLoader
+              source={{ uri: item.imageUrl }}
+              style={[
+                styles.cardImage,
+                {
+                  width: cardSize,
+                  height: cardSize,
+                },
+              ]}
+              resizeMode="contain"
+              tintColor={isCompleted ? undefined : shapeColor}
+              priority="high"
+            />
+          </View>
+        ) : (
+          <View
+            style={[styles.blurContainer, { backgroundColor: "transparent" }]}
           />
-        </View>
-      ) : (
-        <View
-          style={[styles.blurContainer, { backgroundColor: "transparent" }]}
-        />
-      )}
+        )}
       </Animated.View>
     </View>
   );

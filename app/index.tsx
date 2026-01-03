@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
@@ -18,6 +18,7 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { exercises } from "../data/data";
 import { fetchStages, Stage } from "../lib/api/stages";
+import { getCachedExercises } from "../lib/cache/exercises-cache";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 import { imagePreloader } from "../lib/image-preloader";
 import { useAuthStore } from "../lib/store/auth-store";
@@ -68,11 +69,19 @@ export default function Index() {
     const loadStageAccess = async () => {
       try {
         setLoadingStageAccess(true);
-        const maxOrder = await getUserMaxStageOrder(user?.currentStageId);
-        setMaxStageOrder(maxOrder);
+        const currentOrder = await getUserMaxStageOrder(user?.currentStageId);
+
+        // Level should only increase, never decrease
+        // Use the maximum between current order and existing maxStageOrder
+        setMaxStageOrder((prevMax) => {
+          // If we have a valid current order, use the maximum
+          // This ensures level never decreases
+          return Math.max(prevMax, currentOrder);
+        });
       } catch (err) {
-        // Default to 0 if error
-        setMaxStageOrder(0);
+        // On error, don't decrease the level - keep current maxStageOrder
+        // Only set to 0 if we don't have a previous value
+        setMaxStageOrder((prevMax) => prevMax || 0);
       } finally {
         setLoadingStageAccess(false);
       }
@@ -85,6 +94,23 @@ export default function Index() {
       setLoadingStageAccess(false);
     }
   }, [user?.currentStageId]);
+
+  // Refresh level in background when page is focused
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh level in background when page is focused
+      if (user?.currentStageId) {
+        getUserMaxStageOrder(user.currentStageId)
+          .then((currentOrder) => {
+            // Level should only increase, never decrease
+            setMaxStageOrder((prevMax) => Math.max(prevMax, currentOrder));
+          })
+          .catch(() => {
+            // On error, don't change the level
+          });
+      }
+    }, [user?.currentStageId])
+  );
 
   // Fetch stages from backend
   useEffect(() => {
@@ -141,7 +167,7 @@ export default function Index() {
 
   // Handler to navigate to task page
   const handleStagePress = useCallback(
-    (stageId: string) => {
+    async (stageId: string) => {
       // Find the lesson to check exercise count and access
       const lesson = lessons.find((l) => l.stageId === stageId);
 
@@ -150,13 +176,60 @@ export default function Index() {
         return;
       }
 
-      // Start preloading all images for this stage in the background
-      // This happens while navigating, so images will be ready when user arrives
-      imagePreloader.preloadStage(stageId).catch(() => {
-        // Silently fail - preloading failures shouldn't block navigation
-      });
+      // Check if exercises are already cached
+      const cached = getCachedExercises(stageId);
 
-      // Navigate immediately to task page with stage._id (ObjectId string)
+      if (!cached) {
+        // Fetch exercises and cache images BEFORE navigation
+        try {
+          const { fetchExercisesByStageId, mapPopulatedExerciseToExercise } =
+            await import("../lib/api/exercises");
+          const apiExercises = await fetchExercisesByStageId(stageId);
+
+          // Map exercises
+          const mappedExercises = apiExercises.map(
+            (apiEx) => mapPopulatedExerciseToExercise(apiEx).exercise
+          );
+
+          // Cache exercises
+          const { setCachedExercises } = await import(
+            "../lib/cache/exercises-cache"
+          );
+          setCachedExercises(stageId, mappedExercises, apiExercises);
+
+          // Extract and preload all images
+          const imageUrls: string[] = [];
+          apiExercises.forEach((apiExercise) => {
+            apiExercise.options?.forEach((option) => {
+              if (option.img?.name && option.img.name.trim() !== "") {
+                imageUrls.push(option.img.name);
+              }
+            });
+            if (
+              apiExercise.answer?.img?.name &&
+              apiExercise.answer.img.name.trim() !== ""
+            ) {
+              imageUrls.push(apiExercise.answer.img.name);
+            }
+          });
+
+          // Preload images in background (don't wait)
+          if (imageUrls.length > 0) {
+            const uniqueUrls = Array.from(new Set(imageUrls));
+            imagePreloader.preloadBatch(uniqueUrls, "high").catch((err) => {
+              console.error("Failed to preload images:", err);
+            });
+          }
+        } catch (err) {
+          console.error("Failed to preload exercises:", err);
+          // Still navigate even if preload fails
+        }
+      } else {
+        // Exercises cached, but ensure images are preloaded
+        imagePreloader.preloadStage(stageId).catch(() => {});
+      }
+
+      // Navigate to task page
       router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
     },
     [lessons, router]

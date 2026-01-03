@@ -126,12 +126,17 @@ export const mapApiTypeToExerciseType = (apiType: string): ExerciseType => {
  * @returns Item object
  */
 const mapOptionToItem = (option: PopulatedOption, numericId: number): Item => {
+  // Ensure imageUrl is a valid non-empty string
+  const imageUrl = option.img?.name?.trim() || "";
+  const audioUrl = option.audio?.name?.trim() || "";
+  const syllablesAudioUrl = option.syllablesAudio?.name?.trim() || "";
+  
   return {
     id: numericId,
     word: option.word,
-    imageUrl: option.img.name,
-    audioUrl: option.audio.name,
-    syllablesAudioUrl: option.syllablesAudio.name,
+    imageUrl,
+    audioUrl,
+    syllablesAudioUrl,
     categoryId: option.categoryId ? parseInt(String(option.categoryId)) : 0,
   };
 };

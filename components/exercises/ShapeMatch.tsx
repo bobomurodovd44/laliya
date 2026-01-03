@@ -84,12 +84,69 @@ const getRandomColor = (): string => {
 };
 
 export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
-  // Get items for this exercise
-  const exerciseItems = useMemo(() => {
-    return exercise.optionIds
-      .map((id) => items.find((item) => item.id === id))
-      .filter((item): item is Item => item !== undefined);
-  }, [exercise.optionIds]);
+  // Create stable exercise identifier
+  const exerciseId = `${exercise.stageId}-${exercise.order}`;
+
+  // Local state for exercise items (read from items store)
+  const [exerciseItems, setExerciseItems] = useState<Item[]>([]);
+  const [answerItem, setAnswerItem] = useState<Item | null>(null);
+
+  // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
+  const answerIdRef = useRef<number | undefined>(exercise.answerId);
+
+  // Update ref when exercise changes
+  useEffect(() => {
+    answerIdRef.current = exercise.answerId;
+  }, [exercise.answerId]);
+
+  // Get the answer ID for rendering (not for callbacks)
+  const answerId = exercise.answerId;
+
+  // Read items from store when exercise changes - use effect to ensure we get latest items
+  useEffect(() => {
+    const readItems = () => {
+      // Get items for this exercise
+      const currentExerciseItems = exercise.optionIds
+        .map((id) => items.find((item) => item.id === id))
+        .filter((item): item is Item => item !== undefined);
+      
+      // Always update state (even if empty) to trigger re-render
+      setExerciseItems(currentExerciseItems);
+
+      // Get answer item
+      if (answerId) {
+        const foundAnswerItem = items.find((item) => item.id === answerId);
+        setAnswerItem(foundAnswerItem || null);
+      } else {
+        setAnswerItem(null);
+      }
+    };
+
+    // Read items immediately
+    readItems();
+
+    // Poll for items in case they're set asynchronously (max 20 attempts, 50ms apart = 1 second total)
+    let attempts = 0;
+    const maxAttempts = 20;
+    const intervalId = setInterval(() => {
+      attempts++;
+      readItems();
+      
+      // Stop polling if we found all required items or max attempts reached
+      const currentExerciseItems = exercise.optionIds
+        .map((id) => items.find((item) => item.id === id))
+        .filter((item): item is Item => item !== undefined);
+      const hasAllItems = currentExerciseItems.length === exercise.optionIds.length;
+      
+      if (hasAllItems || attempts >= maxAttempts) {
+        clearInterval(intervalId);
+      }
+    }, 50);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [exerciseId, exercise.optionIds, answerId]);
 
   const CARD_SIZE = useMemo(
     () => getCardSize(exerciseItems.length),
@@ -111,26 +168,6 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   // Key to force re-measurement of target card after reset
   const [remountKey, setRemountKey] = useState(0);
 
-  // Create stable exercise identifier
-  const exerciseId = `${exercise.stageId}-${exercise.order}`;
-
-  // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
-  const answerIdRef = useRef<number | undefined>(exercise.answerId);
-
-  // Update ref when exercise changes
-  useEffect(() => {
-    answerIdRef.current = exercise.answerId;
-  }, [exercise.answerId]);
-
-  // Get the answer ID for rendering (not for callbacks)
-  const answerId = exercise.answerId;
-
-  // Get the answer item (the single target shape)
-  const answerItem = useMemo(() => {
-    if (!answerId) return null;
-    return items.find((item) => item.id === answerId);
-  }, [answerId]);
-
   // Helper function to ensure shuffle produces different order
   const ensureShuffled = useCallback((items: Item[]): Item[] => {
     return shuffleArray(items);
@@ -138,6 +175,11 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
   // Reset state when exercise changes - using stable identifier
   useEffect(() => {
+    // Only proceed if we have items
+    if (exerciseItems.length === 0) {
+      return;
+    }
+
     // Reset all state
     setIsCompleted(false);
     isCompletedRef.current = false;
@@ -426,11 +468,12 @@ function DraggableCard({
             animatedStyle,
           ]}
         >
-        {item.imageUrl ? (
+        {item.imageUrl && item.imageUrl.trim() !== "" ? (
           <ImageWithLoader
             source={{ uri: item.imageUrl }}
             style={[styles.cardImage, { width: cardSize, height: cardSize }]}
             resizeMode="contain"
+            priority="high"
           />
         ) : (
           <View
@@ -502,7 +545,7 @@ function TargetCard({
           animatedStyle,
         ]}
       >
-      {item.imageUrl ? (
+      {item.imageUrl && item.imageUrl.trim() !== "" ? (
         <View style={styles.blurContainer}>
           <ImageWithLoader
             source={{ uri: item.imageUrl }}
@@ -515,6 +558,7 @@ function TargetCard({
             ]}
             resizeMode="contain"
             tintColor={isCompleted ? undefined : shapeColor}
+            priority="high"
           />
         </View>
       ) : (

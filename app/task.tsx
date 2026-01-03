@@ -262,14 +262,17 @@ export default function Task() {
       // Extract image URLs from current exercise's API data (more efficient than using items array)
       if (currentApiExercise.options) {
         currentApiExercise.options.forEach((option) => {
-          if (option.img?.name) {
+          if (option.img?.name && option.img.name.trim() !== "") {
             imageUrls.push(option.img.name);
           }
         });
       }
 
       // Add current exercise answer image if it exists
-      if (currentApiExercise.answer?.img?.name) {
+      if (
+        currentApiExercise.answer?.img?.name &&
+        currentApiExercise.answer.img.name.trim() !== ""
+      ) {
         if (!imageUrls.includes(currentApiExercise.answer.img.name)) {
           imageUrls.push(currentApiExercise.answer.img.name);
         }
@@ -291,14 +294,17 @@ export default function Task() {
         // Extract image URLs from next exercise's API data
         if (nextApiExercise.options) {
           nextApiExercise.options.forEach((option) => {
-            if (option.img?.name) {
+            if (option.img?.name && option.img.name.trim() !== "") {
               nextImageUrls.push(option.img.name);
             }
           });
         }
 
         // Add next exercise answer image if it exists
-        if (nextApiExercise.answer?.img?.name) {
+        if (
+          nextApiExercise.answer?.img?.name &&
+          nextApiExercise.answer.img.name.trim() !== ""
+        ) {
           if (!nextImageUrls.includes(nextApiExercise.answer.img.name)) {
             nextImageUrls.push(nextApiExercise.answer.img.name);
           }
@@ -532,43 +538,45 @@ export default function Task() {
       updateUserScore(currentExercise.score);
     }
 
-    // Update currentStageId to the next stage
+    // Update currentStageId and level in background
     if (stageId && user?._id) {
-      try {
-        // Fetch the current stage
-        const currentStage = await app.service("stages").get(stageId);
+      // Fire and forget - don't block navigation
+      (async () => {
+        try {
+          const currentStage = await app.service("stages").get(stageId);
+          let allStages = getCachedStages();
 
-        // Use cached stages if available, otherwise fetch from API
-        let allStages = getCachedStages();
+          if (!allStages) {
+            // Cache miss - fetch from API
+            const stagesResponse = await app.service("stages").find();
+            allStages = Array.isArray(stagesResponse)
+              ? stagesResponse
+              : (stagesResponse as any).data || [];
+          }
 
-        if (!allStages) {
-          // Cache miss - fetch from API
-          const stagesResponse = await app.service("stages").find();
-          allStages = Array.isArray(stagesResponse)
-            ? stagesResponse
-            : (stagesResponse as any).data || [];
+          // Find the next stage by order
+          const nextStage = allStages?.find(
+            (stage: any) => stage.order === currentStage.order + 1
+          );
+
+          // If next stage exists, update currentStageId
+          // Note: We only update if nextStage.order is greater than current stage order
+          // This prevents level from decreasing if user goes back to earlier stages
+          if (nextStage && nextStage.order > currentStage.order) {
+            const updatedUser = await app.service("users").patch(user._id, {
+              currentStageId: nextStage._id,
+            });
+
+            // Update auth store with new user data
+            setAuthenticated(updatedUser);
+          }
+        } catch (err) {
+          console.error("Failed to update level:", err);
         }
-
-        // Find the next stage by order (allStages is guaranteed to be non-null here)
-        const nextStage = allStages?.find(
-          (stage: any) => stage.order === currentStage.order + 1
-        );
-
-        // If next stage exists, update currentStageId
-        if (nextStage) {
-          const updatedUser = await app.service("users").patch(user._id, {
-            currentStageId: nextStage._id,
-          });
-
-          // Update auth store with new user data
-          setAuthenticated(updatedUser);
-        }
-      } catch (err: any) {
-        // Log error but don't block navigation
-        console.error("Failed to update currentStageId:", err);
-      }
+      })();
     }
 
+    // Navigate immediately without waiting
     router.push("/");
   }, [
     router,

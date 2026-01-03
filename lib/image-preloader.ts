@@ -105,13 +105,13 @@ class ImagePreloader {
       apiExercises.forEach((apiExercise) => {
         // Add option images
         apiExercise.options?.forEach((option) => {
-          if (option.img?.name) {
+          if (option.img?.name && option.img.name.trim() !== "") {
             imageUrls.push(option.img.name);
           }
         });
 
         // Add answer image if exists
-        if (apiExercise.answer?.img?.name) {
+        if (apiExercise.answer?.img?.name && apiExercise.answer.img.name.trim() !== "") {
           imageUrls.push(apiExercise.answer.img.name);
         }
       });

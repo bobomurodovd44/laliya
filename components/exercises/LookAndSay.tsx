@@ -1,6 +1,6 @@
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { Image } from "expo-image";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
@@ -96,6 +96,11 @@ export default function LookAndSay({
   // State for recording playback specifically
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
 
+  // State for recording time limit
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const MAX_RECORDING_TIME = 15; // 15 seconds
+
   // Ref to track if component is unmounting to avoid false errors
   const isUnmountingRef = React.useRef(false);
 
@@ -116,6 +121,10 @@ export default function LookAndSay({
         sound.unloadAsync().catch(() => {
           // Silently ignore cleanup errors - they're expected during unmount
         });
+      }
+      // Cleanup recording timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
       }
     };
   }, [sound]);
@@ -149,13 +158,35 @@ export default function LookAndSay({
       );
       setRecording(recording);
       setIsRecording(true);
+      setRecordingTime(0); // Reset timer
+
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          const newTime = prev + 1;
+          // Auto-stop at 60 seconds
+          if (newTime >= MAX_RECORDING_TIME) {
+            if (recordingTimerRef.current) {
+              clearInterval(recordingTimerRef.current);
+              recordingTimerRef.current = null;
+            }
+          }
+          return newTime;
+        });
+      }, 1000); // Update every second
     } catch (err) {
       // Failed to start recording
     }
   };
 
-  const stopRecording = async () => {
+  const stopRecording = useCallback(async () => {
     setIsRecording(false);
+
+    // Clear timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
 
     if (!recording) return;
 
@@ -163,14 +194,22 @@ export default function LookAndSay({
     const uri = recording.getURI();
     setRecordedUri(uri);
     setRecording(null);
-    
+    setRecordingTime(0); // Reset timer
+
     // Notify parent component about recorded URI
     if (onRecordingComplete) {
       onRecordingComplete(uri);
     }
-    
+
     onComplete();
-  };
+  }, [recording, onRecordingComplete, onComplete]);
+
+  // Auto-stop recording when time limit is reached
+  useEffect(() => {
+    if (isRecording && recordingTime >= MAX_RECORDING_TIME) {
+      stopRecording();
+    }
+  }, [recordingTime, isRecording, stopRecording]);
 
   const playItemAudio = async () => {
     // Use exercise.questionAudioUrl if available, otherwise fall back to item.audioUrl
@@ -411,6 +450,15 @@ export default function LookAndSay({
       <View style={styles.controls}>
         {/* Record Button Container */}
         <View style={styles.recordButtonContainer}>
+          {/* Show timer when recording */}
+          {isRecording && (
+            <View style={styles.timerContainer}>
+              <Body style={styles.timerText}>
+                {MAX_RECORDING_TIME - recordingTime}s
+              </Body>
+            </View>
+          )}
+
           {/* Multiple Ripples */}
           {isRecording && (
             <>
@@ -566,5 +614,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F0F0F0",
+  },
+  timerContainer: {
+    position: "absolute",
+    top: -30,
+    alignSelf: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 20,
+  },
+  timerText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });

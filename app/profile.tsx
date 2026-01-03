@@ -155,11 +155,6 @@ export default function Profile() {
 
         <View style={styles.section}>
           <ProfileMenuItem
-            iconName="share-social-outline"
-            title="Share Profile"
-            onPress={() => router.push("/add-child")}
-          />
-          <ProfileMenuItem
             iconName="log-out-outline"
             title="Logout"
             onPress={handleLogout}

@@ -64,6 +64,7 @@ export default function Task() {
   const isCompletingRef = useRef(false);
   const previousExerciseOrderRef = useRef<number | null>(null);
   const previousStageIdRef = useRef<string | null>(null);
+  const currentStageIdRef = useRef<string | null>(null);
   const isInitialMountRef = useRef(true);
   const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
 
@@ -87,10 +88,16 @@ export default function Task() {
       // Clear old stage cache to prevent showing old exercises
       clearExercisesCache(previousStageIdRef.current);
       // Clear current exercise immediately to prevent flash of old content
+      // Do this synchronously before any async operations
       setCurrentExercise(null);
       setStageExercises([]);
       setApiExercises([]);
       setLoading(true);
+      // Reset completion state
+      setIsCompleted(false);
+      setResetKey((prev) => prev + 1);
+      // Clear current stageId ref to prevent rendering old exercises
+      currentStageIdRef.current = null;
     }
     previousStageIdRef.current = stageId;
 
@@ -175,6 +182,8 @@ export default function Task() {
           setIsLastExercise(exerciseOrder >= cached.exercises.length);
           isCompletingRef.current = false;
           previousExerciseOrderRef.current = exerciseOrder;
+          // Set current stageId ref to allow rendering
+          currentStageIdRef.current = stageId;
 
           // Map and set items for the current exercise
           const currentApiExercise = cached.apiExercises[exerciseIndex];
@@ -256,6 +265,8 @@ export default function Task() {
           setIsCompleted(false);
           isCompletingRef.current = false;
           previousExerciseOrderRef.current = exerciseOrder;
+          // Set current stageId ref to allow rendering
+          currentStageIdRef.current = stageId;
           setLoading(false);
         } catch (err: any) {
           setError(err.message || "Failed to load exercises");
@@ -485,6 +496,10 @@ export default function Task() {
   const renderExercise = useMemo(() => {
     if (!currentExercise) return null;
 
+    // Don't render exercise if it's from a different stage (prevents flash of old content)
+    // Compare with the ref to ensure we only render exercises for the current stageId
+    if (currentStageIdRef.current !== stageId) return null;
+
     // Create a unique key that includes resetKey to force remount when page is focused
     const exerciseKey = `${currentExercise.stageId}-${currentExercise.order}-${resetKey}`;
 
@@ -540,7 +555,7 @@ export default function Task() {
       default:
         return <Body style={styles.errorText}>Unknown exercise type</Body>;
     }
-  }, [currentExercise, resetKey, handleComplete]);
+  }, [currentExercise, resetKey, handleComplete, stageId]);
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {

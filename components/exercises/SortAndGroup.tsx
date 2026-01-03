@@ -18,7 +18,7 @@ import ImageWithLoader from '../common/ImageWithLoader';
 
 interface SortAndGroupProps {
   exercise: Exercise;
-  onComplete: () => void;
+  onComplete: (isCorrect?: boolean) => void;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -100,6 +100,7 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
   
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
+  const wrongDropCalledRef = useRef(false);
 
   // Position refs for category drop zones
   const topCategoryPositionRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -123,6 +124,7 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
     setItemPlacements(placements);
     setIsCompleted(false);
     isCompletedRef.current = false;
+    wrongDropCalledRef.current = false;
   }, [exerciseId, exerciseItems, category1, category2]);
 
   // Check if all items are correctly placed
@@ -149,8 +151,8 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
       setIsCompleted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Call onComplete directly
-      onComplete();
+      // Call onComplete with isCorrect = true (default)
+      onComplete(true);
     }
   }, [itemPlacements, checkCompletion, isCompleted, onComplete]);
 
@@ -165,7 +167,14 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
 
   const handleWrongDrop = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  }, []);
+    
+    // Call onComplete(false) on first wrong drop to show KeepGoing celebration
+    if (!wrongDropCalledRef.current && !isCompletedRef.current) {
+      wrongDropCalledRef.current = true;
+      isCompletedRef.current = true;
+      onComplete(false);
+    }
+  }, [onComplete]);
 
   const registerTopCategoryPosition = useCallback((x: number, y: number, width: number, height: number) => {
     topCategoryPositionRef.current = { x, y, width, height };

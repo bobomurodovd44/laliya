@@ -10,7 +10,6 @@ import Animated, {
 import { Exercise, Item } from '../../data/data';
 import { items } from '../../lib/items-store';
 import { Body, Title } from '../Typography';
-import TryAgainModal from '../TryAgainModal';
 import ImageWithLoader from '../common/ImageWithLoader';
 
 // Fisher-Yates shuffle
@@ -25,13 +24,12 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 interface OddOneOutProps {
   exercise: Exercise;
-  onComplete: () => void;
+  onComplete: (isCorrect?: boolean) => void;
 }
 
 export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [showTryAgain, setShowTryAgain] = useState(false);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
   
   // Guard to prevent multiple onComplete calls
@@ -53,7 +51,6 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     // Reset state
     setSelectedId(null);
     setIsCorrect(null);
-    setShowTryAgain(false);
     isCompletedRef.current = false;
     
     // Shuffle items - ensure different order each time
@@ -82,12 +79,14 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
       setIsCorrect(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Call onComplete directly
-      onComplete();
+      // Call onComplete with isCorrect = true (default)
+      onComplete(true);
     } else {
       setIsCorrect(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setShowTryAgain(true); // Show modal
+      
+      // Call onComplete with isCorrect = false (will show KeepGoing celebration)
+      onComplete(false);
       
       // Trigger shake animation
       shake.value = withSequence(
@@ -110,11 +109,6 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     <View style={styles.container}>
       <Title size="large" style={styles.title}>Odd One Out</Title>
       <Body size="large" style={styles.question}>{exercise.question}</Body>
-
-      <TryAgainModal 
-        visible={showTryAgain} 
-        onClose={() => setShowTryAgain(false)} 
-      />
       
       <View style={styles.content}>
         <View style={styles.grid}>

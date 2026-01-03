@@ -16,6 +16,7 @@ import OddOneOut from "../components/exercises/OddOneOut";
 import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
 import SortAndGroup from "../components/exercises/SortAndGroup";
+import KeepGoingCelebration from "../components/KeepGoingCelebration";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { ProgressBar } from "../components/ProgressBar";
@@ -60,6 +61,7 @@ export default function Task() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
+  const [showKeepGoing, setShowKeepGoing] = useState(false);
   const confettiRef = useRef<ConfettiCannon>(null);
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCompletingRef = useRef(false);
@@ -445,53 +447,120 @@ export default function Task() {
     [user, setAuthenticated]
   );
 
-  const handleComplete = useCallback(async () => {
-    // Only allow completion if not loading and exercise exists
-    if (loading || !currentExercise || isCompletingRef.current) {
-      return;
-    }
+  const handleComplete = useCallback(
+    async (isCorrect: boolean = true) => {
+      // Only allow completion if not loading and exercise exists
+      if (loading || !currentExercise || isCompletingRef.current) {
+        return;
+      }
 
-    // Mark as completing immediately to prevent multiple calls
-    isCompletingRef.current = true;
+      // Mark as completing immediately to prevent multiple calls
+      isCompletingRef.current = true;
 
-    // Clear any existing timeout
-    if (completionTimeoutRef.current) {
-      clearTimeout(completionTimeoutRef.current);
-    }
+      // Clear any existing timeout
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current);
+      }
 
-    // Enable button IMMEDIATELY for instant feedback - synchronous state update
-    setIsCompleted(true);
+      // Check if this is a wrong answer for exercises that should show KeepGoing
+      const shouldShowKeepGoing =
+        !isCorrect &&
+        (currentExercise.type === ExerciseType.ODD_ONE_OUT ||
+          currentExercise.type === ExerciseType.LISTEN_AND_PICK ||
+          currentExercise.type === ExerciseType.SORT_AND_GROUP);
 
-    // Start confetti immediately without delays for faster feedback
-    // Use requestAnimationFrame to ensure it doesn't block button state update
-    if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-      requestAnimationFrame(() => {
-        confettiRef.current?.start();
-      });
-    }
+      if (shouldShowKeepGoing) {
+        // Show KeepGoing celebration
+        setShowKeepGoing(true);
 
-    // Extra safety check: verify stage is still accessible (non-blocking, in background)
-    if (stageId) {
-      // Don't await - run in background to not block UI
-      (async () => {
-        try {
-          const stage = await app.service("stages").get(stageId);
-          const isAccessible = await checkStageAccess(
-            stage,
-            user?.currentStageId
-          );
-          if (!isAccessible) {
-            setError("Access denied: This stage is locked.");
-            router.replace("/");
-            return;
+        // Update score (score always increases)
+        updateUserScore(currentExercise.score);
+
+        // Auto-advance to next task after 1.5 seconds
+        setTimeout(() => {
+          setShowKeepGoing(false);
+          isCompletingRef.current = false;
+          // Navigate to next exercise using handleNext logic
+          if (!isLastExercise && stageId && currentExercise) {
+            const nextOrder = exerciseOrder + 1;
+            router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
+
+            // Update state optimistically
+            const nextIndex = nextOrder - 1;
+            if (
+              nextIndex < stageExercises.length &&
+              stageExercises.length > 0
+            ) {
+              const nextExercise = stageExercises[nextIndex];
+              if (nextExercise) {
+                setCurrentExercise(nextExercise);
+                setIsLastExercise(nextOrder >= stageExercises.length);
+
+                const nextApiExercise = apiExercises[nextIndex];
+                if (nextApiExercise) {
+                  const { items: exerciseItems } =
+                    mapPopulatedExerciseToExercise(nextApiExercise);
+                  setItems(exerciseItems);
+                }
+
+                setIsCompleted(false);
+                setResetKey((prev) => prev + 1);
+                recordedAudioUriRef.current = null;
+              }
+            }
           }
-        } catch (err) {
-          // If check fails, still allow completion (don't block user)
-          console.warn("Failed to verify stage access:", err);
-        }
-      })();
-    }
-  }, [currentExercise, loading, stageId, user?.currentStageId, router]);
+        }, 1500);
+
+        return;
+      }
+
+      // Correct answer or exercises that should show confetti
+      // Enable button IMMEDIATELY for instant feedback - synchronous state update
+      setIsCompleted(true);
+
+      // Start confetti immediately without delays for faster feedback
+      // Use requestAnimationFrame to ensure it doesn't block button state update
+      if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
+        requestAnimationFrame(() => {
+          confettiRef.current?.start();
+        });
+      }
+
+      // Extra safety check: verify stage is still accessible (non-blocking, in background)
+      if (stageId) {
+        // Don't await - run in background to not block UI
+        (async () => {
+          try {
+            const stage = await app.service("stages").get(stageId);
+            const isAccessible = await checkStageAccess(
+              stage,
+              user?.currentStageId
+            );
+            if (!isAccessible) {
+              setError("Access denied: This stage is locked.");
+              router.replace("/");
+              return;
+            }
+          } catch (err) {
+            // If check fails, still allow completion (don't block user)
+            console.warn("Failed to verify stage access:", err);
+          }
+        })();
+      }
+    },
+    [
+      currentExercise,
+      loading,
+      stageId,
+      user?.currentStageId,
+      router,
+      updateUserScore,
+      isLastExercise,
+      exerciseOrder,
+      stageExercises,
+      apiExercises,
+    ]
+  );
 
   const renderExercise = useMemo(() => {
     if (!currentExercise) return null;
@@ -894,6 +963,8 @@ export default function Task() {
         explosionSpeed={0}
         fallSpeed={3000}
       />
+
+      <KeepGoingCelebration visible={showKeepGoing} />
     </PageContainer>
   );
 }

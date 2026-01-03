@@ -3,12 +3,18 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
-import StarRating from "../components/StarRating";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+import StarRating from "../components/StarRating";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import app from "../lib/feathers/feathers-client";
@@ -61,6 +67,8 @@ export default function StageAnswers() {
   const isUnmountingRef = useRef(false);
 
   const currentAnswer = answers[currentIndex];
+  const imageUrl = currentAnswer?.exercise?.options?.[0]?.img?.name;
+  const itemWord = currentAnswer?.exercise?.options?.[0]?.word || "";
 
   // Fetch answers for the stage
   const fetchAnswers = useCallback(async () => {
@@ -74,10 +82,8 @@ export default function StageAnswers() {
       setLoading(true);
       setError(null);
 
-      const userId =
-        typeof user._id === "string" ? user._id : String(user._id);
+      const userId = typeof user._id === "string" ? user._id : String(user._id);
 
-      // Fetch answers for this stage using stageId query
       const response = await app.service("answers").find({
         query: {
           userId: userId,
@@ -90,14 +96,12 @@ export default function StageAnswers() {
         ? response
         : response.data || [];
 
-      // Filter to only show look_and_say exercises
       const filteredAnswers = answersData.filter(
         (item: Answer) => item.exercise?.type === "look_and_say"
       );
 
       setAnswers(filteredAnswers);
       if (filteredAnswers.length > 0) {
-        // Set initial mark if answer already has one
         setSelectedMark(filteredAnswers[0].mark || null);
       }
     } catch (err: any) {
@@ -108,6 +112,7 @@ export default function StageAnswers() {
     }
   }, [user?._id, stageId]);
 
+  // Fetch answers on mount and when dependencies change
   useEffect(() => {
     fetchAnswers();
   }, [fetchAnswers]);
@@ -121,30 +126,47 @@ export default function StageAnswers() {
         sound.unloadAsync().catch(() => {});
       }
     };
-  }, [sound]);
+  }, []);
 
-  // Update selected mark when current answer changes
+  // Update selected mark and reset audio when current answer changes
   useEffect(() => {
     if (currentAnswer) {
       setSelectedMark(currentAnswer.mark || null);
     }
-    // Reset playing state when answer changes
     setIsPlaying(false);
-    if (sound) {
-      sound.setOnPlaybackStatusUpdate(null);
-      sound.unloadAsync().catch(() => {});
-      setSound(null);
-    }
+
+    // Cleanup sound when answer changes
+    return () => {
+      if (sound) {
+        sound.setOnPlaybackStatusUpdate(null);
+        sound.unloadAsync().catch(() => {});
+      }
+    };
   }, [currentAnswer]);
 
-  // Play answer audio
-  const playAnswerAudio = useCallback(async () => {
-    console.log("playAnswerAudio called", { 
-      hasAudio: !!currentAnswer?.audio?.name,
-      isPlaying,
-      hasSound: !!sound 
-    });
+  // Request audio permissions
+  const requestAudioPermissions = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS === "web") return true;
 
+    try {
+      const { status } = await Audio.getPermissionsAsync();
+      if (status === "granted") return true;
+
+      const { status: newStatus } = await Audio.requestPermissionsAsync();
+      if (newStatus === "granted") return true;
+
+      Alert.alert(
+        "Permission Required",
+        "Audio playback requires permission. Please grant audio permission in settings."
+      );
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Play answer audio - simple pattern from LookAndSay.tsx
+  const playAnswerAudio = useCallback(async () => {
     if (!currentAnswer?.audio?.name) {
       Alert.alert(
         "Audio not available",
@@ -154,38 +176,6 @@ export default function StageAnswers() {
     }
 
     const audioUrl = currentAnswer.audio.name;
-    console.log("Audio URL:", audioUrl);
-
-    // If currently playing, pause it
-    if (isPlaying && sound) {
-      try {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded && status.isPlaying) {
-          console.log("Pausing audio");
-          await sound.pauseAsync();
-          setIsPlaying(false);
-          return;
-        }
-      } catch (e) {
-        console.error("Error pausing audio:", e);
-      }
-    }
-
-    // If paused, resume playback
-    if (!isPlaying && sound) {
-      try {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded && !status.isPlaying && !status.didJustFinish) {
-          console.log("Resuming audio");
-          await sound.playAsync();
-          setIsPlaying(true);
-          return;
-        }
-      } catch (e) {
-        console.error("Error resuming audio:", e);
-        // If resume fails, continue to create new sound
-      }
-    }
 
     // Validate URL format
     if (
@@ -218,7 +208,6 @@ export default function StageAnswers() {
       // Stop and unload active sound if any
       if (sound) {
         try {
-          sound.setOnPlaybackStatusUpdate(null);
           await sound.stopAsync();
           await sound.unloadAsync();
         } catch (e) {
@@ -227,7 +216,9 @@ export default function StageAnswers() {
         setSound(null);
       }
 
-      // Set audio mode for playback
+      setIsPlaying(true);
+
+      // Set audio mode for playback - ensure it plays even in silent mode
       try {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
@@ -236,62 +227,25 @@ export default function StageAnswers() {
           shouldDuckAndroid: false,
         });
       } catch (audioModeError) {
-        // Continue anyway
+        // Continue anyway - might still work
       }
 
-      console.log("Creating new sound with URL:", audioUrl);
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true }
       );
 
-      console.log("Sound created, setting state");
       setSound(newSound);
-      setIsPlaying(true);
 
       // Get initial status
       const status = await newSound.getStatusAsync();
-      console.log("Initial status:", status);
 
       if (status.isLoaded) {
-        // Always call playAsync to ensure audio starts playing
-        // Even if isPlaying is true, positionMillis might be 0 (not actually playing)
-        console.log("Calling playAsync() to ensure playback");
-        await newSound.playAsync();
-        
-        // Verify it's actually playing after a short delay
-        setTimeout(async () => {
-          try {
-            const verifyStatus = await newSound.getStatusAsync();
-            console.log("Verification status:", verifyStatus);
-            if (verifyStatus.isLoaded && !verifyStatus.isPlaying && verifyStatus.positionMillis === 0) {
-              console.log("Audio not actually playing, trying again");
-              await newSound.playAsync();
-            }
-          } catch (e) {
-            console.error("Error verifying playback:", e);
-          }
-        }, 100);
-
-        // Check status again after a brief delay to confirm playback
-        setTimeout(async () => {
-          try {
-            const updatedStatus = await newSound.getStatusAsync();
-            if (updatedStatus.isLoaded) {
-              if (
-                !updatedStatus.isPlaying &&
-                updatedStatus.positionMillis === 0
-              ) {
-                Alert.alert(
-                  "Audio Not Playing",
-                  "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected"
-                );
-              }
-            }
-          } catch (e) {
-            // Ignore status check errors
-          }
-        }, 500);
+        if (status.shouldPlay && !status.isPlaying) {
+          await newSound.playAsync();
+        } else if (!status.shouldPlay) {
+          await newSound.playAsync();
+        }
       }
 
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
@@ -299,20 +253,12 @@ export default function StageAnswers() {
         if (isUnmountingRef.current) return;
 
         if (status.isLoaded) {
-          // Update playing state - use isPlaying directly, not positionMillis
-          // positionMillis can be 0 at the start even when playing
-          setIsPlaying(status.isPlaying);
-          
-          // Reset when audio finishes
           if (status.didJustFinish) {
             setIsPlaying(false);
           }
-        } else {
-          setIsPlaying(false);
         }
       });
     } catch (error) {
-      console.error("Error in playAnswerAudio:", error);
       setIsPlaying(false);
       setSound(null);
       Alert.alert(
@@ -322,7 +268,7 @@ export default function StageAnswers() {
         }`
       );
     }
-  }, [currentAnswer, sound, isPlaying]);
+  }, [currentAnswer, sound]);
 
   // Handle next button
   const handleNext = useCallback(async () => {
@@ -334,7 +280,6 @@ export default function StageAnswers() {
         await app.service("answers").patch(currentAnswer._id, {
           mark: selectedMark,
         });
-        // Update local state to reflect the saved mark
         setAnswers((prev) =>
           prev.map((ans) =>
             ans._id === currentAnswer._id ? { ...ans, mark: selectedMark } : ans
@@ -342,7 +287,6 @@ export default function StageAnswers() {
         );
       } catch (err) {
         console.error("Error saving mark:", err);
-        // Continue even if save fails
       }
     }
 
@@ -350,33 +294,36 @@ export default function StageAnswers() {
     if (currentIndex < answers.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // All answers reviewed, go back
       router.back();
     }
   }, [currentAnswer, selectedMark, currentIndex, answers.length, router]);
 
-  // Get item image for current answer
-  const imageUrl = currentAnswer?.exercise?.options?.[0]?.img?.name;
-  const itemWord = currentAnswer?.exercise?.options?.[0]?.word || "";
+  // Render header
+  const renderHeader = () => (
+    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.7}
+      >
+        <View style={styles.backButtonContainer}>
+          <Ionicons name="arrow-back" size={28} color={Colors.textWhite} />
+        </View>
+      </TouchableOpacity>
+      <Title size="medium" style={styles.headerTitle}>
+        {loading
+          ? "Review Answers"
+          : `Review Answers (${currentIndex + 1}/${answers.length})`}
+      </Title>
+      <View style={styles.headerSpacer} />
+    </View>
+  );
 
+  // Render loading state
   if (loading) {
     return (
       <PageContainer>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <View style={styles.backButtonContainer}>
-              <Ionicons name="arrow-back" size={28} color={Colors.textWhite} />
-            </View>
-          </TouchableOpacity>
-          <Title size="medium" style={styles.headerTitle}>
-            Review Answers
-          </Title>
-          <View style={styles.headerSpacer} />
-        </View>
+        {renderHeader()}
         <View style={styles.centerContainer}>
           <LoadingSpinner message="Loading answers..." />
         </View>
@@ -384,24 +331,11 @@ export default function StageAnswers() {
     );
   }
 
+  // Render error state
   if (error || answers.length === 0) {
     return (
       <PageContainer>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <View style={styles.backButtonContainer}>
-              <Ionicons name="arrow-back" size={28} color={Colors.textWhite} />
-            </View>
-          </TouchableOpacity>
-          <Title size="medium" style={styles.headerTitle}>
-            Review Answers
-          </Title>
-          <View style={styles.headerSpacer} />
-        </View>
+        {renderHeader()}
         <View style={styles.centerContainer}>
           <Body style={styles.errorText}>
             {error || "No answers found for this stage"}
@@ -417,28 +351,14 @@ export default function StageAnswers() {
     );
   }
 
+  // Render main content
   return (
     <PageContainer>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <View style={styles.backButtonContainer}>
-            <Ionicons name="arrow-back" size={28} color={Colors.textWhite} />
-          </View>
-        </TouchableOpacity>
-        <Title size="medium" style={styles.headerTitle}>
-          Review Answers ({currentIndex + 1}/{answers.length})
-        </Title>
-        <View style={styles.headerSpacer} />
-      </View>
+      {renderHeader()}
 
       <View style={[styles.container, { paddingTop: insets.top + 120 }]}>
-        {/* Centered Content */}
+        {/* Centered Card Content */}
         <View style={styles.content}>
-          {/* Unified Flashcard */}
           <View style={styles.card}>
             {/* Image Area */}
             <View style={styles.imageContainer}>
@@ -467,11 +387,11 @@ export default function StageAnswers() {
                 onPress={playAnswerAudio}
                 color="blue"
                 size="medium"
-                customSize={60}
+                customSize={70}
                 style={styles.audioButton}
-                icon={isPlaying ? "pause" : "volume-high"}
+                icon={isPlaying ? "pause" : "play"}
                 shape="circle"
-                iconSize={28}
+                iconSize={32}
               />
             </View>
           </View>
@@ -564,24 +484,26 @@ const styles = StyleSheet.create({
     aspectRatio: 0.78,
     backgroundColor: "white",
     borderRadius: 36,
-    padding: 8,
+    padding: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
     marginBottom: 20,
     alignItems: "center",
     justifyContent: "space-between",
     flexDirection: "column",
+    borderWidth: 2,
+    borderColor: "#f5f5f5",
   },
   imageContainer: {
     flex: 1,
     width: "100%",
-    marginBottom: 6,
+    marginBottom: 8,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: "hidden",
     backgroundColor: "#FFF5E6",
     borderWidth: 2,
@@ -590,7 +512,7 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    borderRadius: 24,
+    borderRadius: 28,
   },
   imagePlaceholder: {
     flex: 1,
@@ -603,41 +525,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     borderTopWidth: 2,
     borderTopColor: "#f0f0f0",
-    gap: 12,
+    gap: 16,
   },
   wordContainer: {
     flex: 1,
     flexShrink: 1,
-    marginRight: 8,
   },
   word: {
     fontFamily: "FredokaOne",
-    fontSize: 36,
+    fontSize: 42,
     color: "#4A4A4A",
     flexShrink: 1,
   },
   audioButton: {
-    // Width/Height handled by customSize prop
+    marginLeft: 8,
+    flexShrink: 0,
   },
   controls: {
     width: "100%",
     alignItems: "center",
     paddingBottom: 20,
     justifyContent: "center",
-    gap: 30,
+    gap: 32,
   },
   ratingContainer: {
     alignItems: "center",
     gap: Spacing.margin.md,
-  },
-  ratingLabel: {
-    fontSize: 18,
-    color: Colors.textPrimary,
-    fontWeight: "600",
   },
   nextButtonContainer: {
     width: "100%",
@@ -658,4 +575,3 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.margin.md,
   },
 });
-

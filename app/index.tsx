@@ -253,7 +253,7 @@ export default function Index() {
         </View>
         <View style={styles.levelBadge}>
           <Body style={styles.levelText} weight="bold">
-            Level 3
+            Level {maxStageOrder || 0}
           </Body>
         </View>
       </View>

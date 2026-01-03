@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -15,6 +15,7 @@ import { Body, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import app from "../lib/feathers/feathers-client";
 import { useAuthStore } from "../lib/store/auth-store";
+import { getUserMaxStageOrder } from "../lib/utils/stage-access";
 
 export default function Profile() {
   const router = useRouter();
@@ -33,7 +34,26 @@ export default function Profile() {
       : "";
   const profilePicture =
     "https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg";
-  const level = 3; // TODO: Get from user data when available
+  const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
+
+  // Fetch user's max stage order
+  useEffect(() => {
+    const loadStageAccess = async () => {
+      try {
+        const maxOrder = await getUserMaxStageOrder(user?.currentStageId);
+        setMaxStageOrder(maxOrder);
+      } catch (err) {
+        // Default to 0 if error
+        setMaxStageOrder(0);
+      }
+    };
+
+    if (user) {
+      loadStageAccess();
+    } else {
+      setMaxStageOrder(0);
+    }
+  }, [user?.currentStageId]);
 
   const handleLogout = async () => {
     try {
@@ -108,7 +128,7 @@ export default function Profile() {
                 style={{ marginBottom: 4 }}
               />
               <Title size="small" style={styles.statValue}>
-                1,240
+                {user?.score?.toLocaleString() || "0"}
               </Title>
             </View>
           </View>
@@ -125,7 +145,7 @@ export default function Profile() {
                 style={{ marginBottom: 4 }}
               />
               <Title size="small" style={styles.statValue}>
-                {level}
+                {maxStageOrder || 0}
               </Title>
             </View>
           </View>

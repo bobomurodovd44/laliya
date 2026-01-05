@@ -135,7 +135,7 @@ export default function LookAndSay({
       if (Platform.OS !== "web") {
         // First check if permissions are already granted
         const { status: currentStatus } = await Audio.getPermissionsAsync();
-        
+
         // Only request permissions if not already granted
         if (currentStatus !== "granted") {
           const { status } = await Audio.requestPermissionsAsync();
@@ -153,15 +153,56 @@ export default function LookAndSay({
 
   const startRecording = async () => {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      // Check permissions before attempting to record
+      if (Platform.OS !== "web") {
+        const { status: currentStatus } = await Audio.getPermissionsAsync();
 
-      const { recording } = await Audio.Recording.createAsync(
+        if (currentStatus !== "granted") {
+          const { status } = await Audio.requestPermissionsAsync();
+
+          if (status !== "granted") {
+            Alert.alert(
+              "Permission Required",
+              "Microphone permission is required to record audio. Please grant permission in your device settings."
+            );
+            return;
+          }
+        }
+      }
+
+      // Stop any active sound playback before starting recording
+      if (sound) {
+        try {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        setSound(null);
+        setIsPlaying(false);
+        setIsPlayingRecording(false);
+      }
+
+      // Set audio mode to allow recording
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      } catch (audioModeError) {
+        Alert.alert(
+          "Audio Mode Error",
+          "Failed to configure audio mode for recording. Please try again."
+        );
+        return;
+      }
+
+      // Create recording
+      const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      setRecording(recording);
+
+      setRecording(newRecording);
       setIsRecording(true);
       setRecordingTime(0); // Reset timer
 
@@ -169,7 +210,7 @@ export default function LookAndSay({
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
-          // Auto-stop at 60 seconds
+          // Auto-stop at MAX_RECORDING_TIME
           if (newTime >= MAX_RECORDING_TIME) {
             if (recordingTimerRef.current) {
               clearInterval(recordingTimerRef.current);
@@ -180,7 +221,20 @@ export default function LookAndSay({
         });
       }, 1000); // Update every second
     } catch (err) {
-      // Failed to start recording
+      // Reset state on failure
+      setIsRecording(false);
+      setRecording(null);
+
+      // Show user-friendly error message
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+
+      Alert.alert(
+        "Recording Failed",
+        `Failed to start recording: ${errorMessage}\n\nPlease check:\n• Microphone permission is granted\n• No other app is using the microphone\n• Try again in a moment`
+      );
+
+      console.error("Failed to start recording:", err);
     }
   };
 

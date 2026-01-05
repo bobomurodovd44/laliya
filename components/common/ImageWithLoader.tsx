@@ -85,7 +85,7 @@ export default function ImageWithLoader({
         timeoutRef.current = null;
       }
     };
-  }, [isRemote ? source.uri : source, isValidUrl, onError]);
+  }, [isRemote ? source.uri : source, onError]);
 
   const handleLoad = () => {
     // Clear timeout on successful load

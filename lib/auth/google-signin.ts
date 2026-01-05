@@ -1,7 +1,7 @@
 import {
   GoogleSignin,
-  statusCodes,
   isErrorWithCode,
+  statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../firebase/config";
@@ -67,39 +67,44 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
     });
 
     // Sign in with Google
-    console.log("Starting Google Sign-In...");
+
     const response = await GoogleSignin.signIn();
-    console.log("Google Sign-In response:", JSON.stringify(response, null, 2));
 
     // Handle response - check if it has type property (newer API) or direct idToken/user (older API)
     let idToken: string;
     let userData: any;
 
-    if ('type' in response) {
+    if ("type" in response) {
       // Newer API with type property
-      if (response.type === 'cancelled') {
+      if (response.type === "cancelled") {
         throw {
           code: statusCodes.SIGN_IN_CANCELLED,
           message: "Sign in was cancelled",
         };
       }
 
-      if (response.type === 'noSavedCredentialFound') {
+      if (response.type === "noSavedCredentialFound") {
         throw {
           code: "NO_SAVED_CREDENTIAL",
           message: "No saved credential found. Please try signing in again.",
         };
       }
 
-      if (response.type !== 'success') {
+      if (response.type !== "success") {
         throw {
           code: "UNKNOWN_RESPONSE_TYPE",
           message: `Google Sign-In failed with response type: ${response.type}`,
         };
       }
 
+      // Type assertion for success response with data property
+      const successResponse = response as unknown as {
+        type: "success";
+        data: { user: any };
+      };
+
       // Extract data from successful response with type
-      if (!response.data || !response.data.user) {
+      if (!successResponse.data || !successResponse.data.user) {
         throw {
           code: "INVALID_RESPONSE",
           message: "Invalid response from Google Sign-In",
@@ -116,13 +121,14 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
       }
 
       idToken = tokens.idToken;
-      userData = response.data.user;
+      userData = successResponse.data.user;
     } else {
       // Older API - response directly contains idToken and user
       if (!response.idToken || !response.user) {
         throw {
           code: "INVALID_RESPONSE",
-          message: "Invalid response from Google Sign-In - missing idToken or user",
+          message:
+            "Invalid response from Google Sign-In - missing idToken or user",
         };
       }
 
@@ -197,4 +203,3 @@ export async function signOutFromGoogle(): Promise<void> {
     // Don't throw - allow sign out to continue even if Google sign out fails
   }
 }
-

@@ -264,28 +264,29 @@ export default function ChildAnswers() {
             </Body>
           </TouchableOpacity>
         </View>
-      ) : stages.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons
-            name="musical-notes-outline"
-            size={64}
-            color={Colors.textTertiary}
-          />
-          <Body style={styles.emptyText}>
-            No answers yet. Complete Look and Say exercises to see your
-            recordings here.
-          </Body>
-        </View>
       ) : (
         <FlatList
           data={stages}
           renderItem={renderStageCard}
           keyExtractor={(item) => item.stageId}
           contentContainerStyle={[
-            styles.listContent,
+            stages.length === 0 ? styles.emptyListContent : styles.listContent,
             { paddingTop: insets.top + 100 },
           ]}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.centerContainer}>
+              <Ionicons
+                name="musical-notes-outline"
+                size={64}
+                color={Colors.textTertiary}
+              />
+              <Body style={styles.emptyText}>
+                No answers yet. Complete Look and Say exercises to see your
+                recordings here.
+              </Body>
+            </View>
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -350,6 +351,11 @@ const styles = StyleSheet.create({
     width: 48,
   },
   listContent: {
+    paddingHorizontal: Spacing.padding.lg,
+    paddingBottom: Spacing.padding.xxl,
+  },
+  emptyListContent: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.padding.lg,
     paddingBottom: Spacing.padding.xxl,
   },

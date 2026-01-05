@@ -7,6 +7,7 @@ interface ProfileMenuItemProps {
   onPress?: () => void;
   variant?: 'default' | 'danger';
   iconColor?: string;
+  disabled?: boolean;
 }
 
 const iconColors = {
@@ -22,7 +23,8 @@ export function ProfileMenuItem({
   title, 
   onPress,
   variant = 'default',
-  iconColor
+  iconColor,
+  disabled = false
 }: ProfileMenuItemProps) {
   const defaultColor = iconColors[iconName as keyof typeof iconColors] || '#58CC02';
   const finalIconColor = iconColor || (variant === 'danger' ? '#FF4B4B' : defaultColor);
@@ -36,9 +38,10 @@ export function ProfileMenuItem({
       
       {/* Main Button */}
       <TouchableOpacity 
-        style={styles.container} 
-        onPress={onPress}
-        activeOpacity={0.8}
+        style={[styles.container, disabled && styles.disabled]} 
+        onPress={disabled ? undefined : onPress}
+        activeOpacity={disabled ? 1 : 0.8}
+        disabled={disabled}
       >
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor }]}>
@@ -46,7 +49,8 @@ export function ProfileMenuItem({
           </View>
           <Text style={[
             styles.title,
-            variant === 'danger' && styles.dangerText
+            variant === 'danger' && styles.dangerText,
+            disabled && styles.disabledText
           ]}>
             {title}
           </Text>
@@ -103,5 +107,11 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#FF4B4B',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    opacity: 0.6,
   },
 });

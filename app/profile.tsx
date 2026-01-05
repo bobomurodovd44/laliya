@@ -7,6 +7,7 @@ import { PageContainer } from "../components/layout/PageContainer";
 import { ProfileMenuItem } from "../components/ProfileMenuItem";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
+import { signOutFromGoogle } from "../lib/auth/google-signin";
 import app from "../lib/feathers/feathers-client";
 import { useAuthStore } from "../lib/store/auth-store";
 import { getUserMaxStageOrder } from "../lib/utils/stage-access";
@@ -30,6 +31,7 @@ export default function Profile() {
     user?.profilePicture ||
     "https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg";
   const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
   // Fetch user's max stage order
   useEffect(() => {
@@ -51,17 +53,43 @@ export default function Profile() {
   }, [user?.currentStageId]);
 
   const handleLogout = async () => {
+    // Prevent multiple clicks
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
     try {
-      // Clear Feathers authentication
-      await app.logout();
-      // Clear auth store
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Logout timeout")), 5000);
+      });
+
+      // Sign out from Google (don't wait if it fails)
+      signOutFromGoogle().catch((error) => {
+        console.warn("Google sign-out error (non-critical):", error);
+      });
+
+      // Clear Feathers authentication with timeout
+      await Promise.race([app.logout(), timeoutPromise]).catch((error) => {
+        console.warn("Feathers logout error (non-critical):", error);
+      });
+
+      // Always clear local auth state and navigate, even if logout fails
       setUnauthenticated();
-      // Navigate to login (protected routes will handle redirect)
-      router.replace("/login");
+
+      // Use setTimeout to ensure navigation happens after state update
+      setTimeout(() => {
+        router.replace("/login");
+        setIsLoggingOut(false);
+      }, 100);
     } catch (error) {
+      console.error("Logout error:", error);
       // Even if logout fails, clear local auth state
       setUnauthenticated();
       router.replace("/login");
+      setIsLoggingOut(false);
     }
   };
 
@@ -145,8 +173,10 @@ export default function Profile() {
           />
           <ProfileMenuItem
             iconName="log-out-outline"
-            title="Logout"
+            title={isLoggingOut ? "Logging out..." : "Logout"}
             onPress={handleLogout}
+            variant="danger"
+            disabled={isLoggingOut}
           />
         </View>
 

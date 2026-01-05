@@ -126,17 +126,17 @@ export const mapApiTypeToExerciseType = (apiType: string): ExerciseType => {
  * @returns Numeric hash of the ObjectId
  */
 const hashObjectIdToNumber = (objectId: string | {}): number => {
-  if (!objectId || typeof objectId !== 'string') {
+  if (!objectId || typeof objectId !== "string") {
     return 0;
   }
-  
+
   // Simple hash function to convert ObjectId string to number
   // This ensures same ObjectId always produces same number
   let hash = 0;
   const str = String(objectId);
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash);
@@ -156,17 +156,11 @@ const mapOptionToItem = (option: PopulatedOption, numericId: number): Item => {
 
   const rawCategoryId = option.categoryId;
   // Use hash function to convert ObjectId string to consistent number
-  const parsedCategoryId = rawCategoryId ? hashObjectIdToNumber(String(rawCategoryId)) : 0;
+  const parsedCategoryId = rawCategoryId
+    ? hashObjectIdToNumber(String(rawCategoryId))
+    : 0;
 
   // Log raw API data for debugging
-  console.log('mapOptionToItem:', {
-    numericId,
-    word: option.word,
-    rawCategoryId,
-    rawCategoryIdType: typeof rawCategoryId,
-    parsedCategoryId,
-    categoryTitle: option.category?.title
-  });
 
   return {
     id: numericId,

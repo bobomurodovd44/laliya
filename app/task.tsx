@@ -480,7 +480,7 @@ export default function Task() {
         setTimeout(() => {
           setShowKeepGoing(false);
           isCompletingRef.current = false;
-          
+
           if (isLastExercise) {
             // If this is the last exercise, end the stage
             // Navigate to home
@@ -491,7 +491,9 @@ export default function Task() {
               // Fire and forget - don't block navigation
               (async () => {
                 try {
-                  const completedStage = await app.service("stages").get(stageId);
+                  const completedStage = await app
+                    .service("stages")
+                    .get(stageId);
                   let allStages = getCachedStages();
 
                   if (!allStages) {
@@ -515,9 +517,11 @@ export default function Task() {
                   // Only update if nextStage exists AND is ahead of user's current progress
                   // This prevents level from decreasing if user goes back to earlier stages
                   if (nextStage && nextStage.order > userCurrentStageOrder) {
-                    const updatedUser = await app.service("users").patch(user._id, {
-                      currentStageId: nextStage._id,
-                    });
+                    const updatedUser = await app
+                      .service("users")
+                      .patch(user._id, {
+                        currentStageId: nextStage._id,
+                      });
 
                     // Update auth store with new user data
                     setAuthenticated(updatedUser);
@@ -621,9 +625,10 @@ export default function Task() {
     // Create a stable key based on exercise identity
     // Only include resetKey for exercises that need explicit remounting (not LookAndSay)
     const baseKey = `${currentExercise.stageId}-${currentExercise.order}`;
-    const exerciseKey = currentExercise.type === ExerciseType.LOOK_AND_SAY
-      ? baseKey
-      : `${baseKey}-${resetKey}`;
+    const exerciseKey =
+      currentExercise.type === ExerciseType.LOOK_AND_SAY
+        ? baseKey
+        : `${baseKey}-${resetKey}`;
 
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:
@@ -671,17 +676,26 @@ export default function Task() {
           />
         );
       case ExerciseType.SORT_AND_GROUP:
+        const currentApiExercise = apiExercises[exerciseOrder - 1];
         return (
           <SortAndGroup
             key={exerciseKey}
             exercise={currentExercise}
             onComplete={handleComplete}
+            apiExercise={currentApiExercise}
           />
         );
       default:
         return <Body style={styles.errorText}>Unknown exercise type</Body>;
     }
-  }, [currentExercise, resetKey, handleComplete, stageId]);
+  }, [
+    currentExercise,
+    resetKey,
+    handleComplete,
+    stageId,
+    apiExercises,
+    exerciseOrder,
+  ]);
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {

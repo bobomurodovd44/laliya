@@ -58,6 +58,7 @@ function getGoogleSignInErrorMessage(error: any): string {
 /**
  * Sign in with Google
  * Returns user info and Firebase access token for Feathers authentication
+ * Always shows account picker by signing out first if there's a previous sign-in
  */
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   try {
@@ -66,7 +67,18 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
       showPlayServicesUpdateDialog: true,
     });
 
-    // Sign in with Google
+    // Sign out first to clear cached account and force account picker
+    // This ensures users can choose a different account each time
+    try {
+      if (GoogleSignin.hasPreviousSignIn()) {
+        await GoogleSignin.signOut();
+      }
+    } catch (signOutError) {
+      // Ignore sign out errors - continue with sign in even if sign out fails
+      console.log("Note: Could not sign out previous Google account:", signOutError);
+    }
+
+    // Sign in with Google - this will now show the account picker
 
     const response = await GoogleSignin.signIn();
 

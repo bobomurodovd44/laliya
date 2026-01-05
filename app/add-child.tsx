@@ -31,6 +31,7 @@ export default function AddChild() {
   const [gender, setGender] = useState<'boy' | 'girl' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [ageError, setAgeError] = useState('');
 
   // Prevent users who already have childMeta from accessing this page
   useEffect(() => {
@@ -47,6 +48,27 @@ export default function AddChild() {
     }
   }, [user, router]);
 
+  // Real-time age validation
+  const validateAge = (ageValue: string) => {
+    if (!ageValue.trim()) {
+      setAgeError('');
+      return;
+    }
+
+    const ageNum = parseInt(ageValue, 10);
+    if (isNaN(ageNum)) {
+      setAgeError('Age must be a number');
+      return;
+    }
+
+    if (ageNum < 2 || ageNum > 6) {
+      setAgeError('Age must be between 2 and 6 years');
+      return;
+    }
+
+    setAgeError('');
+  };
+
   const handleAddChild = async () => {
     // Validate inputs
     if (!name.trim()) {
@@ -56,13 +78,20 @@ export default function AddChild() {
     
     if (!age.trim()) {
       setError('Please enter the child\'s age');
+      validateAge(age);
       return;
     }
     
     const ageNum = parseInt(age, 10);
-    if (isNaN(ageNum) || ageNum < 1 || ageNum > 18) {
-      setError('Please enter a valid age (1-18)');
+    if (isNaN(ageNum) || ageNum < 2 || ageNum > 6) {
+      setError('Please enter a valid age between 2 and 6 years');
+      validateAge(age);
       return;
+    }
+    
+    // Clear age error if validation passes
+    if (ageError) {
+      setAgeError('');
     }
     
     if (!gender) {
@@ -129,14 +158,31 @@ export default function AddChild() {
                 autoCapitalize="words"
               />
 
-              <Input
-                icon="calendar-number"
-                placeholder="Age"
-                value={age}
-                onChangeText={setAge}
-                keyboardType="number-pad"
-                maxLength={2}
-              />
+              <View style={styles.ageInputContainer}>
+                <Input
+                  icon="calendar-number"
+                  placeholder="Age (2-6 years)"
+                  value={age}
+                  onChangeText={(text) => {
+                    setAge(text);
+                    validateAge(text);
+                    // Clear general error when user starts typing
+                    if (error && error.includes('age')) {
+                      setError('');
+                    }
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  style={ageError ? styles.inputError : undefined}
+                />
+                {ageError ? (
+                  <Body style={styles.ageErrorText}>{ageError}</Body>
+                ) : (
+                  <Body style={styles.helperText}>
+                    Age must be between 2 and 6 years
+                  </Body>
+                )}
+              </View>
               
               <View style={styles.genderContainer}>
                 <Body style={styles.label} weight="bold">Select Gender</Body>
@@ -309,5 +355,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: Colors.error,
     textAlign: 'center',
+  },
+  ageInputContainer: {
+    width: '100%',
+  },
+  inputError: {
+    borderColor: Colors.error,
+  },
+  ageErrorText: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.error,
+    marginTop: Spacing.margin.xs,
+    marginLeft: Spacing.margin.xs,
+  },
+  helperText: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.textTertiary,
+    marginTop: Spacing.margin.xs,
+    marginLeft: Spacing.margin.xs,
   },
 });

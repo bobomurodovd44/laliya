@@ -4,22 +4,24 @@ import app from "../feathers/feathers-client";
 /**
  * Gets the maximum allowed stage order for a user based on their currentStageId
  * @param currentStageId - The user's currentStageId (ObjectId string)
- * @returns Promise<number> The maximum allowed stage order, or 0 if no currentStageId
+ * @returns Promise<number> The maximum allowed stage order, or 1 if no currentStageId (allows first stage)
  */
 export const getUserMaxStageOrder = async (
   currentStageId?: string
 ): Promise<number> => {
   if (!currentStageId) {
-    // If user has no currentStageId, default to order 0 (first stage only)
-    return 0;
+    // If user has no currentStageId, default to order 1 (first stage accessible)
+    // This ensures new users can access the first stage
+    return 1;
   }
 
   try {
     const currentStage = await app.service("stages").get(currentStageId);
     return currentStage.order;
   } catch (error) {
-    // If stage doesn't exist or fetch fails, default to order 0
-    return 0;
+    // If stage doesn't exist or fetch fails, default to order 1 (first stage accessible)
+    // This prevents blocking users due to temporary errors
+    return 1;
   }
 };
 
@@ -46,6 +48,12 @@ export const checkStageAccess = async (
   stage: Stage,
   currentStageId?: string
 ): Promise<boolean> => {
+  // Always allow access to the first stage (order 1) regardless of currentStageId
+  // This ensures new users can always start learning
+  if (stage.order === 1) {
+    return true;
+  }
+
   const maxOrder = await getUserMaxStageOrder(currentStageId);
   return isStageAccessible(stage, maxOrder);
 };

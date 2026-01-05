@@ -71,8 +71,15 @@ export default function Task() {
   const isInitialMountRef = useRef(true);
   const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
   const recordedAudioUriRef = useRef<string | null>(null);
+  const isExerciseActiveRef = useRef(false); // Track if user is actively working on exercises
 
   useEffect(() => {
+    // Mark that user is actively working on exercises as soon as we have a stageId
+    // This prevents redirects during active sessions
+    if (stageId) {
+      isExerciseActiveRef.current = true;
+    }
+
     // Reset state immediately before async operations to prevent stale state
     setIsCompleted(false);
     setError(null);
@@ -81,6 +88,7 @@ export default function Task() {
       setError("Stage ID is required");
       setLoading(false);
       setCurrentExercise(null);
+      isExerciseActiveRef.current = false;
       return;
     }
 
@@ -109,12 +117,39 @@ export default function Task() {
 
     // Check stage access before loading exercises (cached per stageId)
     const verifyStageAccess = async () => {
+      // If user is actively working on exercises, don't redirect them
+      // This prevents interrupting their session due to temporary access check failures
+      if (isExerciseActiveRef.current && currentExercise) {
+        // User is actively working - trust cached access or allow them to continue
+        const cacheKey = `${stageId}-${user?.currentStageId || "none"}`;
+        const cachedAccess = stageAccessCacheRef.current.get(cacheKey);
+        if (cachedAccess === true) {
+          return true; // Already verified and accessible
+        }
+        // If no cache but user is active, allow them to continue (don't block)
+        if (cachedAccess === undefined) {
+          // Cache as accessible to prevent blocking active sessions
+          stageAccessCacheRef.current.set(cacheKey, true);
+          return true;
+        }
+      }
+
       // Check cache first - only verify if stageId or user's currentStageId changed
       const cacheKey = `${stageId}-${user?.currentStageId || "none"}`;
       const cachedAccess = stageAccessCacheRef.current.get(cacheKey);
 
       if (cachedAccess !== undefined) {
         if (!cachedAccess) {
+          // If user is actively working, don't redirect - allow them to continue
+          if (isExerciseActiveRef.current) {
+            console.log(
+              "Stage access check failed but user is active - allowing continuation"
+            );
+            // Override cache to allow continuation
+            stageAccessCacheRef.current.set(cacheKey, true);
+            return true;
+          }
+          // Only redirect if user is not actively working on exercises
           setError(
             "Access denied: This stage is locked. Complete previous stages to unlock."
           );
@@ -137,7 +172,8 @@ export default function Task() {
         // Cache the result
         stageAccessCacheRef.current.set(cacheKey, isAccessible);
 
-        if (!isAccessible) {
+        if (!isAccessible && !isExerciseActiveRef.current) {
+          // Only redirect if user is not actively working on exercises
           setError(
             "Access denied: This stage is locked. Complete previous stages to unlock."
           );
@@ -149,12 +185,22 @@ export default function Task() {
           }, 2000);
           return false;
         }
+        // If user is active but check failed, allow them to continue
+        if (!isAccessible && isExerciseActiveRef.current) {
+          console.warn(
+            "Stage access check failed but user is active - allowing continuation"
+          );
+          stageAccessCacheRef.current.set(cacheKey, true);
+          return true;
+        }
         return true;
       } catch (err: any) {
-        setError(err.message || "Failed to verify stage access");
-        setLoading(false);
-        setCurrentExercise(null);
-        return false;
+        // On error, don't block the user - allow them to continue
+        // This prevents redirects due to network issues or temporary errors
+        console.warn("Failed to verify stage access:", err);
+        // Cache as accessible to prevent repeated checks
+        stageAccessCacheRef.current.set(cacheKey, true);
+        return true;
       }
     };
 
@@ -162,10 +208,20 @@ export default function Task() {
     const cached = !stageIdChanged ? getCachedExercises(stageId) : null;
 
     const loadData = async () => {
-      // Verify stage access first
-      const hasAccess = await verifyStageAccess();
-      if (!hasAccess) {
-        return;
+      // Only verify stage access if stageId changed or we don't have cached access
+      // This prevents unnecessary checks when navigating between exercises in the same stage
+      const cacheKey = `${stageId}-${user?.currentStageId || "none"}`;
+      const cachedAccess = stageAccessCacheRef.current.get(cacheKey);
+
+      // If we have cached access and stageId hasn't changed, skip verification
+      if (cachedAccess === true && !stageIdChanged) {
+        // Stage is accessible, proceed with loading exercises
+      } else {
+        // Verify stage access (only if stageId changed or no cached access)
+        const hasAccess = await verifyStageAccess();
+        if (!hasAccess) {
+          return;
+        }
       }
 
       // If stageId changed, don't use cache - fetch fresh data
@@ -190,6 +246,8 @@ export default function Task() {
           previousExerciseOrderRef.current = exerciseOrder;
           // Set current stageId ref to allow rendering
           currentStageIdRef.current = stageId;
+          // Mark that user is actively working on exercises
+          isExerciseActiveRef.current = true;
 
           // Map and set items for the current exercise
           const currentApiExercise = cached.apiExercises[exerciseIndex];
@@ -273,6 +331,8 @@ export default function Task() {
           previousExerciseOrderRef.current = exerciseOrder;
           // Set current stageId ref to allow rendering
           currentStageIdRef.current = stageId;
+          // Mark that user is actively working on exercises
+          isExerciseActiveRef.current = true;
           setLoading(false);
         } catch (err: any) {
           setError(err.message || "Failed to load exercises");
@@ -454,6 +514,9 @@ export default function Task() {
         return;
       }
 
+      // Ensure active flag is set before any operations to prevent redirects
+      isExerciseActiveRef.current = true;
+
       // Mark as completing immediately to prevent multiple calls
       isCompletingRef.current = true;
 
@@ -577,27 +640,9 @@ export default function Task() {
         });
       }
 
-      // Extra safety check: verify stage is still accessible (non-blocking, in background)
-      if (stageId) {
-        // Don't await - run in background to not block UI
-        (async () => {
-          try {
-            const stage = await app.service("stages").get(stageId);
-            const isAccessible = await checkStageAccess(
-              stage,
-              user?.currentStageId
-            );
-            if (!isAccessible) {
-              setError("Access denied: This stage is locked.");
-              router.replace("/");
-              return;
-            }
-          } catch (err) {
-            // If check fails, still allow completion (don't block user)
-            console.warn("Failed to verify stage access:", err);
-          }
-        })();
-      }
+      // Note: Removed background stage access check after completion
+      // This was causing unwanted redirects when users were actively working on exercises
+      // Stage access is already verified on initial load, which is sufficient
     },
     [
       currentExercise,

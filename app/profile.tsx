@@ -1,13 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PageContainer } from "../components/layout/PageContainer";
 import { ProfileMenuItem } from "../components/ProfileMenuItem";
@@ -73,17 +67,9 @@ export default function Profile() {
   return (
     <PageContainer useFloatingShapes>
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={{ width: 32 }} />
         <Title size="medium" style={styles.headerTitle}>
           Profile
         </Title>
-        <TouchableOpacity style={styles.settingsButton} onPress={() => {}}>
-          <Ionicons
-            name="settings-sharp"
-            size={24}
-            color={Colors.textPrimary}
-          />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -177,7 +163,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.backgroundLight,
     paddingHorizontal: Spacing.padding.lg,
@@ -187,9 +173,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     textAlign: "center",
-  },
-  settingsButton: {
-    padding: Spacing.padding.xs,
   },
   scrollView: {
     flex: 1,

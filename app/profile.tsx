@@ -27,6 +27,7 @@ export default function Profile() {
       ? "Girl"
       : "";
   const profilePicture =
+    user?.profilePicture ||
     "https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg";
   const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
 

@@ -17,6 +17,7 @@ import { Body, Subtitle, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
 import { signUpWithEmailPassword } from "../lib/auth/firebase-auth";
+import { signInWithGoogle } from "../lib/auth/google-signin";
 import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Signup() {
@@ -71,8 +72,38 @@ export default function Signup() {
     }
   };
 
-  const handleGoogleSignup = () => {
-    // Google signup logic
+  const handleGoogleSignup = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      // Step 1: Sign in with Google and get Firebase access token
+      // Google Sign-In handles both login and signup automatically
+      const googleResult = await signInWithGoogle();
+
+      // Step 2: Authenticate with Feathers backend
+      // Extract fullName from Google profile (use email as fallback)
+      const fullName = googleResult.user.name || googleResult.user.email.split("@")[0] || "";
+
+      const feathersResult = await authenticateWithFeathers(
+        googleResult.accessToken,
+        {
+          fullName,
+          role: "user",
+        }
+      );
+
+      // Step 3: Update auth store with user data
+      // The _layout.tsx will handle redirects based on user state
+      setAuthenticated(feathersResult.user);
+
+      // Navigate to home - _layout will redirect to add-child if needed
+      router.replace("/");
+    } catch (err: any) {
+      setError(err.message || "Google Sign-In failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

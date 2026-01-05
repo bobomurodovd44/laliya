@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "307432035320-crdgt88e674v4448hqlakcv4uri4q9fg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.synclab.laliya",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "307432035320-hlfr2cjiog70g11n4djmvlik56aehfkc.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

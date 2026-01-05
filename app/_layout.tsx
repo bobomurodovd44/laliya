@@ -8,6 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
+import { configureGoogleSignIn } from '../lib/auth/google-signin';
 import { useAuthStore } from '../lib/store/auth-store';
 
 SplashScreen.preventAutoHideAsync();
@@ -203,6 +204,11 @@ export default function RootLayout() {
     BalsamiqSans: BalsamiqSans_400Regular,
   });
   const { init } = useAuthStore();
+
+  // Initialize Google Sign-In configuration on mount
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   // Initialize auth store on mount
   useEffect(() => {

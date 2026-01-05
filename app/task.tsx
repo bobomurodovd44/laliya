@@ -386,8 +386,8 @@ export default function Task() {
       const isSameExercise = previousExerciseOrderRef.current === exerciseOrder;
 
       if (isSameExercise && currentExercise) {
-        // Reset state only when returning to the same exercise
-        setResetKey((prev) => prev + 1);
+        // Only reset completion state, don't increment resetKey to prevent image reload
+        // resetKey should only change when exercise actually changes or explicit reset is needed
         setIsCompleted(false);
         isCompletingRef.current = false;
         if (completionTimeoutRef.current) {
@@ -569,8 +569,12 @@ export default function Task() {
     // Compare with the ref to ensure we only render exercises for the current stageId
     if (currentStageIdRef.current !== stageId) return null;
 
-    // Create a unique key that includes resetKey to force remount when page is focused
-    const exerciseKey = `${currentExercise.stageId}-${currentExercise.order}-${resetKey}`;
+    // Create a stable key based on exercise identity
+    // Only include resetKey for exercises that need explicit remounting (not LookAndSay)
+    const baseKey = `${currentExercise.stageId}-${currentExercise.order}`;
+    const exerciseKey = currentExercise.type === ExerciseType.LOOK_AND_SAY
+      ? baseKey
+      : `${baseKey}-${resetKey}`;
 
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:

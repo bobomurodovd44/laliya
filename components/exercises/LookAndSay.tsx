@@ -133,14 +133,19 @@ export default function LookAndSay({
   useEffect(() => {
     (async () => {
       if (Platform.OS !== "web") {
-        // Check microphone permission for recording
-        const { status } = await Audio.requestPermissionsAsync();
+        // First check if permissions are already granted
+        const { status: currentStatus } = await Audio.getPermissionsAsync();
+        
+        // Only request permissions if not already granted
+        if (currentStatus !== "granted") {
+          const { status } = await Audio.requestPermissionsAsync();
 
-        if (status !== "granted") {
-          Alert.alert(
-            "Permission needed",
-            "Microphone permission is required to record audio"
-          );
+          if (status !== "granted") {
+            Alert.alert(
+              "Permission needed",
+              "Microphone permission is required to record audio"
+            );
+          }
         }
       }
     })();
@@ -416,6 +421,9 @@ export default function LookAndSay({
                 source={{ uri: item.imageUrl }}
                 style={styles.image}
                 contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+                recyclingKey={String(item.id)}
               />
             ) : (
               <View style={styles.imagePlaceholder}>

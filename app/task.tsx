@@ -476,12 +476,59 @@ export default function Task() {
         // Update score (score always increases)
         updateUserScore(currentExercise.score);
 
-        // Auto-advance to next task after 1.5 seconds
+        // Auto-advance after 1.5 seconds
         setTimeout(() => {
           setShowKeepGoing(false);
           isCompletingRef.current = false;
-          // Navigate to next exercise using handleNext logic
-          if (!isLastExercise && stageId && currentExercise) {
+          
+          if (isLastExercise) {
+            // If this is the last exercise, end the stage
+            // Navigate to home
+            router.push("/");
+
+            // Update currentStageId and level in background (fire and forget)
+            if (stageId && user?._id) {
+              // Fire and forget - don't block navigation
+              (async () => {
+                try {
+                  const completedStage = await app.service("stages").get(stageId);
+                  let allStages = getCachedStages();
+
+                  if (!allStages) {
+                    // Cache miss - fetch from API
+                    const stagesResponse = await app.service("stages").find();
+                    allStages = Array.isArray(stagesResponse)
+                      ? stagesResponse
+                      : (stagesResponse as any).data || [];
+                  }
+
+                  // Get user's current stage order (their actual progress)
+                  const userCurrentStageOrder = await getUserMaxStageOrder(
+                    user.currentStageId
+                  );
+
+                  // Find the next stage by order after the completed stage
+                  const nextStage = allStages?.find(
+                    (stage: any) => stage.order === completedStage.order + 1
+                  );
+
+                  // Only update if nextStage exists AND is ahead of user's current progress
+                  // This prevents level from decreasing if user goes back to earlier stages
+                  if (nextStage && nextStage.order > userCurrentStageOrder) {
+                    const updatedUser = await app.service("users").patch(user._id, {
+                      currentStageId: nextStage._id,
+                    });
+
+                    // Update auth store with new user data
+                    setAuthenticated(updatedUser);
+                  }
+                } catch (err) {
+                  console.error("Failed to update level:", err);
+                }
+              })();
+            }
+          } else if (stageId && currentExercise) {
+            // Navigate to next exercise using handleNext logic
             const nextOrder = exerciseOrder + 1;
             router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
 
@@ -553,12 +600,14 @@ export default function Task() {
       loading,
       stageId,
       user?.currentStageId,
+      user?._id,
       router,
       updateUserScore,
       isLastExercise,
       exerciseOrder,
       stageExercises,
       apiExercises,
+      setAuthenticated,
     ]
   );
 

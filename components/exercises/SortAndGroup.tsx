@@ -56,9 +56,38 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
 
   // Get items for this exercise
   const exerciseItems = useMemo(() => {
-    return exercise.optionIds
+    const foundItems = exercise.optionIds
       .map(id => items.find(item => item.id === id))
       .filter((item): item is Item => item !== undefined);
+    
+    // Log all item details for debugging
+    console.log('SortAndGroup: All exercise items details:', {
+      optionIds: exercise.optionIds,
+      foundItems: foundItems.map(item => ({
+        id: item.id,
+        word: item.word,
+        categoryId: item.categoryId,
+        imageUrl: item.imageUrl
+      })),
+      totalItemsInStore: items.length,
+      allItemsInStore: items.map(item => ({
+        id: item.id,
+        word: item.word,
+        categoryId: item.categoryId
+      }))
+    });
+    
+    // Log if some items weren't found
+    if (foundItems.length !== exercise.optionIds.length) {
+      const missingIds = exercise.optionIds.filter(id => !items.find(item => item.id === id));
+      console.warn('SortAndGroup: Some items not found in store:', {
+        expected: exercise.optionIds.length,
+        found: foundItems.length,
+        missingIds
+      });
+    }
+    
+    return foundItems;
   }, [exercise.optionIds]);
 
   // Group items by category
@@ -71,23 +100,78 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
       }
       groups.get(categoryId)!.push(item);
     });
-    return Array.from(groups.entries());
+    
+    const grouped = Array.from(groups.entries());
+    
+    // Log category grouping details
+    console.log('SortAndGroup: Category grouping:', {
+      totalItems: exerciseItems.length,
+      categoryCount: grouped.length,
+      categories: grouped.map(([categoryId, items]) => ({
+        categoryId,
+        itemCount: items.length,
+        items: items.map(item => ({
+          id: item.id,
+          word: item.word,
+          categoryId: item.categoryId
+        }))
+      }))
+    });
+    
+    return grouped;
   }, [exerciseItems]);
 
-  // Should have exactly 2 categories with 2 items each
-  const [category1, category2] = useMemo(() => {
-    if (categoryGroups.length !== 2) {
-      return [null, null];
+  // Should have exactly 2 categories with 2-4 total options (at least 1 per category)
+  const [category1, category2, isValid, validationError] = useMemo(() => {
+    const totalOptions = exerciseItems.length;
+    const numCategories = categoryGroups.length;
+    
+    // Debug logging
+    console.log('SortAndGroup Validation:', {
+      totalOptions,
+      numCategories,
+      categoryGroups: categoryGroups.map(([id, items]) => ({ categoryId: id, itemCount: items.length })),
+      exerciseOptionIds: exercise.optionIds,
+      exerciseItemsCount: exerciseItems.length
+    });
+    
+    // Validate: exactly 2 categories
+    if (numCategories !== 2) {
+      console.log('Validation failed: Expected 2 categories, found', numCategories);
+      const categoryDetails = categoryGroups.map(([id, items]) => 
+        `Category ${id}: ${items.length} item(s)`
+      ).join(', ');
+      return [null, null, false, `Expected 2 categories, found ${numCategories}. ${categoryDetails}. All items must belong to exactly 2 different categories.`];
     }
+    
+    // Validate: total options must be 2-4
+    if (totalOptions < 2 || totalOptions > 4) {
+      console.log('Validation failed: Expected 2-4 options, found', totalOptions);
+      return [null, null, false, `Expected 2-4 options, found ${totalOptions}`];
+    }
+    
     const [cat1Id, cat1Items] = categoryGroups[0];
     const [cat2Id, cat2Items] = categoryGroups[1];
+    
+    // Validate: each category must have at least 1 item
+    if (cat1Items.length === 0 || cat2Items.length === 0) {
+      console.log('Validation failed: Category 1 has', cat1Items.length, 'items, Category 2 has', cat2Items.length, 'items');
+      return [null, null, false, `Category 1 has ${cat1Items.length} items, Category 2 has ${cat2Items.length} items`];
+    }
+    
     const cat1 = categories.find(c => c.id === cat1Id);
     const cat2 = categories.find(c => c.id === cat2Id);
+    console.log('Validation passed:', {
+      category1: { id: cat1Id, title: cat1?.title, itemCount: cat1Items.length },
+      category2: { id: cat2Id, title: cat2?.title, itemCount: cat2Items.length }
+    });
     return [
       { id: cat1Id, title: cat1?.title || '', items: cat1Items },
       { id: cat2Id, title: cat2?.title || '', items: cat2Items },
+      true,
+      null,
     ];
-  }, [categoryGroups]);
+  }, [categoryGroups, exerciseItems, exercise.optionIds]);
 
   // Shuffled items for center grid
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
@@ -100,7 +184,7 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
   
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
-  const wrongDropCalledRef = useRef(false);
+  const wrongDropCountRef = useRef(0);
 
   // Position refs for category drop zones
   const topCategoryPositionRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -124,7 +208,7 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
     setItemPlacements(placements);
     setIsCompleted(false);
     isCompletedRef.current = false;
-    wrongDropCalledRef.current = false;
+    wrongDropCountRef.current = 0;
   }, [exerciseId, exerciseItems, category1, category2]);
 
   // Check if all items are correctly placed
@@ -168,9 +252,11 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
   const handleWrongDrop = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     
-    // Call onComplete(false) on first wrong drop to show KeepGoing celebration
-    if (!wrongDropCalledRef.current && !isCompletedRef.current) {
-      wrongDropCalledRef.current = true;
+    // Increment wrong drop counter
+    wrongDropCountRef.current += 1;
+    
+    // Call onComplete(false) after 4 wrong drops to show KeepGoing celebration
+    if (wrongDropCountRef.current >= 4 && !isCompletedRef.current) {
       isCompletedRef.current = true;
       onComplete(false);
     }
@@ -184,10 +270,15 @@ export default function SortAndGroup({ exercise, onComplete }: SortAndGroupProps
     bottomCategoryPositionRef.current = { x, y, width, height };
   }, []);
 
-  if (!category1 || !category2) {
+  // Show error if validation failed (isValid is false) or if categories aren't set
+  if (isValid === false || !category1 || !category2) {
+    console.log('Rendering error screen:', { category1: !!category1, category2: !!category2, isValid, validationError });
     return (
       <View style={styles.container}>
-        <Body style={styles.errorText}>Invalid exercise: Need exactly 2 categories with 2 items each</Body>
+        <Body style={styles.errorText}>
+          Invalid exercise: Need exactly 2 categories with 2-4 total options (at least 1 per category)
+          {validationError && `\n${validationError}`}
+        </Body>
       </View>
     );
   }
@@ -259,15 +350,16 @@ interface CategoryDropZoneProps {
 
 function CategoryDropZone({ category, cardSize, onLayout, isCompleted, itemsInCategory }: CategoryDropZoneProps) {
   const scale = useSharedValue(1);
+  const expectedItemsCount = category.items.length;
 
   useEffect(() => {
-    if (isCompleted && itemsInCategory.length === 2) {
+    if (isCompleted && itemsInCategory.length === expectedItemsCount) {
       scale.value = withSequence(
         withSpring(1.05, { damping: 8 }),
         withSpring(1, { damping: 12 })
       );
     }
-  }, [isCompleted, itemsInCategory.length]);
+  }, [isCompleted, itemsInCategory.length, expectedItemsCount]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -297,12 +389,10 @@ function CategoryDropZone({ category, cardSize, onLayout, isCompleted, itemsInCa
             )}
           </View>
         ))}
-        {itemsInCategory.length < 2 && (
-          <View style={[styles.placeholderCard, { width: cardSize, height: cardSize }]} />
-        )}
-        {itemsInCategory.length === 0 && (
-          <View style={[styles.placeholderCard, { width: cardSize, height: cardSize }]} />
-        )}
+        {/* Show placeholders for missing items */}
+        {Array.from({ length: expectedItemsCount - itemsInCategory.length }).map((_, index) => (
+          <View key={`placeholder-${index}`} style={[styles.placeholderCard, { width: cardSize, height: cardSize }]} />
+        ))}
       </View>
     </Animated.View>
   );
@@ -400,9 +490,23 @@ function DraggableCard({
 
     if (bestMatch) {
       // Check if correct category
-      if (item.categoryId === bestMatch.categoryId) {
+      const isCorrect = item.categoryId === bestMatch.categoryId;
+      
+      // Debug logging
+      console.log('Drop check:', {
+        itemId: item.id,
+        itemWord: item.word,
+        itemCategoryId: item.categoryId,
+        dropCategoryId: bestMatch.categoryId,
+        isCorrect,
+        topCategoryId,
+        bottomCategoryId
+      });
+      
+      if (isCorrect) {
         // Correct drop - hide card (it will appear in category section)
         opacity.value = withTiming(0, { duration: 200 });
+        // Don't reset position - let it stay where it was dropped
         runOnJS(onCorrectDrop)(item.id, bestMatch.categoryId);
       } else {
         // Wrong drop - shake and return

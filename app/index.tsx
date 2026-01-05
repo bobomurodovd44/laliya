@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -48,6 +49,7 @@ export default function Index() {
   const [error, setError] = useState<string | null>(null);
   const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
   const [loadingStageAccess, setLoadingStageAccess] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   //
   const stageThemes = useMemo(
     () => [
@@ -112,39 +114,60 @@ export default function Index() {
     }, [user?.currentStageId])
   );
 
-  // Fetch stages from backend
-  useEffect(() => {
-    // Check cache first
-    const cachedStages = getCachedStages();
-
-    if (cachedStages) {
-      // Use cached data - no loading needed
-      setStages(cachedStages);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    // No cache - fetch from API
-    const loadStages = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const stagesData = await fetchStages();
-
-        // Cache the stages
-        setCachedStages(stagesData);
-
-        setStages(stagesData);
-      } catch (err: any) {
-        setError(err.message || "Failed to load stages");
-      } finally {
-        setLoading(false);
+  // Load stages function (reusable for both initial load and refresh)
+  const loadStages = useCallback(async (skipCache = false) => {
+    try {
+      if (!skipCache) {
+        // Check cache first (only on initial load)
+        const cachedStages = getCachedStages();
+        if (cachedStages) {
+          // Use cached data - no loading needed
+          setStages(cachedStages);
+          setLoading(false);
+          setError(null);
+          return;
+        }
       }
-    };
 
-    loadStages();
+      // No cache or refresh - fetch from API
+      if (!skipCache) {
+        setLoading(true);
+      }
+      setError(null);
+      const stagesData = await fetchStages();
+
+      // Cache the stages
+      setCachedStages(stagesData);
+
+      setStages(stagesData);
+    } catch (err: any) {
+      setError(err.message || "Failed to load stages");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  // Fetch stages from backend (initial load)
+  useEffect(() => {
+    loadStages();
+  }, [loadStages]);
+
+  // Refresh handler for pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Refresh stages (skip cache)
+    await loadStages(true);
+    // Also refresh stage access level
+    if (user?.currentStageId) {
+      try {
+        const currentOrder = await getUserMaxStageOrder(user.currentStageId);
+        setMaxStageOrder((prevMax) => Math.max(prevMax, currentOrder));
+      } catch (err) {
+        // On error, don't change the level
+      }
+    }
+  }, [loadStages, user?.currentStageId]);
 
   const lessons: (LessonCard & { stageId: string })[] = useMemo(() => {
     return stages.map((stage, index) => {
@@ -347,6 +370,15 @@ export default function Index() {
           { paddingTop: insets.top + 110 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+            progressViewOffset={insets.top + 90}
+          />
+        }
       >
         {loading ? (
           <View style={styles.loadingContainer}>

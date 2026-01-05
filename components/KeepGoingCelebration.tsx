@@ -6,6 +6,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { Colors } from "../constants/Colors";
+import { Spacing } from "../constants/Spacing";
+import { Typography } from "../constants/Typography";
 
 interface KeepGoingCelebrationProps {
   visible: boolean;
@@ -40,7 +43,11 @@ export default function KeepGoingCelebration({
   return (
     <View style={styles.container} pointerEvents="none">
       <Animated.View style={[styles.card, cardStyle]}>
-        <Ionicons name="star" size={48} color="#FFA500" />
+        <View style={styles.iconContainer}>
+          <View style={styles.iconBackground}>
+            <Ionicons name="star" size={64} color={Colors.textWhite} />
+          </View>
+        </View>
         <Text style={styles.title}>Keep Going!</Text>
         <Text style={styles.subtitle}>You're doing great!</Text>
       </Animated.View>
@@ -56,31 +63,49 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 32,
+    backgroundColor: Colors.backgroundLight,
+    borderRadius: Spacing.radius.xxl,
+    padding: Spacing.padding.xxl,
+    paddingVertical: Spacing.padding.xxxl,
     alignItems: "center",
-    shadowColor: "#000",
+    ...Spacing.shadow.xlarge,
+    borderWidth: Spacing.borderWidth.thick,
+    borderColor: Colors.warning,
+    minWidth: 280,
+    maxWidth: 320,
+  },
+  iconContainer: {
+    marginBottom: Spacing.margin.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconBackground: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.warning,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: Colors.warning,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 3,
-    borderColor: "#FFA500",
-    minWidth: 200,
+    elevation: 8,
   },
   title: {
-    fontFamily: "FredokaOne",
-    fontSize: 32,
-    color: "#FFA500",
-    marginTop: 12,
+    fontFamily: Typography.fontFamily.primary,
+    fontSize: Typography.fontSize.huge,
+    color: Colors.textPrimary,
+    marginTop: Spacing.margin.md,
     textAlign: "center",
+    letterSpacing: Typography.letterSpacing.normal,
   },
   subtitle: {
-    fontFamily: "BalsamiqSans",
-    fontSize: 18,
-    color: "#666",
-    marginTop: 8,
+    fontFamily: Typography.fontFamily.secondary,
+    fontSize: Typography.fontSize.xxxl,
+    color: Colors.secondary,
+    marginTop: Spacing.margin.sm,
     textAlign: "center",
+    lineHeight: Typography.fontSize.xxxl * Typography.lineHeight.normal,
   },
 });

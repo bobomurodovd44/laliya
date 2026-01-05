@@ -100,9 +100,6 @@ export default function Profile() {
               source={{ uri: profilePicture }}
               style={styles.profileImage}
             />
-            <TouchableOpacity style={styles.editIconButton} onPress={() => {}}>
-              <Ionicons name="pencil" size={20} color={Colors.textWhite} />
-            </TouchableOpacity>
           </View>
 
           <Title size="large" style={styles.childName}>
@@ -214,19 +211,6 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: Colors.backgroundDark,
-  },
-  editIconButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: Colors.badgeLevel,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: Spacing.borderWidth.thick,
-    borderColor: Colors.backgroundLight,
   },
   childName: {
     marginBottom: Spacing.margin.xs,

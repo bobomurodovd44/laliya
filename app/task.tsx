@@ -507,6 +507,51 @@ export default function Task() {
     [user, setAuthenticated]
   );
 
+  // Helper function to create or update answer based on isCorrect
+  const createOrUpdateAnswer = useCallback(
+    async (exerciseId: string, isCorrect: boolean) => {
+      if (!user?._id) return;
+
+      try {
+        const userId =
+          typeof user._id === "string" ? user._id : String(user._id);
+
+        // Check if answer already exists for this user and exercise
+        const existingAnswers = await app.service("answers").find({
+          query: {
+            userId: userId,
+            exerciseId: exerciseId,
+            $limit: 1,
+          },
+        });
+
+        const existingAnswer = Array.isArray(existingAnswers)
+          ? existingAnswers[0]
+          : existingAnswers.data?.[0];
+
+        if (existingAnswer) {
+          // Update existing answer with isCorrect field
+          await app.service("answers").patch(existingAnswer._id, {
+            isCorrect: isCorrect,
+          });
+          console.log(`[Answer] Updated answer for exercise ${exerciseId}: isCorrect=${isCorrect}`);
+        } else {
+          // Create new answer with isCorrect field
+          const newAnswer = await app.service("answers").create({
+            userId: userId,
+            exerciseId: exerciseId,
+            isCorrect: isCorrect,
+          });
+          console.log(`[Answer] Created new answer for exercise ${exerciseId}: isCorrect=${isCorrect}`, newAnswer);
+        }
+      } catch (err) {
+        // Silent fail - don't block user experience
+        console.error("Failed to create/update answer:", err);
+      }
+    },
+    [user?._id]
+  );
+
   const handleComplete = useCallback(
     async (isCorrect: boolean = true) => {
       // Only allow completion if not loading and exercise exists
@@ -523,6 +568,27 @@ export default function Task() {
       // Clear any existing timeout
       if (completionTimeoutRef.current) {
         clearTimeout(completionTimeoutRef.current);
+      }
+
+      // Create or update answer for all exercise types (except LookAndSay which handles it separately)
+      // This runs in background (fire and forget) for BOTH correct and incorrect answers
+      // It does NOT block the UI - confetti, KeepGoing modal, or navigation will happen immediately
+      if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && apiExercises.length > 0) {
+        const currentApiExercise = apiExercises[exerciseOrder - 1];
+        if (currentApiExercise?._id) {
+          const exerciseId =
+            typeof currentApiExercise._id === "string"
+              ? currentApiExercise._id
+              : String(currentApiExercise._id);
+          // Fire and forget - run in background, don't await, don't block
+          (async () => {
+            try {
+              await createOrUpdateAnswer(exerciseId, isCorrect);
+            } catch (err) {
+              // Silent fail - don't block user experience
+            }
+          })();
+        }
       }
 
       // Check if this is a wrong answer for exercises that should show KeepGoing
@@ -657,6 +723,7 @@ export default function Task() {
       stageExercises,
       apiExercises,
       setAuthenticated,
+      createOrUpdateAnswer,
     ]
   );
 
@@ -864,6 +931,9 @@ export default function Task() {
   ]);
 
   const handleSubmit = useCallback(() => {
+    // Note: Answer creation is already handled in handleComplete() when user completes the exercise
+    // No need to create it again here - it would be duplicate work
+    
     // Upload audio for LookAndSay exercise in background (non-blocking)
     if (
       currentExercise?.type === ExerciseType.LOOK_AND_SAY &&

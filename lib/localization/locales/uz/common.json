@@ -1,0 +1,127 @@
+{
+  "common": {
+    "welcome": "Xush kelibsiz",
+    "loading": "Yuklanmoqda...",
+    "error": "Xatolik",
+    "retry": "Qayta urinish",
+    "cancel": "Bekor qilish",
+    "confirm": "Tasdiqlash",
+    "next": "Keyingi",
+    "submit": "Yuborish",
+    "back": "Orqaga",
+    "save": "Saqlash",
+    "delete": "O'chirish",
+    "edit": "Tahrirlash"
+  },
+  "auth": {
+    "login": {
+      "title": "Kirish",
+      "email": "Email",
+      "password": "Parol",
+      "loginButton": "Kirish",
+      "signupLink": "Hisobingiz yo'qmi? Ro'yxatdan o'ting",
+      "googleLogin": "Google orqali davom etish",
+      "fillAllFields": "Iltimos, barcha maydonlarni to'ldiring",
+      "loginFailed": "Kirish muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
+      "invalidCredentials": "Noto'g'ri email yoki parol"
+    },
+    "signup": {
+      "title": "Ro'yxatdan o'tish",
+      "subtitle": "Qiziqarli bo'ling!",
+      "fullName": "To'liq ism",
+      "email": "Email manzili",
+      "password": "Parol",
+      "signupButton": "Ro'yxatdan o'tish",
+      "haveAccount": "Hisobingiz bormi?",
+      "login": "Kirish",
+      "googleSignup": "Google orqali davom etish",
+      "passwordMinLength": "Parol kamida 6 ta belgi bo'lishi kerak",
+      "signupFailed": "Ro'yxatdan o'tish muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
+      "googleSignInFailed": "Google orqali kirish muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring."
+    }
+  },
+  "home": {
+    "title": "Bosh sahifa",
+    "level": "Daraja",
+    "score": "Ball",
+    "loadingStages": "Bosqichlar yuklanmoqda...",
+    "noStages": "Bosqichlar mavjud emas"
+  },
+  "exercise": {
+    "loadingExercises": "Mashqlar yuklanmoqda...",
+    "exerciseNotFound": "Mashq topilmadi",
+    "keepGoing": "Davom eting!",
+    "youreDoingGreat": "Ajoyib bajaryapsiz!",
+    "wellDone": "Ajoyib!",
+    "tryAgain": "Qayta urinib ko'ring!",
+    "notQuiteRight": "Bu to'g'ri emas.",
+    "accessDenied": "Kirish rad etildi: Bu bosqich qulflangan. Avvalgi bosqichlarni yakunlang.",
+    "noExercises": "Bu bosqich uchun mashqlar topilmadi"
+  },
+  "profile": {
+    "title": "Profil",
+    "settings": "Sozlamalar",
+    "language": "Til",
+    "logout": "Chiqish",
+    "loggingOut": "Chiqilmoqda...",
+    "stars": "Yulduzlar",
+    "level": "Daraja",
+    "childAnswers": "Farzand javoblari",
+    "yearsOld": "yosh",
+    "boy": "O'g'il bola",
+    "girl": "Qiz bola",
+    "child": "Farzand"
+  },
+  "errors": {
+    "generic": "Nimadir noto'g'ri ketdi",
+    "network": "Tarmoq xatosi. Iltimos, ulanishni tekshiring.",
+    "unknown": "Noma'lum xatolik yuz berdi"
+  },
+  "child": {
+    "addChild": "Farzand qo'shish",
+    "whoLearning": "Bugun kim o'rganmoqda?",
+    "childName": "Farzand ismi",
+    "age": "Yosh",
+    "agePlaceholder": "Yosh (2-6 yosh)",
+    "ageHelper": "Yosh 2 dan 6 yoshgacha bo'lishi kerak",
+    "selectGender": "Jinsni tanlang",
+    "fullName": "To'liq ism",
+    "gender": "Jins",
+    "male": "Erkak",
+    "female": "Ayol",
+    "boy": "O'g'il bola",
+    "girl": "Qiz bola",
+    "addProfile": "PROFIL QO'SHISH",
+    "saving": "SAQLANMOQDA..."
+  },
+  "answers": {
+    "childAnswers": "Farzand javoblari",
+    "reviewAnswers": "Javoblarni ko'rib chiqish",
+    "loadingAnswers": "Javoblar yuklanmoqda...",
+    "loadingStages": "Bosqichlar yuklanmoqda...",
+    "noAnswers": "Hozircha javoblar yo'q. Rasmga qarab aytish mashqlarini bajarib, yozuvlaringizni bu yerda ko'ring.",
+    "noAnswersFound": "Bu bosqich uchun javoblar topilmadi",
+    "goBack": "Orqaga",
+    "stage": "Bosqich",
+    "retry": "Qayta urinish",
+    "refreshing": "Yangilanmoqda...",
+    "pullToRefresh": "Yangilash uchun torting",
+    "audioNotAvailable": "Audio fayl mavjud emas",
+    "audioFileNotAvailable": "Bu javob uchun audio fayl mavjud emas",
+    "permissionRequired": "Ruxsat kerak",
+    "audioPermissionMessage": "Audio ijro etish uchun ruxsat kerak. Iltimos, sozlamalarda audio ruxsatini bering.",
+    "noImageAvailable": "Rasm mavjud emas",
+    "userNotFound": "Foydalanuvchi topilmadi",
+    "stageIdNotFound": "Bosqich ID topilmadi",
+    "failedToLoad": "Yuklash muvaffaqiyatsiz",
+    "failedToLoadStages": "Bosqichlarni yuklash muvaffaqiyatsiz",
+    "failedToLoadAnswers": "Javoblarni yuklash muvaffaqiyatsiz"
+  },
+  "welcome": {
+    "title": "Laliyaga xush kelibsiz!",
+    "subtitle": "Keling, birga o'rganamiz!",
+    "startLearning": "O'rganishni boshlash",
+    "footer": "So'zlashni mashq qiling, yangi so'zlarni o'rganing va zavqlaning! 🌟"
+  }
+}
+

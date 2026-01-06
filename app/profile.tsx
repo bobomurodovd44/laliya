@@ -9,23 +9,25 @@ import { Body, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { signOutFromGoogle } from "../lib/auth/google-signin";
 import app from "../lib/feathers/feathers-client";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 import { getUserMaxStageOrder } from "../lib/utils/stage-access";
 
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { setUnauthenticated, user } = useAuthStore();
 
   // Get childMeta from user, with fallback values
   const childMeta = user?.childMeta;
-  const childName = childMeta?.fullName || "Child";
+  const childName = childMeta?.fullName || t("profile.child");
   const childAge = childMeta?.age || 0;
   const childGender =
     childMeta?.gender === "male"
-      ? "Boy"
+      ? t("profile.boy")
       : childMeta?.gender === "female"
-      ? "Girl"
+      ? t("profile.girl")
       : "";
   const profilePicture =
     user?.profilePicture ||
@@ -97,7 +99,7 @@ export default function Profile() {
     <PageContainer useFloatingShapes>
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <Title size="medium" style={styles.headerTitle}>
-          Profile
+          {t("profile.title")}
         </Title>
       </View>
 
@@ -122,7 +124,7 @@ export default function Profile() {
           </Title>
           {childAge > 0 && childGender && (
             <Body style={styles.subtitleText}>
-              {childAge} years old • {childGender}
+              {childAge} {t("profile.yearsOld")} • {childGender}
             </Body>
           )}
         </View>
@@ -130,7 +132,7 @@ export default function Profile() {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderColor: Colors.badgeStar }]}>
             <Body style={styles.statTitle} weight="bold">
-              Stars
+              {t("profile.stars")}
             </Body>
             <View style={styles.statValueContainer}>
               <Ionicons
@@ -147,7 +149,7 @@ export default function Profile() {
 
           <View style={[styles.statCard, { borderColor: Colors.badgeLevel }]}>
             <Body style={styles.statTitle} weight="bold">
-              Level
+              {t("profile.level")}
             </Body>
             <View style={styles.statValueContainer}>
               <Ionicons
@@ -168,12 +170,12 @@ export default function Profile() {
         <View style={styles.section}>
           <ProfileMenuItem
             iconName="musical-notes-outline"
-            title="Child Answers"
+            title={t("profile.childAnswers")}
             onPress={() => router.push("/child-answers")}
           />
           <ProfileMenuItem
             iconName="log-out-outline"
-            title={isLoggingOut ? "Logging out..." : "Logout"}
+            title={isLoggingOut ? t("profile.loggingOut") : t("profile.logout")}
             onPress={handleLogout}
             variant="danger"
             disabled={isLoggingOut}

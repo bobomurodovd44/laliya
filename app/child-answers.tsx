@@ -16,6 +16,7 @@ import { LoadingSpinner } from "../components/LoadingSpinner";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import app from "../lib/feathers/feathers-client";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 
 interface Answer {
@@ -59,6 +60,7 @@ interface StageGroup {
 export default function ChildAnswers() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { user } = useAuthStore();
 
   const [stages, setStages] = useState<StageGroup[]>([]);
@@ -81,7 +83,7 @@ export default function ChildAnswers() {
   // Fetch answers and group by stages
   const fetchStages = useCallback(async () => {
     if (!user?._id) {
-      setError("User not found");
+      setError(t("answers.userNotFound"));
       setLoading(false);
       return;
     }
@@ -155,7 +157,7 @@ export default function ChildAnswers() {
 
       setStages(stagesArray);
     } catch (err: any) {
-      setError(err.message || "Failed to load stages");
+      setError(err.message || t("answers.failedToLoadStages"));
       console.error("Error fetching stages:", err);
     } finally {
       setLoading(false);
@@ -198,7 +200,7 @@ export default function ChildAnswers() {
               <View style={styles.cardContent}>
                 <View style={styles.stageTitleContainer}>
                   <Title size="medium" style={styles.stageTitle}>
-                    Stage {stage.stageOrder}
+                    {t("answers.stage")} {stage.stageOrder}
                   </Title>
                 </View>
                 <View style={styles.chevronContainer}>
@@ -243,14 +245,14 @@ export default function ChildAnswers() {
           </View>
         </TouchableOpacity>
         <Title size="medium" style={styles.headerTitle}>
-          Child Answers
+          {t("answers.childAnswers")}
         </Title>
         <View style={styles.headerSpacer} />
       </View>
 
       {loading && stages.length === 0 ? (
         <View style={styles.centerContainer}>
-          <LoadingSpinner message="Loading stages..." />
+          <LoadingSpinner message={t("answers.loadingStages")} />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
@@ -260,7 +262,7 @@ export default function ChildAnswers() {
             onPress={() => fetchStages()}
           >
             <Body weight="bold" style={styles.retryButtonText}>
-              Retry
+              {t("answers.retry")}
             </Body>
           </TouchableOpacity>
         </View>
@@ -282,8 +284,7 @@ export default function ChildAnswers() {
                 color={Colors.textTertiary}
               />
               <Body style={styles.emptyText}>
-                No answers yet. Complete Look and Say exercises to see your
-                recordings here.
+                {t("answers.noAnswers")}
               </Body>
             </View>
           }
@@ -298,7 +299,7 @@ export default function ChildAnswers() {
                 Platform.OS === "android" ? insets.top + 80 : insets.top + 60
               }
               {...(Platform.OS === "ios" && {
-                title: refreshing ? "Refreshing..." : "Pull to refresh",
+                title: refreshing ? t("answers.refreshing") : t("answers.pullToRefresh"),
                 titleColor: Colors.textSecondary,
               })}
             />

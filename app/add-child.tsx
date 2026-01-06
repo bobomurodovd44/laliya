@@ -19,11 +19,13 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Body, Title, Subtitle } from '../components/Typography';
 import { Colors, Spacing, Typography } from '../constants';
 import app from '../lib/feathers/feathers-client';
+import { useTranslation } from '../lib/localization';
 import { useAuthStore } from '../lib/store/auth-store';
 
 export default function AddChild() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { user, setAuthenticated } = useAuthStore();
   
   const [name, setName] = useState('');
@@ -146,13 +148,13 @@ export default function AddChild() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 40 }]}>
-            <Title size="large">Add Child</Title>
-            <Subtitle style={styles.subtitle}>Who's learning today?</Subtitle>
+            <Title size="large">{t("child.addChild")}</Title>
+            <Subtitle style={styles.subtitle}>{t("child.whoLearning")}</Subtitle>
 
             <View style={styles.inputGroup}>
               <Input
                 icon="person-add"
-                placeholder="Child's Name"
+                placeholder={t("child.childName")}
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -161,7 +163,7 @@ export default function AddChild() {
               <View style={styles.ageInputContainer}>
                 <Input
                   icon="calendar-number"
-                  placeholder="Age (2-6 years)"
+                  placeholder={t("child.agePlaceholder")}
                   value={age}
                   onChangeText={(text) => {
                     setAge(text);
@@ -179,13 +181,13 @@ export default function AddChild() {
                   <Body style={styles.ageErrorText}>{ageError}</Body>
                 ) : (
                   <Body style={styles.helperText}>
-                    Age must be between 2 and 6 years
+                    {t("child.ageHelper")}
                   </Body>
                 )}
               </View>
               
               <View style={styles.genderContainer}>
-                <Body style={styles.label} weight="bold">Select Gender</Body>
+                <Body style={styles.label} weight="bold">{t("child.selectGender")}</Body>
                 <View style={styles.genderOptions}>
                   <TouchableOpacity 
                     style={[
@@ -203,7 +205,7 @@ export default function AddChild() {
                       <Ionicons name="man" size={32} color={gender === 'boy' ? Colors.textWhite : Colors.info} />
                     </View>
                     <Body style={[styles.genderText, gender === 'boy' && styles.genderTextActive]}>
-                      Boy
+                      {t("child.boy")}
                     </Body>
                     {gender === 'boy' && (
                       <View style={styles.checkmarkBadge}>
@@ -228,7 +230,7 @@ export default function AddChild() {
                       <Ionicons name="woman" size={32} color={gender === 'girl' ? Colors.textWhite : '#FF69B4'} />
                     </View>
                     <Body style={[styles.genderText, gender === 'girl' && styles.genderTextActive]}>
-                      Girl
+                      {t("child.girl")}
                     </Body>
                     {gender === 'girl' && (
                       <View style={styles.checkmarkBadge}>
@@ -248,7 +250,7 @@ export default function AddChild() {
 
             <View style={styles.buttonContainer}>
               <DuoButton 
-                title={loading ? "SAVING..." : "ADD PROFILE"} 
+                title={loading ? t("child.saving") : t("child.addProfile")} 
                 onPress={handleAddChild}
                 color="orange"
                 size="large"

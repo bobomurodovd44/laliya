@@ -9,6 +9,7 @@ import Animated, {
 import { Colors } from "../constants/Colors";
 import { Spacing } from "../constants/Spacing";
 import { Typography } from "../constants/Typography";
+import { useTranslation } from "../lib/localization";
 
 interface KeepGoingCelebrationProps {
   visible: boolean;
@@ -17,6 +18,7 @@ interface KeepGoingCelebrationProps {
 export default function KeepGoingCelebration({
   visible,
 }: KeepGoingCelebrationProps) {
+  const { t } = useTranslation();
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -48,8 +50,8 @@ export default function KeepGoingCelebration({
             <Ionicons name="star" size={64} color={Colors.textWhite} />
           </View>
         </View>
-        <Text style={styles.title}>Keep Going!</Text>
-        <Text style={styles.subtitle}>You're doing great!</Text>
+        <Text style={styles.title}>{t("exercise.keepGoing")}</Text>
+        <Text style={styles.subtitle}>{t("exercise.youreDoingGreat")}</Text>
       </Animated.View>
     </View>
   );

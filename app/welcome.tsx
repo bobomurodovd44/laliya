@@ -3,9 +3,11 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { DuoButton } from '../components/DuoButton';
 import { StyledText } from '../components/StyledText';
+import { useTranslation } from '../lib/localization';
 
 export default function Welcome() {
   const router = useRouter();
+  const { t } = useTranslation();
   
   // Animation values
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -312,10 +314,10 @@ export default function Welcome() {
           </View>
 
           <StyledText variant="title" style={styles.title}>
-            Welcome to Laliya!
+            {t("welcome.title")}
           </StyledText>
           <StyledText variant="subtitle" style={styles.subtitle}>
-            Let's have fun learning together!
+            {t("welcome.subtitle")}
           </StyledText>
         </Animated.View>
         
@@ -425,7 +427,7 @@ export default function Welcome() {
             </Animated.Text>
 
             <DuoButton 
-              title="Start Learning" 
+              title={t("welcome.startLearning")} 
               color="orange" 
               size="large"
               onPress={() => router.push('/')}
@@ -445,7 +447,7 @@ export default function Welcome() {
           ]}
         >
           <StyledText variant="body" style={styles.footerText}>
-            Practice speaking, learn new words, and have fun! 🌟
+            {t("welcome.footer")}
           </StyledText>
         </Animated.View>
       </View>

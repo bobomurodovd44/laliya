@@ -18,11 +18,13 @@ import { Colors, Spacing, Typography } from "../constants";
 import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
 import { signInWithEmailPassword } from "../lib/auth/firebase-auth";
 import { signInWithGoogle } from "../lib/auth/google-signin";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Login() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { setAuthenticated } = useAuthStore();
 
   const [email, setEmail] = useState("");
@@ -32,7 +34,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setError("Please fill in all fields");
+      setError(t("auth.login.fillAllFields"));
       return;
     }
 
@@ -60,7 +62,7 @@ export default function Login() {
       // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.");
+      setError(err.message || t("auth.login.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ export default function Login() {
       // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
-      setError(err.message || "Google Sign-In failed. Please try again.");
+      setError(err.message || t("auth.login.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -113,13 +115,13 @@ export default function Login() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 60 }]}>
-            <Title size="xlarge">Login</Title>
-            <Subtitle style={styles.subtitle}>Welcome back, friend!</Subtitle>
+            <Title size="xlarge">{t("auth.login.title")}</Title>
+            <Subtitle style={styles.subtitle}>{t("common.welcome")}</Subtitle>
 
             <View style={styles.inputGroup}>
               <Input
                 icon="mail"
-                placeholder="Email Address"
+                placeholder={t("auth.login.email")}
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -131,7 +133,7 @@ export default function Login() {
 
               <Input
                 icon="lock-closed"
-                placeholder="Password"
+                placeholder={t("auth.login.password")}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -159,7 +161,7 @@ export default function Login() {
                 <ActivityIndicator color={Colors.textWhite} />
               ) : (
                 <Body style={styles.loginButtonText} weight="bold">
-                  LET'S GO!
+                  {t("auth.login.loginButton")}
                 </Body>
               )}
             </TouchableOpacity>
@@ -169,8 +171,7 @@ export default function Login() {
               onPress={() => router.push("/signup")}
             >
               <Body style={styles.signupLinkText}>
-                Don't have an account?{" "}
-                <Body style={styles.signupLinkHighlight}>Sign Up</Body>
+                {t("auth.login.signupLink")}
               </Body>
             </TouchableOpacity>
           </View>
@@ -190,7 +191,7 @@ export default function Login() {
                 style={styles.googleIcon}
               />
               <Body style={styles.googleButtonText} weight="bold">
-                Continue with Google
+                {t("auth.login.googleLogin")}
               </Body>
             </TouchableOpacity>
           </View>

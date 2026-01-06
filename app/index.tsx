@@ -22,6 +22,7 @@ import { fetchStages, Stage } from "../lib/api/stages";
 import { getCachedExercises } from "../lib/cache/exercises-cache";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 import { imagePreloader } from "../lib/image-preloader";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 import {
   getUserMaxStageOrder,
@@ -43,6 +44,7 @@ interface LessonCard {
 export default function Index() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -382,7 +384,7 @@ export default function Index() {
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <LoadingSpinner message="Loading stages..." size="large" />
+            <LoadingSpinner message={t("home.loadingStages")} size="large" />
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -390,7 +392,7 @@ export default function Index() {
           </View>
         ) : lessons.length === 0 ? (
           <View style={styles.errorContainer}>
-            <Body style={styles.errorText}>No stages available</Body>
+            <Body style={styles.errorText}>{t("home.noStages")}</Body>
           </View>
         ) : (
           <>

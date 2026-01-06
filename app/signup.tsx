@@ -18,11 +18,13 @@ import { Colors, Spacing, Typography } from "../constants";
 import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
 import { signUpWithEmailPassword } from "../lib/auth/firebase-auth";
 import { signInWithGoogle } from "../lib/auth/google-signin";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 
 export default function Signup() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { setAuthenticated } = useAuthStore();
 
   const [name, setName] = useState("");
@@ -33,12 +35,12 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      setError("Please fill in all fields");
+      setError(t("auth.signup.fillAllFields") || t("auth.login.fillAllFields"));
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("auth.signup.passwordMinLength"));
       return;
     }
 
@@ -66,7 +68,7 @@ export default function Signup() {
       // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
-      setError(err.message || "Signup failed. Please try again.");
+      setError(err.message || t("auth.signup.signupFailed"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function Signup() {
       // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
-      setError(err.message || "Google Sign-In failed. Please try again.");
+      setError(err.message || t("auth.signup.googleSignInFailed"));
     } finally {
       setLoading(false);
     }
@@ -121,13 +123,13 @@ export default function Signup() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 40 }]}>
-            <Title size="xlarge">Signup</Title>
-            <Subtitle style={styles.subtitle}>Join the fun!</Subtitle>
+            <Title size="xlarge">{t("auth.signup.title")}</Title>
+            <Subtitle style={styles.subtitle}>{t("auth.signup.subtitle")}</Subtitle>
 
             <View style={styles.inputGroup}>
               <Input
                 icon="person"
-                placeholder="Full Name"
+                placeholder={t("auth.signup.fullName")}
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
@@ -138,7 +140,7 @@ export default function Signup() {
 
               <Input
                 icon="mail"
-                placeholder="Email Address"
+                placeholder={t("auth.signup.email")}
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -150,7 +152,7 @@ export default function Signup() {
 
               <Input
                 icon="lock-closed"
-                placeholder="Password"
+                placeholder={t("auth.signup.password")}
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -178,7 +180,7 @@ export default function Signup() {
                 <ActivityIndicator color={Colors.textWhite} />
               ) : (
                 <Body style={styles.signupButtonText} weight="bold">
-                  SIGN UP
+                  {t("auth.signup.signupButton").toUpperCase()}
                 </Body>
               )}
             </TouchableOpacity>
@@ -188,8 +190,8 @@ export default function Signup() {
               onPress={() => router.push("/login")}
             >
               <Body style={styles.loginLinkText}>
-                Already have an account?{" "}
-                <Body style={styles.loginLinkHighlight}>Login</Body>
+                {t("auth.signup.haveAccount")}{" "}
+                <Body style={styles.loginLinkHighlight}>{t("auth.signup.login")}</Body>
               </Body>
             </TouchableOpacity>
           </View>
@@ -209,7 +211,7 @@ export default function Signup() {
                 style={styles.googleIcon}
               />
               <Body style={styles.googleButtonText} weight="bold">
-                Continue with Google
+                {t("auth.signup.googleSignup")}
               </Body>
             </TouchableOpacity>
           </View>

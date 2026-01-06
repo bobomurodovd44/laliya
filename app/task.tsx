@@ -36,6 +36,7 @@ import {
 import { getCachedStages } from "../lib/cache/stages-cache";
 import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
+import { useTranslation } from "../lib/localization";
 import { setItems } from "../lib/items-store";
 import { useAuthStore } from "../lib/store/auth-store";
 import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
@@ -48,6 +49,7 @@ export default function Task() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
   const { user, setAuthenticated } = useAuthStore();
 
   const stageId = params.stageId as string;
@@ -171,9 +173,7 @@ export default function Task() {
 
         if (!isAccessible && !isExerciseActiveRef.current) {
           // Only redirect if user is not actively working on exercises
-          setError(
-            "Access denied: This stage is locked. Complete previous stages to unlock."
-          );
+          setError(t("exercise.accessDenied"));
           setLoading(false);
           setCurrentExercise(null);
           // Redirect to home after a short delay
@@ -276,7 +276,7 @@ export default function Task() {
           const apiExercises = await fetchExercisesByStageId(stageId);
 
           if (apiExercises.length === 0) {
-            setError("No exercises found for this stage");
+            setError(t("exercise.noExercises"));
             setLoading(false);
             return;
           }
@@ -308,7 +308,7 @@ export default function Task() {
           const exercise = mappedExercises[exerciseIndex];
 
           if (!exercise) {
-            setError("Exercise not found");
+            setError(t("exercise.exerciseNotFound"));
             setLoading(false);
             return;
           }
@@ -1080,7 +1080,7 @@ export default function Task() {
             { paddingTop: insets.top + Spacing.padding.xxl },
           ]}
         >
-          <LoadingSpinner message="Loading exercises..." size="large" />
+          <LoadingSpinner message={t("exercise.loadingExercises")} size="large" />
         </View>
       </PageContainer>
     );
@@ -1090,7 +1090,7 @@ export default function Task() {
     return (
       <PageContainer>
         <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
-          <Body style={styles.errorText}>{error || "Exercise not found"}</Body>
+          <Body style={styles.errorText}>{error || t("exercise.exerciseNotFound")}</Body>
         </View>
       </PageContainer>
     );
@@ -1117,7 +1117,7 @@ export default function Task() {
       >
         {isLastExercise ? (
           <DuoButton
-            title="Submit"
+            title={t("common.submit")}
             onPress={handleSubmit}
             color="green"
             size="medium"
@@ -1125,7 +1125,7 @@ export default function Task() {
           />
         ) : (
           <DuoButton
-            title="Next"
+            title={t("common.next")}
             onPress={handleNext}
             color="green"
             size="medium"

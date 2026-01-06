@@ -1,0 +1,127 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "next": "Next",
+    "submit": "Submit",
+    "back": "Back",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "email": "Email",
+      "password": "Password",
+      "loginButton": "Login",
+      "signupLink": "Don't have an account? Sign up",
+      "googleLogin": "Continue with Google",
+      "fillAllFields": "Please fill in all fields",
+      "loginFailed": "Login failed. Please try again.",
+      "invalidCredentials": "Invalid email or password"
+    },
+    "signup": {
+      "title": "Sign Up",
+      "subtitle": "Join the fun!",
+      "fullName": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "signupButton": "Sign Up",
+      "haveAccount": "Already have an account?",
+      "login": "Login",
+      "googleSignup": "Continue with Google",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "signupFailed": "Signup failed. Please try again.",
+      "googleSignInFailed": "Google Sign-In failed. Please try again."
+    }
+  },
+  "home": {
+    "title": "Home",
+    "level": "Level",
+    "score": "Score",
+    "loadingStages": "Loading stages...",
+    "noStages": "No stages available"
+  },
+  "exercise": {
+    "loadingExercises": "Loading exercises...",
+    "exerciseNotFound": "Exercise not found",
+    "keepGoing": "Keep Going!",
+    "youreDoingGreat": "You're doing great!",
+    "wellDone": "Well Done!",
+    "tryAgain": "Try Again!",
+    "notQuiteRight": "That's not quite right.",
+    "accessDenied": "Access denied: This stage is locked. Complete previous stages to unlock.",
+    "noExercises": "No exercises found for this stage"
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings",
+    "language": "Language",
+    "logout": "Logout",
+    "loggingOut": "Logging out...",
+    "stars": "Stars",
+    "level": "Level",
+    "childAnswers": "Child Answers",
+    "yearsOld": "years old",
+    "boy": "Boy",
+    "girl": "Girl",
+    "child": "Child"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error. Please check your connection.",
+    "unknown": "An unknown error occurred"
+  },
+  "child": {
+    "addChild": "Add Child",
+    "whoLearning": "Who's learning today?",
+    "childName": "Child's Name",
+    "age": "Age",
+    "agePlaceholder": "Age (2-6 years)",
+    "ageHelper": "Age must be between 2 and 6 years",
+    "selectGender": "Select Gender",
+    "fullName": "Full Name",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "boy": "Boy",
+    "girl": "Girl",
+    "addProfile": "ADD PROFILE",
+    "saving": "SAVING..."
+  },
+  "answers": {
+    "childAnswers": "Child Answers",
+    "reviewAnswers": "Review Answers",
+    "loadingAnswers": "Loading answers...",
+    "loadingStages": "Loading stages...",
+    "noAnswers": "No answers yet. Complete Look and Say exercises to see your recordings here.",
+    "noAnswersFound": "No answers found for this stage",
+    "goBack": "Go Back",
+    "stage": "Stage",
+    "retry": "Retry",
+    "refreshing": "Refreshing...",
+    "pullToRefresh": "Pull to refresh",
+    "audioNotAvailable": "Audio not available",
+    "audioFileNotAvailable": "Audio file is not available for this answer",
+    "permissionRequired": "Permission Required",
+    "audioPermissionMessage": "Audio playback requires permission. Please grant audio permission in settings.",
+    "noImageAvailable": "No image available",
+    "userNotFound": "User not found",
+    "stageIdNotFound": "Stage ID not found",
+    "failedToLoad": "Failed to load",
+    "failedToLoadStages": "Failed to load stages",
+    "failedToLoadAnswers": "Failed to load answers"
+  },
+  "welcome": {
+    "title": "Welcome to Laliya!",
+    "subtitle": "Let's have fun learning together!",
+    "startLearning": "Start Learning",
+    "footer": "Practice speaking, learn new words, and have fun! 🌟"
+  }
+}
+

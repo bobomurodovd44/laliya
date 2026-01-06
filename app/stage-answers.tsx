@@ -18,6 +18,7 @@ import StarRating from "../components/StarRating";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import app from "../lib/feathers/feathers-client";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 
 interface Answer {
@@ -53,6 +54,7 @@ export default function StageAnswers() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
   const { user } = useAuthStore();
 
   const stageId = params.stageId as string;
@@ -73,7 +75,7 @@ export default function StageAnswers() {
   // Fetch answers for the stage
   const fetchAnswers = useCallback(async () => {
     if (!user?._id || !stageId) {
-      setError("User or stage ID not found");
+      setError(t("answers.userNotFound") + " " + t("answers.stageIdNotFound"));
       setLoading(false);
       return;
     }
@@ -106,7 +108,7 @@ export default function StageAnswers() {
         setSelectedMark(filteredAnswers[0].mark ?? 0);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load answers");
+      setError(err.message || t("answers.failedToLoadAnswers"));
       console.error("Error fetching answers:", err);
     } finally {
       setLoading(false);
@@ -158,8 +160,8 @@ export default function StageAnswers() {
       if (newStatus === "granted") return true;
 
       Alert.alert(
-        "Permission Required",
-        "Audio playback requires permission. Please grant audio permission in settings."
+        t("answers.permissionRequired"),
+        t("answers.audioPermissionMessage")
       );
       return false;
     } catch {
@@ -171,8 +173,8 @@ export default function StageAnswers() {
   const playAnswerAudio = useCallback(async () => {
     if (!currentAnswer?.audio?.name) {
       Alert.alert(
-        "Audio not available",
-        "Audio file is not available for this answer"
+        t("answers.audioNotAvailable"),
+        t("answers.audioFileNotAvailable")
       );
       return;
     }
@@ -291,8 +293,8 @@ export default function StageAnswers() {
       </TouchableOpacity>
       <Title size="medium" style={styles.headerTitle}>
         {loading
-          ? "Review Answers"
-          : `Review Answers (${currentIndex + 1}/${answers.length})`}
+          ? t("answers.reviewAnswers")
+          : `${t("answers.reviewAnswers")} (${currentIndex + 1}/${answers.length})`}
       </Title>
       <View style={styles.headerSpacer} />
     </View>
@@ -304,7 +306,7 @@ export default function StageAnswers() {
       <PageContainer>
         {renderHeader()}
         <View style={styles.centerContainer}>
-          <LoadingSpinner message="Loading answers..." />
+          <LoadingSpinner message={t("answers.loadingAnswers")} />
         </View>
       </PageContainer>
     );
@@ -317,10 +319,10 @@ export default function StageAnswers() {
         {renderHeader()}
         <View style={styles.centerContainer}>
           <Body style={styles.errorText}>
-            {error || "No answers found for this stage"}
+            {error || t("answers.noAnswersFound")}
           </Body>
           <DuoButton
-            title="Go Back"
+            title={t("answers.goBack")}
             onPress={() => router.push("/child-answers")}
             color="blue"
             size="medium"
@@ -349,7 +351,7 @@ export default function StageAnswers() {
                 />
               ) : (
                 <View style={styles.imagePlaceholder}>
-                  <Body>No image available</Body>
+                  <Body>{t("answers.noImageAvailable")}</Body>
                 </View>
               )}
             </View>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import { useTranslation } from '../lib/localization';
 import { DuoButton } from './DuoButton';
 
 interface TryAgainModalProps {
@@ -10,6 +11,7 @@ interface TryAgainModalProps {
 }
 
 export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) {
+  const { t } = useTranslation();
   return (
     <Modal
       animationType="none"
@@ -24,12 +26,12 @@ export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) 
             style={styles.modalCard}
           >
             <Ionicons name="close-circle" size={80} color="#FF4B4B" />
-            <Text style={styles.title}>Try Again!</Text>
-            <Text style={styles.subtitle}>That's not quite right.</Text>
+            <Text style={styles.title}>{t("exercise.tryAgain")}</Text>
+            <Text style={styles.subtitle}>{t("exercise.notQuiteRight")}</Text>
             
             <View style={styles.buttonContainer}>
               <DuoButton 
-                title="Retry" 
+                title={t("common.retry")} 
                 onPress={onClose} 
                 color="red" 
                 size="medium" 

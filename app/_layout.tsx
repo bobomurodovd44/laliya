@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomHeader } from '../components/CustomHeader';
 import { configureGoogleSignIn } from '../lib/auth/google-signin';
+import { initializeLanguage, useTranslation } from '../lib/localization';
 import { useAuthStore } from '../lib/store/auth-store';
 
 SplashScreen.preventAutoHideAsync();
@@ -40,6 +41,7 @@ function RootLayoutNav() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const segments = useSegments();
+  const { t } = useTranslation();
   const { isAuthenticated, isInitialized, user } = useAuthStore();
 
   // Global redirect check: if authenticated but missing childMeta, redirect to add-child
@@ -100,7 +102,7 @@ function RootLayoutNav() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: t('home.title'),
             headerShown: false,
             tabBarIcon: ({ focused }) => (
               <TabIcon iconName="home" focused={focused} />
@@ -119,7 +121,7 @@ function RootLayoutNav() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
+            title: t('profile.title'),
             headerShown: false,
             tabBarIcon: ({ focused }) => (
               <TabIcon iconName="person" focused={focused} />
@@ -204,6 +206,11 @@ export default function RootLayout() {
     BalsamiqSans: BalsamiqSans_400Regular,
   });
   const { init } = useAuthStore();
+
+  // Initialize i18n localization on mount
+  useEffect(() => {
+    initializeLanguage();
+  }, []);
 
   // Initialize Google Sign-In configuration on mount
   useEffect(() => {

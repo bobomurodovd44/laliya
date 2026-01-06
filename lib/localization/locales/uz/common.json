@@ -96,7 +96,7 @@
     "loggingOut": "Chiqilmoqda...",
     "stars": "Ballar",
     "level": "Bosqich",
-    "childAnswers": "Javoblarni ko'rish",
+    "childAnswers": "Baholash",
     "yearsOld": "yosh",
     "boy": "O'g'il bola",
     "girl": "Qiz bola",
@@ -135,8 +135,8 @@
     }
   },
   "answers": {
-    "childAnswers": "Javoblar",
-    "reviewAnswers": "Javoblar",
+    "childAnswers": "Baholash",
+    "reviewAnswers": "Baholash",
     "loadingAnswers": "Javoblar yuklanmoqda...",
     "loadingStages": "Bosqichlar yuklanmoqda...",
     "noAnswers": "Hozircha javoblar yo'q. Kichkintoyingizning javoblari bu yerda ko'rinadi.",

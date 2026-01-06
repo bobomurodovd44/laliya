@@ -121,8 +121,49 @@ export default function AddChild() {
         },
       });
 
-      // Update auth store with the new user data
-      setAuthenticated(updatedUser);
+      // Ensure currentStageId is set - fetch user again to trigger resolver if needed
+      // or explicitly set it if it's missing
+      let finalUser: any = updatedUser;
+      if (!finalUser?.currentStageId) {
+        try {
+          // Fetch the first stage to set as currentStageId
+          const stagesResponse = await app.service("stages").find({
+            query: {
+              $sort: { order: 1 },
+              $limit: 1,
+            },
+          });
+          const stagesData = Array.isArray(stagesResponse)
+            ? stagesResponse
+            : (stagesResponse as any)?.data || [];
+          const firstStage = stagesData[0];
+
+          if (firstStage?._id) {
+            // Set currentStageId explicitly
+            finalUser = await app.service("users").patch(user._id, {
+              currentStageId: firstStage._id,
+            });
+          } else {
+            // If no stages exist, fetch user again to trigger resolver
+            finalUser = await app.service("users").get(user._id);
+          }
+        } catch (err) {
+          // If setting currentStageId fails, try fetching user again to trigger resolver
+          console.warn(
+            "Failed to set currentStageId, fetching user again:",
+            err
+          );
+          try {
+            finalUser = await app.service("users").get(user._id);
+          } catch (fetchErr) {
+            // If fetch also fails, use the updated user as-is
+            console.warn("Failed to fetch user after adding child:", fetchErr);
+          }
+        }
+      }
+
+      // Update auth store with the new user data (with currentStageId set)
+      setAuthenticated(finalUser);
 
       // Redirect to index page
       router.replace("/");

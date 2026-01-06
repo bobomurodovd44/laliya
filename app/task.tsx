@@ -119,22 +119,28 @@ export default function Task() {
     previousStageIdRef.current = stageId;
 
     // Clear stage access cache when user's currentStageId changes from undefined to a value
-    // This ensures we re-verify access with the updated currentStageId
+    // BUT only if user is NOT actively working on exercises in this stage
+    // This prevents clearing cache during active exercise sessions
     const currentUserStageId = user?.currentStageId;
     const previousUserStageId = previousUserCurrentStageIdRef.current;
     if (previousUserStageId !== currentUserStageId) {
       // If currentStageId changed (especially from undefined/null to a value), clear cache
       // This handles the case where backend sets currentStageId after user creation
+      // BUT only if user is not actively working on exercises in this stage
       if ((!previousUserStageId && currentUserStageId) || (previousUserStageId !== currentUserStageId)) {
-        // Clear all cache entries for this stage to force re-verification
-        // We'll keep cache entries for other stages
-        const keysToDelete: string[] = [];
-        stageAccessCacheRef.current.forEach((value, key) => {
-          if (key.startsWith(`${stageId}-`)) {
-            keysToDelete.push(key);
-          }
-        });
-        keysToDelete.forEach(key => stageAccessCacheRef.current.delete(key));
+        // Only clear cache if user is NOT actively working on exercises in this stage
+        // If they are actively working, keep the cache to prevent unnecessary re-validation
+        if (!isExerciseActiveRef.current || !currentExercise) {
+          // Clear all cache entries for this stage to force re-verification
+          // We'll keep cache entries for other stages
+          const keysToDelete: string[] = [];
+          stageAccessCacheRef.current.forEach((value, key) => {
+            if (key.startsWith(`${stageId}-`)) {
+              keysToDelete.push(key);
+            }
+          });
+          keysToDelete.forEach(key => stageAccessCacheRef.current.delete(key));
+        }
       }
       previousUserCurrentStageIdRef.current = currentUserStageId;
     }
@@ -186,11 +192,10 @@ export default function Task() {
       try {
         const stage = await app.service("stages").get(stageId);
         
-        // Defensive handling: If currentStageId is undefined and we're checking stage 1,
-        // always allow access (new users should be able to access first stage)
-        // This handles the case where user.currentStageId hasn't been set yet in frontend state
-        if (!user?.currentStageId && stage.order === 1) {
-          // Always allow access to stage 1 for new users
+        // Defensive handling: Always allow access to stage 1 regardless of currentStageId status
+        // This ensures new users can always start learning, even if currentStageId is undefined
+        if (stage.order === 1) {
+          // Always allow access to stage 1 for all users (new or existing)
           stageAccessCacheRef.current.set(cacheKey, true);
           return true;
         }
@@ -243,8 +248,16 @@ export default function Task() {
       const cachedAccess = stageAccessCacheRef.current.get(cacheKey);
 
       // If we have cached access and stageId hasn't changed, skip verification
+      // This handles the case where we're navigating between exercises in the same stage
+      // (only exerciseOrder changes, not stageId)
       if (cachedAccess === true && !stageIdChanged) {
         // Stage is accessible, proceed with loading exercises
+        // No need to re-verify access when navigating between exercises in the same stage
+      } else if (isExerciseActiveRef.current && currentExercise && !stageIdChanged) {
+        // User is actively working on exercises in this stage and stageId hasn't changed
+        // Even if we don't have cached access, allow them to continue (they're already in the stage)
+        // Cache as accessible to prevent future checks
+        stageAccessCacheRef.current.set(cacheKey, true);
       } else {
         // Verify stage access (only if stageId changed or no cached access)
         const hasAccess = await verifyStageAccess();
@@ -841,6 +854,9 @@ export default function Task() {
 
   const handleNext = useCallback(() => {
     if (!isLastExercise && stageId && currentExercise) {
+      // Ensure active flag is set before navigation to prevent redirects
+      isExerciseActiveRef.current = true;
+
       // Upload audio for LookAndSay exercise in background (non-blocking)
       if (
         currentExercise.type === ExerciseType.LOOK_AND_SAY &&

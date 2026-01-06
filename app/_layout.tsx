@@ -1,36 +1,51 @@
-import { BalsamiqSans_400Regular } from '@expo-google-fonts/balsamiq-sans';
-import { FredokaOne_400Regular, useFonts } from '@expo-google-fonts/fredoka-one';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs, useRouter, useSegments } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CustomHeader } from '../components/CustomHeader';
-import { configureGoogleSignIn } from '../lib/auth/google-signin';
-import { initializeLanguage, useTranslation } from '../lib/localization';
-import { useAuthStore } from '../lib/store/auth-store';
+import { BalsamiqSans_400Regular } from "@expo-google-fonts/balsamiq-sans";
+import {
+  FredokaOne_400Regular,
+  useFonts,
+} from "@expo-google-fonts/fredoka-one";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import Octicons from "@expo/vector-icons/Octicons";
+import { Tabs, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { CustomHeader } from "../components/CustomHeader";
+import { configureGoogleSignIn } from "../lib/auth/google-signin";
+import { initializeLanguage, useTranslation } from "../lib/localization";
+import { useAuthStore } from "../lib/store/auth-store";
 
 SplashScreen.preventAutoHideAsync();
 
-function TabIcon({ iconName, focused }: { iconName: keyof typeof MaterialIcons.glyphMap; focused: boolean }) {
+function TabIcon({
+  iconName,
+  focused,
+}: {
+  iconName: keyof typeof MaterialIcons.glyphMap;
+  focused: boolean;
+}) {
   return (
-    <View style={[
-      styles.iconContainer,
-      focused && styles.iconContainerActive,
-      focused && { transform: [{ scale: 1.05 }] }
-    ]}>
+    <View
+      style={[
+        styles.iconContainer,
+        focused && styles.iconContainerActive,
+        focused && { transform: [{ scale: 1.05 }] },
+      ]}
+    >
       {focused && (
         <>
           <View style={styles.activeBackground} />
           <View style={styles.glowEffect} />
         </>
       )}
-      <MaterialIcons 
+      <MaterialIcons
         name={iconName}
         size={36}
-        color={focused ? '#FFFFFF' : '#B8B8B8'}
+        color={focused ? "#FFFFFF" : "#B8B8B8"}
         style={{ zIndex: 1 }}
       />
     </View>
@@ -47,20 +62,21 @@ function RootLayoutNav() {
   // Global redirect check: if authenticated but missing childMeta, redirect to add-child
   useEffect(() => {
     if (!isInitialized) return;
-    
+
     if (isAuthenticated && user) {
-      const currentPath = segments[0] || '';
-      const isOnAddChildPage = currentPath === 'add-child';
-      
+      const currentPath = segments[0] || "";
+      const isOnAddChildPage = currentPath === "add-child";
+
       // Check if user is missing childMeta
-      const hasChildMeta = user.childMeta && 
-        user.childMeta.fullName && 
-        user.childMeta.age && 
+      const hasChildMeta =
+        user.childMeta &&
+        user.childMeta.fullName &&
+        user.childMeta.age &&
         user.childMeta.gender;
-      
+
       // Redirect to add-child if missing childMeta and not already on that page
       if (!hasChildMeta && !isOnAddChildPage) {
-        router.replace('/add-child');
+        router.replace("/add-child");
       }
     }
   }, [isAuthenticated, isInitialized, user, segments, router]);
@@ -76,23 +92,23 @@ function RootLayoutNav() {
         header: (props) => <CustomHeader {...props} />,
         headerTransparent: true,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopColor: "#F0F0F0",
           elevation: 0,
           shadowOpacity: 0,
           height: 70 + insets.bottom,
           paddingBottom: insets.bottom,
-          paddingTop: 10,
+          paddingTop: 20,
         },
         sceneStyle: {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
         },
-        tabBarActiveTintColor: '#4DA6FF',
-        tabBarInactiveTintColor: '#B8B8B8',
+        tabBarActiveTintColor: "#4DA6FF",
+        tabBarInactiveTintColor: "#B8B8B8",
         tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
+          justifyContent: "center",
+          alignItems: "center",
         },
         tabBarShowLabel: false,
       }}
@@ -102,10 +118,29 @@ function RootLayoutNav() {
         <Tabs.Screen
           name="index"
           options={{
-            title: t('home.title'),
+            title: t("home.title"),
             headerShown: false,
             tabBarIcon: ({ focused }) => (
-              <TabIcon iconName="home" focused={focused} />
+              <View
+                style={[
+                  styles.iconContainer,
+                  focused && styles.iconContainerActive,
+                  focused && { transform: [{ scale: 1.05 }] },
+                ]}
+              >
+                {focused && (
+                  <>
+                    <View style={styles.activeBackground} />
+                    <View style={styles.glowEffect} />
+                  </>
+                )}
+                <Octicons
+                  name={focused ? "home-fill" : "home"}
+                  size={36}
+                  color={focused ? "#FFFFFF" : "#B8B8B8"}
+                  style={{ zIndex: 1 }}
+                />
+              </View>
             ),
           }}
         />
@@ -114,17 +149,36 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: t('profile.title'),
+            title: t("profile.title"),
             headerShown: false,
             tabBarIcon: ({ focused }) => (
-              <TabIcon iconName="person" focused={focused} />
+              <View
+                style={[
+                  styles.iconContainer,
+                  focused && styles.iconContainerActive,
+                  focused && { transform: [{ scale: 1.05 }] },
+                ]}
+              >
+                {focused && (
+                  <>
+                    <View style={styles.activeBackground} />
+                    <View style={styles.glowEffect} />
+                  </>
+                )}
+                <Ionicons
+                  name={focused ? "person" : "person-outline"}
+                  size={36}
+                  color={focused ? "#FFFFFF" : "#B8B8B8"}
+                  style={{ zIndex: 1 }}
+                />
+              </View>
             ),
           }}
         />
@@ -133,7 +187,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -142,7 +196,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -151,7 +205,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -160,7 +214,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -169,7 +223,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -182,7 +236,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -191,7 +245,7 @@ function RootLayoutNav() {
           options={{
             href: null,
             headerShown: false,
-            tabBarStyle: { display: 'none' },
+            tabBarStyle: { display: "none" },
             sceneStyle: { paddingBottom: 0 },
           }}
         />
@@ -243,36 +297,35 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'transparent',
-    position: 'relative',
+    backgroundColor: "transparent",
+    position: "relative",
   },
   iconContainerActive: {
-    backgroundColor: '#4DA6FF',
+    backgroundColor: "#4DA6FF",
   },
   activeBackground: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     borderRadius: 28,
-    backgroundColor: '#4DA6FF',
+    backgroundColor: "#4DA6FF",
   },
   glowEffect: {
-    position: 'absolute',
+    position: "absolute",
     top: -2,
     left: -2,
     right: -2,
     bottom: -2,
     borderRadius: 30,
-    backgroundColor: '#4DA6FF',
+    backgroundColor: "#4DA6FF",
     opacity: 0.2,
     zIndex: -1,
   },
 });
-

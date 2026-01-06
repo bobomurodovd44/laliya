@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import Octicons from "@expo/vector-icons/Octicons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -344,7 +346,7 @@ export default function Index() {
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerStarsContainer}>
           <View style={styles.starBadge}>
-            <Ionicons name="star" size={28} color={Colors.badgeStar} />
+            <Octicons name="star-fill" size={32} color={Colors.badgeStar} />
             <Body style={styles.starCount} weight="bold">
               {user?.score?.toLocaleString() || "0"}
             </Body>
@@ -352,9 +354,9 @@ export default function Index() {
         </View>
         <View style={styles.levelBadge}>
           <View style={styles.levelBadgeContent}>
-            <Ionicons
+            <FontAwesome
               name="trophy"
-              size={20}
+              size={32}
               color={Colors.badgeLevel}
               style={{ marginRight: Spacing.margin.xs }}
             />
@@ -564,7 +566,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   levelText: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.xxl,
     color: Colors.badgeLevel,
   },
   pathContainer: {

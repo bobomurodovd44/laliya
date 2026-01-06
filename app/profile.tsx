@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import Octicons from "@expo/vector-icons/Octicons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
@@ -135,9 +137,9 @@ export default function Profile() {
               {t("profile.stars")}
             </Body>
             <View style={styles.statValueContainer}>
-              <Ionicons
-                name="star"
-                size={24}
+              <Octicons
+                name="star-fill"
+                size={32}
                 color={Colors.badgeStar}
                 style={{ marginBottom: 4 }}
               />
@@ -152,9 +154,9 @@ export default function Profile() {
               {t("profile.level")}
             </Body>
             <View style={styles.statValueContainer}>
-              <Ionicons
+              <FontAwesome
                 name="trophy"
-                size={24}
+                size={32}
                 color={Colors.badgeLevel}
                 style={{ marginBottom: 4 }}
               />
@@ -169,9 +171,10 @@ export default function Profile() {
 
         <View style={styles.section}>
           <ProfileMenuItem
-            iconName="musical-notes-outline"
+            iconName="music"
             title={t("profile.childAnswers")}
             onPress={() => router.push("/child-answers")}
+            iconLibrary="fontawesome"
           />
           <ProfileMenuItem
             iconName="log-out-outline"

@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ProfileMenuItemProps {
-  iconName: keyof typeof Ionicons.glyphMap;
+  iconName: keyof typeof Ionicons.glyphMap | keyof typeof FontAwesome.glyphMap;
   title: string;
   onPress?: () => void;
   variant?: 'default' | 'danger';
   iconColor?: string;
   disabled?: boolean;
+  iconLibrary?: 'ionicons' | 'fontawesome';
 }
 
 const iconColors = {
@@ -24,12 +26,20 @@ export function ProfileMenuItem({
   onPress,
   variant = 'default',
   iconColor,
-  disabled = false
+  disabled = false,
+  iconLibrary = 'ionicons'
 }: ProfileMenuItemProps) {
   const defaultColor = iconColors[iconName as keyof typeof iconColors] || '#58CC02';
   const finalIconColor = iconColor || (variant === 'danger' ? '#FF4B4B' : defaultColor);
   const backgroundColor = `${finalIconColor}15`; // 15 is hex for ~8% opacity
   const shadowColor = `${finalIconColor}66`; // 66 is hex for ~40% opacity - lighter shadow
+  
+  const renderIcon = () => {
+    if (iconLibrary === 'fontawesome') {
+      return <FontAwesome name={iconName as keyof typeof FontAwesome.glyphMap} size={32} color={finalIconColor} />;
+    }
+    return <Ionicons name={iconName as keyof typeof Ionicons.glyphMap} size={32} color={finalIconColor} />;
+  };
   
   return (
     <View style={styles.wrapper}>
@@ -45,7 +55,7 @@ export function ProfileMenuItem({
       >
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor }]}>
-            <Ionicons name={iconName} size={32} color={finalIconColor} />
+            {renderIcon()}
           </View>
           <Text style={[
             styles.title,

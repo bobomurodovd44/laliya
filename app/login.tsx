@@ -178,7 +178,7 @@ export default function Login() {
 
           <View style={styles.bottomContainer}>
             <Body style={styles.orText} weight="bold">
-              OR
+              {t("auth.login.or")}
             </Body>
             <TouchableOpacity
               style={styles.googleButton}

@@ -23,7 +23,8 @@
       "googleLogin": "Continue with Google",
       "fillAllFields": "Please fill in all fields",
       "loginFailed": "Login failed. Please try again.",
-      "invalidCredentials": "Invalid email or password"
+      "invalidCredentials": "Invalid email or password",
+      "or": "OR"
     },
     "signup": {
       "title": "Sign Up",
@@ -119,8 +120,8 @@
     "female": "Female",
     "boy": "Boy",
     "girl": "Girl",
-    "addProfile": "ADD PROFILE",
-    "saving": "SAVING..."
+    "addProfile": "Add",
+    "saving": "Saving..."
   },
   "answers": {
     "childAnswers": "Child Answers",

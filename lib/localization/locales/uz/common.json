@@ -23,7 +23,8 @@
       "googleLogin": "Google orqali davom etish",
       "fillAllFields": "Iltimos, barcha maydonlarni to'ldiring",
       "loginFailed": "Kirish muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
-      "invalidCredentials": "Noto'g'ri email yoki parol"
+      "invalidCredentials": "Noto'g'ri email yoki parol",
+      "or": "YOKI"
     },
     "signup": {
       "title": "Ro'yxatdan o'tish",
@@ -119,8 +120,8 @@
     "female": "Ayol",
     "boy": "O'g'il bola",
     "girl": "Qiz bola",
-    "addProfile": "PROFIL QO'SHISH",
-    "saving": "SAQLANMOQDA..."
+    "addProfile": "Qo'shish",
+    "saving": "Saqlanmoqda..."
   },
   "answers": {
     "childAnswers": "Farzand javoblari",

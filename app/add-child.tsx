@@ -1,51 +1,50 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BackButton } from '../components/BackButton';
-import { DuoButton } from '../components/DuoButton';
-import { Input } from '../components/Input';
-import { PageContainer } from '../components/layout/PageContainer';
-import { PageHeader } from '../components/layout/PageHeader';
-import { Body, Title, Subtitle } from '../components/Typography';
-import { Colors, Spacing, Typography } from '../constants';
-import app from '../lib/feathers/feathers-client';
-import { useTranslation } from '../lib/localization';
-import { useAuthStore } from '../lib/store/auth-store';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DuoButton } from "../components/DuoButton";
+import { Input } from "../components/Input";
+import { PageContainer } from "../components/layout/PageContainer";
+import { PageHeader } from "../components/layout/PageHeader";
+import { Body, Title } from "../components/Typography";
+import { Colors, Spacing, Typography } from "../constants";
+import app from "../lib/feathers/feathers-client";
+import { useTranslation } from "../lib/localization";
+import { useAuthStore } from "../lib/store/auth-store";
 
 export default function AddChild() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { user, setAuthenticated } = useAuthStore();
-  
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState<'boy' | 'girl' | null>(null);
+
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState<"boy" | "girl" | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [ageError, setAgeError] = useState('');
+  const [error, setError] = useState("");
+  const [ageError, setAgeError] = useState("");
 
   // Prevent users who already have childMeta from accessing this page
   useEffect(() => {
     if (user) {
-      const hasChildMeta = user.childMeta && 
-        user.childMeta.fullName && 
-        user.childMeta.age && 
+      const hasChildMeta =
+        user.childMeta &&
+        user.childMeta.fullName &&
+        user.childMeta.age &&
         user.childMeta.gender;
-      
+
       if (hasChildMeta) {
         // User already has childMeta, redirect to home
-        router.replace('/');
+        router.replace("/");
       }
     }
   }, [user, router]);
@@ -53,68 +52,68 @@ export default function AddChild() {
   // Real-time age validation
   const validateAge = (ageValue: string) => {
     if (!ageValue.trim()) {
-      setAgeError('');
+      setAgeError("");
       return;
     }
 
     const ageNum = parseInt(ageValue, 10);
     if (isNaN(ageNum)) {
-      setAgeError('Age must be a number');
+      setAgeError(t("child.errors.ageMustBeNumber"));
       return;
     }
 
     if (ageNum < 2 || ageNum > 6) {
-      setAgeError('Age must be between 2 and 6 years');
+      setAgeError(t("child.errors.ageMustBeBetween"));
       return;
     }
 
-    setAgeError('');
+    setAgeError("");
   };
 
   const handleAddChild = async () => {
     // Validate inputs
     if (!name.trim()) {
-      setError('Please enter the child\'s name');
-      return;
-    }
-    
-    if (!age.trim()) {
-      setError('Please enter the child\'s age');
-      validateAge(age);
-      return;
-    }
-    
-    const ageNum = parseInt(age, 10);
-    if (isNaN(ageNum) || ageNum < 2 || ageNum > 6) {
-      setError('Please enter a valid age between 2 and 6 years');
-      validateAge(age);
-      return;
-    }
-    
-    // Clear age error if validation passes
-    if (ageError) {
-      setAgeError('');
-    }
-    
-    if (!gender) {
-      setError('Please select a gender');
-      return;
-    }
-    
-    if (!user?._id) {
-      setError('User not found. Please log in again.');
+      setError(t("child.errors.enterChildName"));
       return;
     }
 
-    setError('');
+    if (!age.trim()) {
+      setError(t("child.errors.enterChildAge"));
+      validateAge(age);
+      return;
+    }
+
+    const ageNum = parseInt(age, 10);
+    if (isNaN(ageNum) || ageNum < 2 || ageNum > 6) {
+      setError(t("child.errors.enterValidAge"));
+      validateAge(age);
+      return;
+    }
+
+    // Clear age error if validation passes
+    if (ageError) {
+      setAgeError("");
+    }
+
+    if (!gender) {
+      setError(t("child.errors.selectGender"));
+      return;
+    }
+
+    if (!user?._id) {
+      setError(t("child.errors.userNotFound"));
+      return;
+    }
+
+    setError("");
     setLoading(true);
 
     try {
       // Map gender from 'boy'/'girl' to 'male'/'female'
-      const backendGender = gender === 'boy' ? 'male' : 'female';
-      
+      const backendGender = gender === "boy" ? "male" : "female";
+
       // Save childMeta to backend
-      const updatedUser = await app.service('users').patch(user._id, {
+      const updatedUser = await app.service("users").patch(user._id, {
         childMeta: {
           fullName: name.trim(),
           age: ageNum,
@@ -126,9 +125,9 @@ export default function AddChild() {
       setAuthenticated(updatedUser);
 
       // Redirect to index page
-      router.replace('/');
+      router.replace("/");
     } catch (err: any) {
-      setError(err.message || 'Failed to save child information. Please try again.');
+      setError(err.message || t("child.errors.saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -137,19 +136,23 @@ export default function AddChild() {
   return (
     <PageContainer useFloatingShapes>
       <PageHeader />
-      
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView 
+        <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 150 }]}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: insets.bottom + 150 },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 40 }]}>
-            <Title size="large">{t("child.addChild")}</Title>
-            <Subtitle style={styles.subtitle}>{t("child.whoLearning")}</Subtitle>
+            <View style={styles.titleContainer}>
+              <Title size="large">{t("child.addChild")}</Title>
+            </View>
 
             <View style={styles.inputGroup}>
               <Input
@@ -168,9 +171,15 @@ export default function AddChild() {
                   onChangeText={(text) => {
                     setAge(text);
                     validateAge(text);
-                    // Clear general error when user starts typing
-                    if (error && error.includes('age')) {
-                      setError('');
+                    // Clear general error when user starts typing (check for age-related error keys)
+                    if (
+                      error &&
+                      (error.includes(t("child.errors.enterChildAge")) ||
+                        error.includes(t("child.errors.enterValidAge")) ||
+                        error.includes("age") ||
+                        error.includes("yosh"))
+                    ) {
+                      setError("");
                     }
                   }}
                   keyboardType="number-pad"
@@ -179,62 +188,120 @@ export default function AddChild() {
                 />
                 {ageError ? (
                   <Body style={styles.ageErrorText}>{ageError}</Body>
-                ) : (
-                  <Body style={styles.helperText}>
-                    {t("child.ageHelper")}
-                  </Body>
-                )}
+                ) : null}
               </View>
-              
+
               <View style={styles.genderContainer}>
-                <Body style={styles.label} weight="bold">{t("child.selectGender")}</Body>
+                <Body style={styles.label} weight="bold">
+                  {t("child.selectGender")}
+                </Body>
                 <View style={styles.genderOptions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
-                      styles.genderCard, 
-                      gender === 'boy' && styles.genderCardActive,
-                      { borderColor: Colors.info }
+                      styles.genderCard,
+                      gender === "boy" && styles.genderCardActive,
+                      gender !== "boy" && styles.genderCardDisabled,
+                      {
+                        borderColor:
+                          gender === "boy" ? Colors.info : Colors.textTertiary,
+                      },
                     ]}
-                    onPress={() => setGender('boy')}
+                    onPress={() => setGender("boy")}
                     activeOpacity={0.8}
                   >
-                    <View style={[
-                      styles.genderIconContainer, 
-                      { backgroundColor: gender === 'boy' ? Colors.info : Colors.infoLight }
-                    ]}>
-                      <Ionicons name="man" size={32} color={gender === 'boy' ? Colors.textWhite : Colors.info} />
+                    <View
+                      style={[
+                        styles.genderIconContainer,
+                        {
+                          backgroundColor:
+                            gender === "boy"
+                              ? Colors.info
+                              : Colors.backgroundDark,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="man"
+                        size={32}
+                        color={
+                          gender === "boy"
+                            ? Colors.textWhite
+                            : Colors.textTertiary
+                        }
+                      />
                     </View>
-                    <Body style={[styles.genderText, gender === 'boy' && styles.genderTextActive]}>
+                    <Body
+                      style={StyleSheet.flatten([
+                        styles.genderText,
+                        gender === "boy"
+                          ? styles.genderTextActive
+                          : styles.genderTextDisabled,
+                      ])}
+                    >
                       {t("child.boy")}
                     </Body>
-                    {gender === 'boy' && (
+                    {gender === "boy" && (
                       <View style={styles.checkmarkBadge}>
-                        <Ionicons name="checkmark" size={18} color={Colors.textWhite} />
+                        <Ionicons
+                          name="checkmark"
+                          size={18}
+                          color={Colors.textWhite}
+                        />
                       </View>
                     )}
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
-                      styles.genderCard, 
-                      gender === 'girl' && styles.genderCardActive,
-                      { borderColor: '#FF69B4' }
+                      styles.genderCard,
+                      gender === "girl" && styles.genderCardActive,
+                      gender !== "girl" && styles.genderCardDisabled,
+                      {
+                        borderColor:
+                          gender === "girl" ? "#FF69B4" : Colors.textTertiary,
+                      },
                     ]}
-                    onPress={() => setGender('girl')}
+                    onPress={() => setGender("girl")}
                     activeOpacity={0.8}
                   >
-                    <View style={[
-                      styles.genderIconContainer,
-                      { backgroundColor: gender === 'girl' ? '#FF69B4' : '#FFE6F0' }
-                    ]}>
-                      <Ionicons name="woman" size={32} color={gender === 'girl' ? Colors.textWhite : '#FF69B4'} />
+                    <View
+                      style={[
+                        styles.genderIconContainer,
+                        {
+                          backgroundColor:
+                            gender === "girl"
+                              ? "#FF69B4"
+                              : Colors.backgroundDark,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="woman"
+                        size={32}
+                        color={
+                          gender === "girl"
+                            ? Colors.textWhite
+                            : Colors.textTertiary
+                        }
+                      />
                     </View>
-                    <Body style={[styles.genderText, gender === 'girl' && styles.genderTextActive]}>
+                    <Body
+                      style={StyleSheet.flatten([
+                        styles.genderText,
+                        gender === "girl"
+                          ? styles.genderTextActive
+                          : styles.genderTextDisabled,
+                      ])}
+                    >
                       {t("child.girl")}
                     </Body>
-                    {gender === 'girl' && (
+                    {gender === "girl" && (
                       <View style={styles.checkmarkBadge}>
-                        <Ionicons name="checkmark" size={18} color={Colors.textWhite} />
+                        <Ionicons
+                          name="checkmark"
+                          size={18}
+                          color={Colors.textWhite}
+                        />
                       </View>
                     )}
                   </TouchableOpacity>
@@ -249,8 +316,8 @@ export default function AddChild() {
             ) : null}
 
             <View style={styles.buttonContainer}>
-              <DuoButton 
-                title={loading ? t("child.saving") : t("child.addProfile")} 
+              <DuoButton
+                title={loading ? t("child.saving") : t("child.addProfile")}
                 onPress={handleAddChild}
                 color="orange"
                 size="large"
@@ -270,14 +337,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.padding.xxl,
   },
   formContainer: {
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
-  subtitle: {
-    marginBottom: Spacing.margin.xxxxl,
+  titleContainer: {
+    marginBottom: Spacing.margin.xxxl,
+    width: "100%",
   },
   inputGroup: {
-    width: '100%',
+    width: "100%",
     gap: Spacing.gap.lg,
     marginBottom: Spacing.margin.xxxl,
   },
@@ -288,35 +356,42 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.margin.xs,
   },
   genderContainer: {
-    width: '100%',
+    width: "100%",
     marginTop: Spacing.margin.md,
   },
   genderOptions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.gap.xl,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   genderCard: {
     flex: 1,
     backgroundColor: Colors.backgroundLight,
     borderRadius: Spacing.radius.xl,
     padding: Spacing.padding.lg,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: Spacing.borderWidth.thick,
     borderBottomWidth: Spacing.borderWidth.xxxthick,
     ...Spacing.shadow.medium,
-    position: 'relative',
+    position: "relative",
   },
   genderCardActive: {
     backgroundColor: Colors.backgroundLight,
     transform: [{ scale: 1.02 }],
   },
+  genderCardDisabled: {
+    shadowColor: "#999999",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   genderIconContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: Spacing.margin.md,
   },
   genderText: {
@@ -327,25 +402,28 @@ const styles = StyleSheet.create({
   genderTextActive: {
     color: Colors.textPrimary,
   },
+  genderTextDisabled: {
+    color: Colors.textTertiary,
+  },
   checkmarkBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: Spacing.margin.md,
     right: Spacing.margin.md,
     backgroundColor: Colors.success,
     width: 28,
     height: 28,
     borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: Spacing.borderWidth.medium,
     borderColor: Colors.backgroundLight,
   },
   buttonContainer: {
-    width: '100%',
-    marginBottom: Spacing.margin.xxxxl,
+    width: "100%",
+    marginBottom: Spacing.margin.xxxl,
   },
   errorContainer: {
-    width: '100%',
+    width: "100%",
     marginBottom: Spacing.margin.lg,
     padding: Spacing.padding.md,
     backgroundColor: Colors.errorLight,
@@ -356,10 +434,10 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: Typography.fontSize.sm,
     color: Colors.error,
-    textAlign: 'center',
+    textAlign: "center",
   },
   ageInputContainer: {
-    width: '100%',
+    width: "100%",
   },
   inputError: {
     borderColor: Colors.error,

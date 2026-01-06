@@ -122,7 +122,17 @@
     "boy": "Boy",
     "girl": "Girl",
     "addProfile": "Add",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "errors": {
+      "ageMustBeNumber": "Age must be a number",
+      "ageMustBeBetween": "Age must be between 2 and 6 years",
+      "enterChildName": "Please enter the child's name",
+      "enterChildAge": "Please enter the child's age",
+      "enterValidAge": "Please enter a valid age between 2 and 6 years",
+      "selectGender": "Please select a gender",
+      "userNotFound": "User not found. Please log in again.",
+      "saveFailed": "Failed to save child information. Please try again."
+    }
   },
   "answers": {
     "childAnswers": "Child Answers",

@@ -100,7 +100,7 @@
     "yearsOld": "yosh",
     "boy": "O'g'il bola",
     "girl": "Qiz bola",
-    "child": "Farzand"
+    "child": "Kichkintoy"
   },
   "errors": {
     "generic": "Nimadir noto'g'ri ketdi",
@@ -108,9 +108,9 @@
     "unknown": "Noma'lum xatolik yuz berdi"
   },
   "child": {
-    "addChild": "Farzandingiz haqida ayting",
+    "addChild": "Kichkintoy bilan tanishamiz",
     "whoLearning": "Bugun kim o'rganmoqda?",
-    "childName": "Farzandingizning ismi",
+    "childName": "Kichkintoyingizning ismi",
     "age": "Yosh",
     "agePlaceholder": "Yosh (2-6 yosh)",
     "ageHelper": "Yosh 2 dan 6 yoshgacha bo'lishi kerak",
@@ -122,14 +122,24 @@
     "boy": "O'g'il",
     "girl": "Qiz",
     "addProfile": "Saqlash",
-    "saving": "Saqlanmoqda..."
+    "saving": "Saqlanmoqda...",
+    "errors": {
+      "ageMustBeNumber": "Yosh raqam bo'lishi kerak",
+      "ageMustBeBetween": "Yosh 2 dan 6 yoshgacha bo'lishi kerak",
+      "enterChildName": "Iltimos, ismni kiriting",
+      "enterChildAge": "Iltimos, yoshni kiriting",
+      "enterValidAge": "Iltimos, 2 dan 6 yoshgacha bo'lgan yoshni kiriting",
+      "selectGender": "Iltimos, jinsni tanlang",
+      "userNotFound": "Foydalanuvchi topilmadi. Iltimos, qayta kiring.",
+      "saveFailed": "Kichkintoy ma'lumotlarini saqlash muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring."
+    }
   },
   "answers": {
     "childAnswers": "Javoblar",
     "reviewAnswers": "Javoblar",
     "loadingAnswers": "Javoblar yuklanmoqda...",
     "loadingStages": "Bosqichlar yuklanmoqda...",
-    "noAnswers": "Hozircha javoblar yo'q. Farzandingizning javoblari bu yerda ko'rinadi.",
+    "noAnswers": "Hozircha javoblar yo'q. Kichkintoyingizning javoblari bu yerda ko'rinadi.",
     "noAnswersFound": "Bu bosqich uchun javoblar topilmadi",
     "goBack": "Orqaga",
     "stage": "Bosqich",

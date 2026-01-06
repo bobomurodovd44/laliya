@@ -75,7 +75,6 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
       }
     } catch (signOutError) {
       // Ignore sign out errors - continue with sign in even if sign out fails
-      console.log("Note: Could not sign out previous Google account:", signOutError);
     }
 
     // Sign in with Google - this will now show the account picker

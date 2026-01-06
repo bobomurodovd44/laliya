@@ -142,9 +142,6 @@ export default function Task() {
         if (!cachedAccess) {
           // If user is actively working, don't redirect - allow them to continue
           if (isExerciseActiveRef.current) {
-            console.log(
-              "Stage access check failed but user is active - allowing continuation"
-            );
             // Override cache to allow continuation
             stageAccessCacheRef.current.set(cacheKey, true);
             return true;
@@ -534,7 +531,6 @@ export default function Task() {
           await app.service("answers").patch(existingAnswer._id, {
             isCorrect: isCorrect,
           });
-          console.log(`[Answer] Updated answer for exercise ${exerciseId}: isCorrect=${isCorrect}`);
         } else {
           // Create new answer with isCorrect field
           const newAnswer = await app.service("answers").create({
@@ -542,7 +538,6 @@ export default function Task() {
             exerciseId: exerciseId,
             isCorrect: isCorrect,
           });
-          console.log(`[Answer] Created new answer for exercise ${exerciseId}: isCorrect=${isCorrect}`, newAnswer);
         }
       } catch (err) {
         // Silent fail - don't block user experience
@@ -573,7 +568,10 @@ export default function Task() {
       // Create or update answer for all exercise types (except LookAndSay which handles it separately)
       // This runs in background (fire and forget) for BOTH correct and incorrect answers
       // It does NOT block the UI - confetti, KeepGoing modal, or navigation will happen immediately
-      if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && apiExercises.length > 0) {
+      if (
+        currentExercise.type !== ExerciseType.LOOK_AND_SAY &&
+        apiExercises.length > 0
+      ) {
         const currentApiExercise = apiExercises[exerciseOrder - 1];
         if (currentApiExercise?._id) {
           const exerciseId =
@@ -933,7 +931,7 @@ export default function Task() {
   const handleSubmit = useCallback(() => {
     // Note: Answer creation is already handled in handleComplete() when user completes the exercise
     // No need to create it again here - it would be duplicate work
-    
+
     // Upload audio for LookAndSay exercise in background (non-blocking)
     if (
       currentExercise?.type === ExerciseType.LOOK_AND_SAY &&

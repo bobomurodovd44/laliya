@@ -159,19 +159,21 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 20,
   },
   title: {
     color: '#FF1493',
     textAlign: 'center',
     marginBottom: 8,
-    marginTop: -20,
+    marginTop: 0,
   },
   question: {
     color: '#666',
     textAlign: 'center',
     marginBottom: 32,
     maxWidth: '80%',
+    fontSize: 20,
   },
   content: {
     width: '100%',

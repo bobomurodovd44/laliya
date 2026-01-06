@@ -606,6 +606,7 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 0,
+    fontSize: 20,
   },
   section: {
     marginBottom: 12,

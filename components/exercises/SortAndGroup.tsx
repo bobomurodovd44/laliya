@@ -715,6 +715,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     maxWidth: "80%",
     alignSelf: "center",
+    fontSize: 24,
   },
   categorySection: {
     marginVertical: Spacing.margin.sm,
@@ -751,8 +752,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.margin.xs,
     marginTop: Spacing.margin.xs,
     textAlign: "center",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
   },
   dropZoneItems: {
     flexDirection: "row",

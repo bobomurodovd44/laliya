@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
   question: {
     fontFamily: "BalsamiqSans",
-    fontSize: 18,
+    fontSize: 20,
     color: "#666",
     marginBottom: 20,
     textAlign: "center",

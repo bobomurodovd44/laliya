@@ -74,6 +74,7 @@ export default function Task() {
   const stageAccessCacheRef = useRef<Map<string, boolean>>(new Map());
   const recordedAudioUriRef = useRef<string | null>(null);
   const isExerciseActiveRef = useRef(false); // Track if user is actively working on exercises
+  const previousUserCurrentStageIdRef = useRef<string | undefined | null>(null); // Track previous currentStageId to detect changes
 
   useEffect(() => {
     // Mark that user is actively working on exercises as soon as we have a stageId
@@ -116,6 +117,27 @@ export default function Task() {
       recordedAudioUriRef.current = null;
     }
     previousStageIdRef.current = stageId;
+
+    // Clear stage access cache when user's currentStageId changes from undefined to a value
+    // This ensures we re-verify access with the updated currentStageId
+    const currentUserStageId = user?.currentStageId;
+    const previousUserStageId = previousUserCurrentStageIdRef.current;
+    if (previousUserStageId !== currentUserStageId) {
+      // If currentStageId changed (especially from undefined/null to a value), clear cache
+      // This handles the case where backend sets currentStageId after user creation
+      if ((!previousUserStageId && currentUserStageId) || (previousUserStageId !== currentUserStageId)) {
+        // Clear all cache entries for this stage to force re-verification
+        // We'll keep cache entries for other stages
+        const keysToDelete: string[] = [];
+        stageAccessCacheRef.current.forEach((value, key) => {
+          if (key.startsWith(`${stageId}-`)) {
+            keysToDelete.push(key);
+          }
+        });
+        keysToDelete.forEach(key => stageAccessCacheRef.current.delete(key));
+      }
+      previousUserCurrentStageIdRef.current = currentUserStageId;
+    }
 
     // Check stage access before loading exercises (cached per stageId)
     const verifyStageAccess = async () => {
@@ -163,6 +185,16 @@ export default function Task() {
 
       try {
         const stage = await app.service("stages").get(stageId);
+        
+        // Defensive handling: If currentStageId is undefined and we're checking stage 1,
+        // always allow access (new users should be able to access first stage)
+        // This handles the case where user.currentStageId hasn't been set yet in frontend state
+        if (!user?.currentStageId && stage.order === 1) {
+          // Always allow access to stage 1 for new users
+          stageAccessCacheRef.current.set(cacheKey, true);
+          return true;
+        }
+        
         const isAccessible = await checkStageAccess(
           stage,
           user?.currentStageId

@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input } from "../components/Input";
 import { PageContainer } from "../components/layout/PageContainer";
-import { Body, Subtitle, Title } from "../components/Typography";
+import { Body, Title } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { authenticateWithFeathers } from "../lib/auth/feathers-auth";
 import { signUpWithEmailPassword } from "../lib/auth/firebase-auth";
@@ -85,7 +85,8 @@ export default function Signup() {
 
       // Step 2: Authenticate with Feathers backend
       // Extract fullName from Google profile (use email as fallback)
-      const fullName = googleResult.user.name || googleResult.user.email.split("@")[0] || "";
+      const fullName =
+        googleResult.user.name || googleResult.user.email.split("@")[0] || "";
 
       const feathersResult = await authenticateWithFeathers(
         googleResult.accessToken,
@@ -123,8 +124,9 @@ export default function Signup() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.formContainer, { marginTop: insets.top + 40 }]}>
-            <Title size="xlarge">{t("auth.signup.title")}</Title>
-            <Subtitle style={styles.subtitle}>{t("auth.signup.subtitle")}</Subtitle>
+            <Title size="xlarge" style={{ marginBottom: Spacing.margin.xl }}>
+              {t("auth.signup.title")}
+            </Title>
 
             <View style={styles.inputGroup}>
               <Input
@@ -191,7 +193,9 @@ export default function Signup() {
             >
               <Body style={styles.loginLinkText}>
                 {t("auth.signup.haveAccount")}{" "}
-                <Body style={styles.loginLinkHighlight}>{t("auth.signup.login")}</Body>
+                <Body style={styles.loginLinkHighlight}>
+                  {t("auth.signup.login")}
+                </Body>
               </Body>
             </TouchableOpacity>
           </View>
@@ -230,9 +234,6 @@ const styles = StyleSheet.create({
   formContainer: {
     alignItems: "center",
     width: "100%",
-  },
-  subtitle: {
-    marginBottom: Spacing.margin.xxxxl,
   },
   inputGroup: {
     width: "100%",

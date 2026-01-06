@@ -56,7 +56,35 @@
     "tryAgain": "Try Again!",
     "notQuiteRight": "That's not quite right.",
     "accessDenied": "Access denied: This stage is locked. Complete previous stages to unlock.",
-    "noExercises": "No exercises found for this stage"
+    "noExercises": "No exercises found for this stage",
+    "oddOneOut": "Odd One Out",
+    "shapeMatch": "Shape Match",
+    "picturePuzzle": "Picture Puzzle",
+    "listenAndPick": "Listen and Pick",
+    "audioNotAvailable": "Audio not available",
+    "audioFileNotAvailable": "Audio file is not available for this exercise",
+    "invalidUrl": "Invalid URL",
+    "invalidUrlMessage": "The audio URL format is invalid",
+    "permissionRequired": "Permission Required",
+    "audioPlaybackPermission": "Audio playback requires permission. Please grant audio permission in settings.",
+    "microphonePermissionNeeded": "Microphone permission is required to record audio",
+    "microphonePermissionRequired": "Microphone permission is required to record audio. Please grant permission in your device settings.",
+    "recordingFailed": "Recording Failed",
+    "recordingFailedMessage": "Failed to start recording: {{error}}\n\nPlease check:\n• Microphone permission is granted\n• No other app is using the microphone\n• Try again in a moment",
+    "noOptionsAvailable": "No options available",
+    "imageNotFound": "Image not found",
+    "audioNotPlaying": "Audio Not Playing",
+    "audioNotPlayingMessage": "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected",
+    "audioPlayError": "Error",
+    "audioPlayErrorMessage": "Failed to play audio: {{error}}",
+    "audioModeError": "Audio Mode Error",
+    "audioModeErrorMessage": "Failed to configure audio mode for recording. Please try again.",
+    "sortAndGroup": "Sort and Group",
+    "invalidExercise": "Invalid exercise: Need exactly 2 categories with 2-4 total options (at least 1 per category)",
+    "categoryDetails": "Category {{id}}: {{count}} item(s)",
+    "expectedTwoCategories": "Expected 2 categories, found {{found}}. {{details}}. All items must belong to exactly 2 different categories.",
+    "expectedTwoToFourOptions": "Expected 2-4 options, found {{found}}",
+    "categoryItemCount": "Category 1 has {{cat1Count}} items, Category 2 has {{cat2Count}} items"
   },
   "profile": {
     "title": "Profile",
@@ -124,4 +152,3 @@
     "footer": "Practice speaking, learn new words, and have fun! 🌟"
   }
 }
-

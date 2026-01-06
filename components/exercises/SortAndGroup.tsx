@@ -20,6 +20,7 @@ import { Colors, Spacing, Typography } from "../../constants";
 import { categories, Exercise, Item } from "../../data/data";
 import { PopulatedExercise } from "../../lib/api/exercises";
 import { items } from "../../lib/items-store";
+import { useTranslation } from "../../lib/localization";
 import { Body } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 
@@ -62,6 +63,7 @@ export default function SortAndGroup({
   onComplete,
   apiExercise,
 }: SortAndGroupProps) {
+  const { t } = useTranslation();
   const CARD_SIZE = useMemo(() => getCardSize(), []);
   const CATEGORY_CARD_SIZE = useMemo(
     () => getCategoryCardSize(CARD_SIZE),
@@ -143,19 +145,29 @@ export default function SortAndGroup({
     // Validate: exactly 2 categories
     if (numCategories !== 2) {
       const categoryDetails = categoryGroups
-        .map(([id, items]) => `Category ${id}: ${items.length} item(s)`)
+        .map(([id, items]) =>
+          t("exercise.categoryDetails", { id, count: items.length })
+        )
         .join(", ");
       return [
         null,
         null,
         false,
-        `Expected 2 categories, found ${numCategories}. ${categoryDetails}. All items must belong to exactly 2 different categories.`,
+        t("exercise.expectedTwoCategories", {
+          found: numCategories,
+          details: categoryDetails,
+        }),
       ];
     }
 
     // Validate: total options must be 2-4
     if (totalOptions < 2 || totalOptions > 4) {
-      return [null, null, false, `Expected 2-4 options, found ${totalOptions}`];
+      return [
+        null,
+        null,
+        false,
+        t("exercise.expectedTwoToFourOptions", { found: totalOptions }),
+      ];
     }
 
     const [cat1Id, cat1Items] = categoryGroups[0];
@@ -167,7 +179,10 @@ export default function SortAndGroup({
         null,
         null,
         false,
-        `Category 1 has ${cat1Items.length} items, Category 2 has ${cat2Items.length} items`,
+        t("exercise.categoryItemCount", {
+          cat1Count: cat1Items.length,
+          cat2Count: cat2Items.length,
+        }),
       ];
     }
 
@@ -327,8 +342,7 @@ export default function SortAndGroup({
     return (
       <View style={styles.container}>
         <Body style={styles.errorText}>
-          Invalid exercise: Need exactly 2 categories with 2-4 total options (at
-          least 1 per category)
+          {t("exercise.invalidExercise")}
           {validationError && `\n${validationError}`}
         </Body>
       </View>

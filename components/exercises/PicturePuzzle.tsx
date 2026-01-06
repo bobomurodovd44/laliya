@@ -11,6 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Exercise } from "../../data/data";
 import { items } from "../../lib/items-store";
+import { useTranslation } from "../../lib/localization";
 import { Body, Title } from "../Typography";
 
 interface PicturePuzzleProps {
@@ -36,6 +37,7 @@ export default function PicturePuzzle({
   exercise,
   onComplete,
 }: PicturePuzzleProps) {
+  const { t } = useTranslation();
   // Get the first option ID from optionIds array
   const firstOptionId = exercise.optionIds?.[0];
 
@@ -47,7 +49,7 @@ export default function PicturePuzzle({
   ) {
     return (
       <View style={styles.container}>
-        <Body style={styles.question}>No options available</Body>
+        <Body style={styles.question}>{t('exercise.noOptionsAvailable')}</Body>
       </View>
     );
   }
@@ -58,7 +60,7 @@ export default function PicturePuzzle({
   if (!item?.imageUrl) {
     return (
       <View style={styles.container}>
-        <Body style={styles.question}>Image not found</Body>
+        <Body style={styles.question}>{t('exercise.imageNotFound')}</Body>
       </View>
     );
   }
@@ -82,6 +84,7 @@ function PuzzleLogic({
   onSolved: () => void;
   question: string;
 }) {
+  const { t } = useTranslation();
   // Guard to prevent multiple onSolved calls
   const isSolvedRef = useRef(false);
 
@@ -191,7 +194,7 @@ function PuzzleLogic({
   return (
     <View style={styles.container} pointerEvents="box-none">
       <Title size="medium" style={styles.title}>
-        Picture Puzzle
+        {t('exercise.picturePuzzle')}
       </Title>
       <Body style={styles.question}>{question}</Body>
 

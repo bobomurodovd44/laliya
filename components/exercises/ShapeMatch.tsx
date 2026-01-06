@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
+import { useTranslation } from "../../lib/localization";
 import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 
@@ -84,6 +85,7 @@ const getRandomColor = (): string => {
 };
 
 export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
+  const { t } = useTranslation();
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
 
@@ -224,7 +226,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Title size="medium" style={styles.title}>
-          Shape Match
+          {t('exercise.shapeMatch')}
         </Title>
         <Body size="medium" style={styles.question}>
           {exercise.question}

@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Exercise, Item } from '../../data/data';
 import { items } from '../../lib/items-store';
+import { useTranslation } from '../../lib/localization';
 import { Body, Title } from '../Typography';
 import ImageWithLoader from '../common/ImageWithLoader';
 
@@ -28,6 +29,7 @@ interface OddOneOutProps {
 }
 
 export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
@@ -107,7 +109,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
 
   return (
     <View style={styles.container}>
-      <Title size="large" style={styles.title}>Odd One Out</Title>
+      <Title size="large" style={styles.title}>{t('exercise.oddOneOut')}</Title>
       <Body size="large" style={styles.question}>{exercise.question}</Body>
       
       <View style={styles.content}>

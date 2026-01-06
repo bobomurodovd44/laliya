@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
+import { useTranslation } from "../../lib/localization";
 import { DuoButton } from "../DuoButton";
 import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
@@ -39,6 +40,7 @@ export default function ListenAndPick({
   exercise,
   onComplete,
 }: ListenAndPickProps) {
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
@@ -130,8 +132,8 @@ export default function ListenAndPick({
 
     if (!audioUrl || audioUrl.trim() === "") {
       Alert.alert(
-        "Audio not available",
-        "Audio file is not available for this exercise"
+        t('exercise.audioNotAvailable'),
+        t('exercise.audioFileNotAvailable')
       );
       return;
     }
@@ -142,7 +144,7 @@ export default function ListenAndPick({
       !audioUrl.startsWith("https://") &&
       !audioUrl.startsWith("file://")
     ) {
-      Alert.alert("Invalid URL", "The audio URL format is invalid");
+      Alert.alert(t('exercise.invalidUrl'), t('exercise.invalidUrlMessage'));
       return;
     }
 
@@ -156,8 +158,8 @@ export default function ListenAndPick({
 
           if (newStatus !== "granted") {
             Alert.alert(
-              "Permission Required",
-              "Audio playback requires permission. Please grant audio permission in settings."
+              t('exercise.permissionRequired'),
+              t('exercise.audioPlaybackPermission')
             );
             return;
           }
@@ -217,8 +219,8 @@ export default function ListenAndPick({
                 updatedStatus.positionMillis === 0
               ) {
                 Alert.alert(
-                  "Audio Not Playing",
-                  "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected"
+                  t('exercise.audioNotPlaying'),
+                  t('exercise.audioNotPlayingMessage')
                 );
               }
             }
@@ -241,11 +243,10 @@ export default function ListenAndPick({
     } catch (error) {
       setIsPlaying(false);
       setSound(null);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       Alert.alert(
-        "Error",
-        `Failed to play audio: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        t('exercise.audioPlayError'),
+        t('exercise.audioPlayErrorMessage', { error: errorMessage })
       );
     }
   };
@@ -338,7 +339,7 @@ export default function ListenAndPick({
   return (
     <View style={styles.container}>
       <Title size="large" style={styles.title}>
-        Listen and Pick
+        {t('exercise.listenAndPick')}
       </Title>
       <Body size="large" style={styles.question}>
         {exercise.question}

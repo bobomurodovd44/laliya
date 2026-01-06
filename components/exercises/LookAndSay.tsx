@@ -13,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Exercise } from "../../data/data";
 import { items } from "../../lib/items-store";
+import { useTranslation } from "../../lib/localization";
 import { DuoButton } from "../DuoButton";
 import { Body, Title } from "../Typography";
 
@@ -87,6 +88,7 @@ export default function LookAndSay({
   onComplete,
   onRecordingComplete,
 }: LookAndSayProps) {
+  const { t } = useTranslation();
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
@@ -142,8 +144,8 @@ export default function LookAndSay({
 
           if (status !== "granted") {
             Alert.alert(
-              "Permission needed",
-              "Microphone permission is required to record audio"
+              t('exercise.permissionRequired'),
+              t('exercise.microphonePermissionNeeded')
             );
           }
         }
@@ -162,8 +164,8 @@ export default function LookAndSay({
 
           if (status !== "granted") {
             Alert.alert(
-              "Permission Required",
-              "Microphone permission is required to record audio. Please grant permission in your device settings."
+              t('exercise.permissionRequired'),
+              t('exercise.microphonePermissionRequired')
             );
             return;
           }
@@ -191,8 +193,8 @@ export default function LookAndSay({
         });
       } catch (audioModeError) {
         Alert.alert(
-          "Audio Mode Error",
-          "Failed to configure audio mode for recording. Please try again."
+          t('exercise.audioModeError'),
+          t('exercise.audioModeErrorMessage')
         );
         return;
       }
@@ -230,8 +232,8 @@ export default function LookAndSay({
         err instanceof Error ? err.message : "Unknown error occurred";
 
       Alert.alert(
-        "Recording Failed",
-        `Failed to start recording: ${errorMessage}\n\nPlease check:\n• Microphone permission is granted\n• No other app is using the microphone\n• Try again in a moment`
+        t('exercise.recordingFailed'),
+        t('exercise.recordingFailedMessage', { error: errorMessage })
       );
 
       console.error("Failed to start recording:", err);
@@ -276,8 +278,8 @@ export default function LookAndSay({
 
     if (!audioUrl || audioUrl.trim() === "") {
       Alert.alert(
-        "Audio not available",
-        "Audio file is not available for this exercise"
+        t('exercise.audioNotAvailable'),
+        t('exercise.audioFileNotAvailable')
       );
       return;
     }
@@ -288,7 +290,7 @@ export default function LookAndSay({
       !audioUrl.startsWith("https://") &&
       !audioUrl.startsWith("file://")
     ) {
-      Alert.alert("Invalid URL", "The audio URL format is invalid");
+      Alert.alert(t('exercise.invalidUrl'), t('exercise.invalidUrlMessage'));
       return;
     }
 
@@ -302,8 +304,8 @@ export default function LookAndSay({
 
           if (newStatus !== "granted") {
             Alert.alert(
-              "Permission Required",
-              "Audio playback requires permission. Please grant audio permission in settings."
+              t('exercise.permissionRequired'),
+              t('exercise.audioPlaybackPermission')
             );
             return;
           }
@@ -363,8 +365,8 @@ export default function LookAndSay({
                 updatedStatus.positionMillis === 0
               ) {
                 Alert.alert(
-                  "Audio Not Playing",
-                  "Audio is loaded but not playing. Please check:\n• Device volume is not muted\n• Device is not in silent/Do Not Disturb mode\n• Audio output is connected"
+                  t('exercise.audioNotPlaying'),
+                  t('exercise.audioNotPlayingMessage')
                 );
               }
             }
@@ -387,11 +389,10 @@ export default function LookAndSay({
     } catch (error) {
       setIsPlaying(false);
       setSound(null);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       Alert.alert(
-        "Error",
-        `Failed to play audio: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+        t('exercise.audioPlayError'),
+        t('exercise.audioPlayErrorMessage', { error: errorMessage })
       );
     }
   };

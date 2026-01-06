@@ -8,12 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
@@ -52,9 +47,6 @@ export default function ListenAndPick({
 
   // Ref to track if component is unmounting to avoid false errors
   const isUnmountingRef = useRef(false);
-
-  // Animation value for shake effect
-  const shake = useSharedValue(0);
 
   // Get answer item
   const answerItem = items.find((i) => i.id === exercise.answerId);
@@ -270,27 +262,12 @@ export default function ListenAndPick({
         setIsCorrect(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         
-        // Call onComplete with isCorrect = false (will show KeepGoing celebration)
+        // Call onComplete with isCorrect = false (will show confetti celebration)
         onComplete(false);
-
-        // Trigger shake animation
-        shake.value = withSequence(
-          withTiming(-10, { duration: 50 }),
-          withTiming(10, { duration: 50 }),
-          withTiming(-10, { duration: 50 }),
-          withTiming(10, { duration: 50 }),
-          withTiming(0, { duration: 50 })
-        );
       }
     },
     [isCorrect, exercise.answerId, onComplete]
   );
-
-  const shakeStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: shake.value }],
-    };
-  });
 
   // Validation: Check if answerItem exists and has required properties
   if (!answerItem) {
@@ -368,19 +345,13 @@ export default function ListenAndPick({
         <View style={styles.grid}>
           {shuffledItems.map((item) => {
             const isSelected = selectedId === item.id;
-            // Only shake the selected wrong item
-            const animatedStyle =
-              isSelected && isCorrect === false ? shakeStyle : {};
 
             return (
               <Animated.View
                 key={item.id}
                 style={[
                   styles.imageCard,
-                  isSelected && styles.imageCardSelected,
-                  isSelected && isCorrect === true && styles.imageCardCorrect,
-                  isSelected && isCorrect === false && styles.imageCardWrong,
-                  animatedStyle,
+                  isSelected && isCorrect !== null && styles.imageCardCorrect,
                 ]}
               >
                 <TouchableOpacity

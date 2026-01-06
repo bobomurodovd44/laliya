@@ -301,7 +301,7 @@ export default function SortAndGroup({
     // Increment wrong drop counter
     wrongDropCountRef.current += 1;
 
-    // Call onComplete(false) after 4 wrong drops to show KeepGoing celebration
+    // Call onComplete(false) after 4 wrong drops to show confetti celebration
     if (wrongDropCountRef.current >= 4 && !isCompletedRef.current) {
       isCompletedRef.current = true;
       onComplete(false);

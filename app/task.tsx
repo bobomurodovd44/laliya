@@ -16,7 +16,6 @@ import OddOneOut from "../components/exercises/OddOneOut";
 import PicturePuzzle from "../components/exercises/PicturePuzzle";
 import ShapeMatch from "../components/exercises/ShapeMatch";
 import SortAndGroup from "../components/exercises/SortAndGroup";
-import KeepGoingCelebration from "../components/KeepGoingCelebration";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { ProgressBar } from "../components/ProgressBar";
@@ -63,7 +62,6 @@ export default function Task() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
-  const [showKeepGoing, setShowKeepGoing] = useState(false);
   const confettiRef = useRef<ConfettiCannon>(null);
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCompletingRef = useRef(false);
@@ -612,7 +610,7 @@ export default function Task() {
 
       // Create or update answer for all exercise types (except LookAndSay which handles it separately)
       // This runs in background (fire and forget) for BOTH correct and incorrect answers
-      // It does NOT block the UI - confetti, KeepGoing modal, or navigation will happen immediately
+      // It does NOT block the UI - confetti or navigation will happen immediately
       if (
         currentExercise.type !== ExerciseType.LOOK_AND_SAY &&
         apiExercises.length > 0
@@ -634,114 +632,14 @@ export default function Task() {
         }
       }
 
-      // Check if this is a wrong answer for exercises that should show KeepGoing
-      const shouldShowKeepGoing =
-        !isCorrect &&
-        (currentExercise.type === ExerciseType.ODD_ONE_OUT ||
-          currentExercise.type === ExerciseType.LISTEN_AND_PICK ||
-          currentExercise.type === ExerciseType.SORT_AND_GROUP);
+      // Update score for all answers (score always increases)
+      updateUserScore(currentExercise.score);
 
-      if (shouldShowKeepGoing) {
-        // Show KeepGoing celebration
-        setShowKeepGoing(true);
-
-        // Update score (score always increases)
-        updateUserScore(currentExercise.score);
-
-        // Auto-advance after 1.5 seconds
-        setTimeout(() => {
-          setShowKeepGoing(false);
-          isCompletingRef.current = false;
-
-          if (isLastExercise) {
-            // If this is the last exercise, end the stage
-            // Navigate to home
-            router.push("/");
-
-            // Update currentStageId and level in background (fire and forget)
-            if (stageId && user?._id) {
-              // Fire and forget - don't block navigation
-              (async () => {
-                try {
-                  const completedStage = await app
-                    .service("stages")
-                    .get(stageId);
-                  let allStages = getCachedStages();
-
-                  if (!allStages) {
-                    // Cache miss - fetch from API
-                    const stagesResponse = await app.service("stages").find();
-                    allStages = Array.isArray(stagesResponse)
-                      ? stagesResponse
-                      : (stagesResponse as any).data || [];
-                  }
-
-                  // Get user's current stage order (their actual progress)
-                  const userCurrentStageOrder = await getUserMaxStageOrder(
-                    user.currentStageId
-                  );
-
-                  // Find the next stage by order after the completed stage
-                  const nextStage = allStages?.find(
-                    (stage: any) => stage.order === completedStage.order + 1
-                  );
-
-                  // Only update if nextStage exists AND is ahead of user's current progress
-                  // This prevents level from decreasing if user goes back to earlier stages
-                  if (nextStage && nextStage.order > userCurrentStageOrder) {
-                    const updatedUser = await app
-                      .service("users")
-                      .patch(user._id, {
-                        currentStageId: nextStage._id,
-                      });
-
-                    // Update auth store with new user data
-                    setAuthenticated(updatedUser);
-                  }
-                } catch (err) {
-                  console.error("Failed to update level:", err);
-                }
-              })();
-            }
-          } else if (stageId && currentExercise) {
-            // Navigate to next exercise using handleNext logic
-            const nextOrder = exerciseOrder + 1;
-            router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
-
-            // Update state optimistically
-            const nextIndex = nextOrder - 1;
-            if (
-              nextIndex < stageExercises.length &&
-              stageExercises.length > 0
-            ) {
-              const nextExercise = stageExercises[nextIndex];
-              if (nextExercise) {
-                setCurrentExercise(nextExercise);
-                setIsLastExercise(nextOrder >= stageExercises.length);
-
-                const nextApiExercise = apiExercises[nextIndex];
-                if (nextApiExercise) {
-                  const { items: exerciseItems } =
-                    mapPopulatedExerciseToExercise(nextApiExercise);
-                  setItems(exerciseItems);
-                }
-
-                setIsCompleted(false);
-                setResetKey((prev) => prev + 1);
-                recordedAudioUriRef.current = null;
-              }
-            }
-          }
-        }, 1500);
-
-        return;
-      }
-
-      // Correct answer or exercises that should show confetti
       // Enable button IMMEDIATELY for instant feedback - synchronous state update
+      // This applies to both correct and incorrect answers
       setIsCompleted(true);
 
-      // Start confetti immediately without delays for faster feedback
+      // Start confetti immediately for all answers (both correct and incorrect)
       // Use requestAnimationFrame to ensure it doesn't block button state update
       if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
         requestAnimationFrame(() => {
@@ -959,6 +857,7 @@ export default function Task() {
           // Reset completion state for new exercise
           setIsCompleted(false);
           setResetKey((prev) => prev + 1);
+          isCompletingRef.current = false;
           // Clear recorded audio URI when moving to next exercise
           recordedAudioUriRef.current = null;
         }
@@ -1191,8 +1090,6 @@ export default function Task() {
         explosionSpeed={0}
         fallSpeed={3000}
       />
-
-      <KeepGoingCelebration visible={showKeepGoing} />
     </PageContainer>
   );
 }

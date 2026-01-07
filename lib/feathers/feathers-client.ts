@@ -7,7 +7,7 @@ import io from "socket.io-client";
 
 // Get API URL from environment variable
 // Priority: EXPO_PUBLIC_FEATHERS_API_URL > app.json extra > fallback
-const FEATHERS_API_URL = "https://ccd8d60942f5.ngrok-free.app";
+const FEATHERS_API_URL = "https://6059698c13c0.ngrok-free.app";
 // Create the Feathers application
 const app = feathers();
 

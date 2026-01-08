@@ -63,3 +63,4 @@ export const getCurrentLanguage = (): SupportedLanguage => {
   return i18n.language as SupportedLanguage;
 };
 
+

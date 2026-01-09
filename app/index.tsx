@@ -203,62 +203,13 @@ export default function Index() {
         return;
       }
 
-      // Navigate IMMEDIATELY - don't wait for anything
+      // Clear exercises cache for this stage to force fresh fetch
+      // This ensures new exercises added to backend are immediately visible
+      const { clearExercisesCache } = require("../lib/cache/exercises-cache");
+      clearExercisesCache(stageId);
+
+      // Navigate IMMEDIATELY - task.tsx will handle fetching fresh data
       router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
-
-      // Preload exercises and images in background (fire and forget)
-      const cached = getCachedExercises(stageId);
-
-      if (!cached) {
-        // Fetch exercises and cache images in background
-        (async () => {
-          try {
-            const { fetchExercisesByStageId, mapPopulatedExerciseToExercise } =
-              await import("../lib/api/exercises");
-            const apiExercises = await fetchExercisesByStageId(stageId);
-
-            // Map exercises
-            const mappedExercises = apiExercises.map(
-              (apiEx) => mapPopulatedExerciseToExercise(apiEx).exercise
-            );
-
-            // Cache exercises
-            const { setCachedExercises } = await import(
-              "../lib/cache/exercises-cache"
-            );
-            setCachedExercises(stageId, mappedExercises, apiExercises);
-
-            // Extract and preload all images
-            const imageUrls: string[] = [];
-            apiExercises.forEach((apiExercise) => {
-              apiExercise.options?.forEach((option) => {
-                if (option.img?.name && option.img.name.trim() !== "") {
-                  imageUrls.push(option.img.name);
-                }
-              });
-              if (
-                apiExercise.answer?.img?.name &&
-                apiExercise.answer.img.name.trim() !== ""
-              ) {
-                imageUrls.push(apiExercise.answer.img.name);
-              }
-            });
-
-            // Preload images in background (don't wait)
-            if (imageUrls.length > 0) {
-              const uniqueUrls = Array.from(new Set(imageUrls));
-              imagePreloader.preloadBatch(uniqueUrls, "high").catch((err) => {
-                console.error("Failed to preload images:", err);
-              });
-            }
-          } catch (err) {
-            console.error("Failed to preload exercises:", err);
-          }
-        })();
-      } else {
-        // Exercises cached, but ensure images are preloaded in background
-        imagePreloader.preloadStage(stageId).catch(() => {});
-      }
     },
     [lessons, router]
   );

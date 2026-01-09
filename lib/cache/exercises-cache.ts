@@ -10,8 +10,8 @@ interface CachedExercises {
 // In-memory cache for exercises by stageId
 const exercisesCache = new Map<string, CachedExercises>();
 
-// Cache expiry time: 1 minute (test uchun)
-const CACHE_EXPIRY = 60 * 1000;
+// Cache expiry time: 5 minutes (provides performance benefits during active sessions)
+const CACHE_EXPIRY = 5 * 60 * 1000;
 
 /**
  * Gets cached exercises for a stage if they exist and are not expired

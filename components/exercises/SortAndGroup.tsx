@@ -63,6 +63,46 @@ export default function SortAndGroup({
   onComplete,
   apiExercise,
 }: SortAndGroupProps) {
+  // #region agent log
+  const componentId = useRef(Math.random().toString(36).substr(2, 9));
+  useEffect(() => {
+    fetch("http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "SortAndGroup.tsx:mount",
+        message: "Component mounted",
+        data: {
+          componentId: componentId.current,
+          stageId: exercise.stageId,
+          order: exercise.order,
+          optionIds: exercise.optionIds,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "H1,H5",
+      }),
+    }).catch(() => {});
+    return () => {
+      fetch(
+        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "SortAndGroup.tsx:unmount",
+            message: "Component unmounting",
+            data: { componentId: componentId.current },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "H1,H5",
+          }),
+        }
+      ).catch(() => {});
+    };
+  }, []);
+  // #endregion
+
   const { t } = useTranslation();
   const CARD_SIZE = useMemo(() => getCardSize(), []);
   const CATEGORY_CARD_SIZE = useMemo(
@@ -218,6 +258,13 @@ export default function SortAndGroup({
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
   const wrongDropCountRef = useRef(0);
+  const isInitializingRef = useRef(false);
+
+  // Store onComplete callback in ref to avoid it triggering completion check useEffect
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Position refs for category drop zones
   const topCategoryPositionRef = useRef<{
@@ -233,12 +280,37 @@ export default function SortAndGroup({
     height: number;
   } | null>(null);
 
-  // Create stable exercise identifier
-  const exerciseId = `${exercise.stageId}-${exercise.order}`;
-
-  // Initialize items in center
+  // Initialize items in center - runs on every mount or when exercise/items/categories change
+  // Include exercise stageId and order to ensure reset when returning to same stage
   useEffect(() => {
     if (!category1 || !category2) return;
+
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "SortAndGroup.tsx:init-start",
+        message: "Init useEffect START",
+        data: {
+          componentId: componentId.current,
+          stageId: exercise.stageId,
+          order: exercise.order,
+          exerciseItemsCount: exerciseItems.length,
+          exerciseItemsIds: exerciseItems.map((i) => i.id),
+          isInitializingBefore: isInitializingRef.current,
+          isCompletedBefore: isCompleted,
+          isCompletedRefBefore: isCompletedRef.current,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "H1,H2,H3",
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    // Set initializing flag to prevent completion check during reset
+    isInitializingRef.current = true;
 
     const shuffled = shuffleArray(exerciseItems);
     setShuffledItems(shuffled);
@@ -252,7 +324,66 @@ export default function SortAndGroup({
     setIsCompleted(false);
     isCompletedRef.current = false;
     wrongDropCountRef.current = 0;
-  }, [exerciseId, exerciseItems, category1, category2]);
+
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "SortAndGroup.tsx:init-end",
+        message: "Init useEffect END",
+        data: {
+          componentId: componentId.current,
+          placementsSize: placements.size,
+          placementsEntries: Array.from(placements.entries()),
+          isInitializingAfter: isInitializingRef.current,
+          isCompletedRefAfter: isCompletedRef.current,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "H1,H2",
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [exercise.stageId, exercise.order, exerciseItems, category1, category2]);
+
+  // Clear initializing flag AFTER state updates have settled
+  // This runs in a separate useEffect to ensure it runs after the completion check has seen the flag
+  useEffect(() => {
+    if (
+      isInitializingRef.current &&
+      !isCompleted &&
+      isCompletedRef.current === false
+    ) {
+      // Use a longer delay to ensure all state updates and re-renders have completed
+      const timer = setTimeout(() => {
+        isInitializingRef.current = false;
+
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: "SortAndGroup.tsx:clear-init-flag",
+              message: "isInitializingRef cleared after state settled",
+              data: {
+                componentId: componentId.current,
+                isInitializing: isInitializingRef.current,
+                isCompleted: isCompleted,
+              },
+              timestamp: Date.now(),
+              sessionId: "debug-session",
+              hypothesisId: "H2",
+            }),
+          }
+        ).catch(() => {});
+        // #endregion
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [itemPlacements, isCompleted]);
 
   // Check if all items are correctly placed
   const checkCompletion = useCallback(() => {
@@ -272,16 +403,66 @@ export default function SortAndGroup({
 
   // Update completion status
   useEffect(() => {
+    // #region agent log
+    const completionResult = checkCompletion();
+    fetch("http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "SortAndGroup.tsx:completion-check",
+        message: "Completion check useEffect triggered",
+        data: {
+          componentId: componentId.current,
+          isInitializing: isInitializingRef.current,
+          completionResult: completionResult,
+          isCompleted: isCompleted,
+          isCompletedRef: isCompletedRef.current,
+          itemPlacementsEntries: Array.from(itemPlacements.entries()),
+          exerciseItemsIds: exerciseItems.map((i) => ({
+            id: i.id,
+            categoryId: i.categoryId,
+          })),
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "H1,H2,H3",
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    // Don't check completion during initialization
+    if (isInitializingRef.current) {
+      return;
+    }
+
     if (checkCompletion() && !isCompleted && !isCompletedRef.current) {
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "SortAndGroup.tsx:calling-onComplete",
+            message: "Calling onComplete(true)",
+            data: { componentId: componentId.current },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "H5",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+
       // Mark as completed immediately
       isCompletedRef.current = true;
       setIsCompleted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Call onComplete with isCorrect = true (default)
-      onComplete(true);
+      onCompleteRef.current(true);
     }
-  }, [itemPlacements, checkCompletion, isCompleted, onComplete]);
+  }, [itemPlacements, checkCompletion, isCompleted]);
 
   const handleCorrectDrop = useCallback(
     (itemId: number, categoryId: number) => {
@@ -304,9 +485,9 @@ export default function SortAndGroup({
     // Call onComplete(false) after 4 wrong drops to show confetti celebration
     if (wrongDropCountRef.current >= 4 && !isCompletedRef.current) {
       isCompletedRef.current = true;
-      onComplete(false);
+      onCompleteRef.current(false);
     }
-  }, [onComplete]);
+  }, []);
 
   const registerTopCategoryPosition = useCallback(
     (x: number, y: number, width: number, height: number) => {

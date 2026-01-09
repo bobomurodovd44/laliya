@@ -117,7 +117,7 @@ export default function ListenAndPick({
     }
 
     setShuffledItems(shuffled);
-  }, [exerciseId, exercise.optionIds]);
+  }, [exercise.optionIds]);
 
   const playAnswerAudio = async () => {
     const audioUrl = answerItem?.audioUrl;

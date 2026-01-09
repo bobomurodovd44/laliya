@@ -227,6 +227,15 @@ function RootLayoutNav() {
             sceneStyle: { paddingBottom: 0 },
           }}
         />
+        <Tabs.Screen
+          name="user-analytics"
+          options={{
+            href: null,
+            headerShown: false,
+            tabBarStyle: { display: "none" },
+            sceneStyle: { paddingBottom: 0 },
+          }}
+        />
       </Tabs.Protected>
 
       {/* Public routes - only accessible when NOT authenticated */}

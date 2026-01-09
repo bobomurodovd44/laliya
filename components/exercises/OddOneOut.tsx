@@ -63,7 +63,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
     }
 
     setShuffledItems(shuffled);
-  }, [exerciseId, exercise.optionIds]);
+  }, [exercise.optionIds]);
 
   const handleSelect = useCallback(
     (itemId: number) => {

@@ -171,6 +171,12 @@ export default function Profile() {
 
         <View style={styles.section}>
           <ProfileMenuItem
+            iconName="analytics"
+            title={t("profile.analytics")}
+            onPress={() => router.push("/user-analytics")}
+            iconLibrary="ionicons"
+          />
+          <ProfileMenuItem
             iconName="music"
             title={t("profile.childAnswers")}
             onPress={() => router.push("/child-answers")}

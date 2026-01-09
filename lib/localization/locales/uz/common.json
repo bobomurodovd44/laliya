@@ -90,6 +90,18 @@
   },
   "profile": {
     "title": "Profil",
+    "analytics": "Statistika",
+    "correctAnswers": "Aniqlik",
+    "totalAnswers": "Javoblar",
+    "availableStages": "Bosqich",
+    "stageProgress": "Bosqichlar bo'yicha natija",
+    "stageNumber": "Bosqich",
+    "totalExercises": "Jami mashqlar",
+    "completedExercises": "Bajarilgan",
+    "correct": "to'g'ri",
+    "wrong": "Noto'g'ri",
+    "of": "dan",
+    "completed": "Tugallangan",
     "settings": "Sozlamalar",
     "language": "Til",
     "logout": "Chiqish",
@@ -105,7 +117,8 @@
   "errors": {
     "generic": "Nimadir noto'g'ri ketdi",
     "network": "Tarmoq xatosi. Iltimos, ulanishni tekshiring.",
-    "unknown": "Noma'lum xatolik yuz berdi"
+    "unknown": "Noma'lum xatolik yuz berdi",
+    "userNotFound": "Foydalanuvchi topilmadi"
   },
   "child": {
     "addChild": "Kichkintoy bilan tanishamiz",

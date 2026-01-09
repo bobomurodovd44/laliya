@@ -149,7 +149,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
     return () => {
       clearInterval(intervalId);
     };
-  }, [exerciseId, exercise.optionIds, answerId]);
+  }, [exercise.optionIds, answerId]);
 
   const CARD_SIZE = useMemo(
     () => getCardSize(exerciseItems.length),
@@ -196,7 +196,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
 
     setShuffledOriginals(shuffledOrig);
     setRemountKey((prev) => prev + 1); // Force re-measurement
-  }, [exerciseId, exerciseItems, ensureShuffled]);
+  }, [exerciseItems, ensureShuffled]);
 
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);

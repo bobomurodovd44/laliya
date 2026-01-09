@@ -35,8 +35,8 @@ import {
 import { getCachedStages } from "../lib/cache/stages-cache";
 import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
-import { useTranslation } from "../lib/localization";
 import { setItems } from "../lib/items-store";
+import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 import {
@@ -73,48 +73,79 @@ export default function Task() {
   const recordedAudioUriRef = useRef<string | null>(null);
   const isExerciseActiveRef = useRef(false); // Track if user is actively working on exercises
   const previousUserCurrentStageIdRef = useRef<string | undefined | null>(null); // Track previous currentStageId to detect changes
+  const wasExerciseActiveRef = useRef(false); // Track previous isExerciseActive state to detect returns
+  const hasLoadedOnceRef = useRef(false); // Track if we've successfully loaded at least once
 
   useEffect(() => {
-    // Mark that user is actively working on exercises as soon as we have a stageId
-    // This prevents redirects during active sessions
-    if (stageId) {
-      isExerciseActiveRef.current = true;
-    }
-
     // Reset state immediately before async operations to prevent stale state
     setIsCompleted(false);
     setError(null);
+    // Reset completion ref to ensure button is not disabled
+    isCompletingRef.current = false;
+    // Clear any pending timeout
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
+    }
 
     if (!stageId) {
       setError("Stage ID is required");
       setLoading(false);
       setCurrentExercise(null);
       isExerciseActiveRef.current = false;
+      wasExerciseActiveRef.current = false;
       return;
     }
 
-    // If stageId changed, clear old stage cache and show loading immediately
-    const stageIdChanged =
-      previousStageIdRef.current && previousStageIdRef.current !== stageId;
-
-    if (stageIdChanged && previousStageIdRef.current) {
-      // Clear old stage cache to prevent showing old exercises
-      clearExercisesCache(previousStageIdRef.current);
-      // Clear current exercise immediately to prevent flash of old content
-      // Do this synchronously before any async operations
+    // Always clear cache when entering a stage (exerciseOrder 1) to ensure fresh data
+    if (exerciseOrder === 1) {
+      // #region agent log
+      const oldResetKey = resetKey;
+      // #endregion
+      clearExercisesCache(stageId);
       setCurrentExercise(null);
       setStageExercises([]);
       setApiExercises([]);
       setLoading(true);
-      // Reset completion state
-      setIsCompleted(false);
       setResetKey((prev) => prev + 1);
-      // Clear current stageId ref to prevent rendering old exercises
       currentStageIdRef.current = null;
-      // Clear recorded audio URI when stage changes
       recordedAudioUriRef.current = null;
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "task.tsx:reset-on-entry",
+            message: "Stage entry reset",
+            data: {
+              stageId: stageId,
+              exerciseOrder: exerciseOrder,
+              oldResetKey: oldResetKey,
+              newResetKey: oldResetKey + 1,
+              isCompletedBefore: isCompleted,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "H4",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
     }
+
+    // Debug logging
+
     previousStageIdRef.current = stageId;
+
+    // Mark that user is actively working on exercises
+    // This should be set AFTER checking isReturningToStage
+    if (stageId) {
+      isExerciseActiveRef.current = true;
+      // Don't set wasExerciseActiveRef here - it will be set after loading completes
+      // This prevents the double-run issue where the second useEffect thinks we're already active
+    }
 
     // Clear stage access cache when user's currentStageId changes from undefined to a value
     // BUT only if user is NOT actively working on exercises in this stage
@@ -125,7 +156,10 @@ export default function Task() {
       // If currentStageId changed (especially from undefined/null to a value), clear cache
       // This handles the case where backend sets currentStageId after user creation
       // BUT only if user is not actively working on exercises in this stage
-      if ((!previousUserStageId && currentUserStageId) || (previousUserStageId !== currentUserStageId)) {
+      if (
+        (!previousUserStageId && currentUserStageId) ||
+        previousUserStageId !== currentUserStageId
+      ) {
         // Only clear cache if user is NOT actively working on exercises in this stage
         // If they are actively working, keep the cache to prevent unnecessary re-validation
         if (!isExerciseActiveRef.current || !currentExercise) {
@@ -137,11 +171,17 @@ export default function Task() {
               keysToDelete.push(key);
             }
           });
-          keysToDelete.forEach(key => stageAccessCacheRef.current.delete(key));
+          keysToDelete.forEach((key) =>
+            stageAccessCacheRef.current.delete(key)
+          );
         }
       }
       previousUserCurrentStageIdRef.current = currentUserStageId;
     }
+
+    // For exerciseOrder 1 (entering stage), always fetch fresh (cache was cleared above)
+    // For other orders (navigating within stage), use cache if available for performance
+    const cached = exerciseOrder === 1 ? null : getCachedExercises(stageId);
 
     // Check stage access before loading exercises (cached per stageId)
     const verifyStageAccess = async () => {
@@ -189,7 +229,7 @@ export default function Task() {
 
       try {
         const stage = await app.service("stages").get(stageId);
-        
+
         // Defensive handling: Always allow access to stage 1 regardless of currentStageId status
         // This ensures new users can always start learning, even if currentStageId is undefined
         if (stage.order === 1) {
@@ -197,7 +237,7 @@ export default function Task() {
           stageAccessCacheRef.current.set(cacheKey, true);
           return true;
         }
-        
+
         const isAccessible = await checkStageAccess(
           stage,
           user?.currentStageId
@@ -236,10 +276,11 @@ export default function Task() {
       }
     };
 
-    // Check cache first - but only if stageId hasn't changed
-    const cached = !stageIdChanged ? getCachedExercises(stageId) : null;
-
     const loadData = async () => {
+      // Check if stageId changed from previous
+      const stageIdChanged =
+        previousStageIdRef.current && previousStageIdRef.current !== stageId;
+
       // Only verify stage access if stageId changed or we don't have cached access
       // This prevents unnecessary checks when navigating between exercises in the same stage
       const cacheKey = `${stageId}-${user?.currentStageId || "none"}`;
@@ -251,7 +292,11 @@ export default function Task() {
       if (cachedAccess === true && !stageIdChanged) {
         // Stage is accessible, proceed with loading exercises
         // No need to re-verify access when navigating between exercises in the same stage
-      } else if (isExerciseActiveRef.current && currentExercise && !stageIdChanged) {
+      } else if (
+        isExerciseActiveRef.current &&
+        currentExercise &&
+        !stageIdChanged
+      ) {
         // User is actively working on exercises in this stage and stageId hasn't changed
         // Even if we don't have cached access, allow them to continue (they're already in the stage)
         // Cache as accessible to prevent future checks
@@ -264,32 +309,21 @@ export default function Task() {
         }
       }
 
-      // If stageId changed, don't use cache - fetch fresh data
-      if (stageIdChanged) {
-        setCurrentExercise(null);
-        setLoading(true);
-      }
-
-      if (cached && !stageIdChanged) {
-        // Use cached data - no loading needed
+      // If we have cached data (when navigating between exercises), use it
+      if (cached && exerciseOrder > 1) {
         setStageExercises(cached.exercises);
         setApiExercises(cached.apiExercises);
 
-        // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
         const exerciseIndex = exerciseOrder - 1;
-
         if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
           const exercise = cached.exercises[exerciseIndex];
           setCurrentExercise(exercise);
           setIsLastExercise(exerciseOrder >= cached.exercises.length);
           isCompletingRef.current = false;
           previousExerciseOrderRef.current = exerciseOrder;
-          // Set current stageId ref to allow rendering
           currentStageIdRef.current = stageId;
-          // Mark that user is actively working on exercises
           isExerciseActiveRef.current = true;
 
-          // Map and set items for the current exercise
           const currentApiExercise = cached.apiExercises[exerciseIndex];
           if (currentApiExercise) {
             const { items: exerciseItems } =
@@ -299,17 +333,10 @@ export default function Task() {
 
           setLoading(false);
           return;
-        } else {
-          setError(
-            `Exercise not found (requested index ${exerciseOrder}, but only ${cached.exercises.length} exercises available)`
-          );
-          setLoading(false);
-          setCurrentExercise(null);
-          return;
         }
       }
 
-      // No cache - fetch from API
+      // No cache or exerciseOrder 1 - fetch fresh from API
       setCurrentExercise(null);
       setLoading(true);
 
@@ -387,6 +414,15 @@ export default function Task() {
     // Clear stage access cache when stageId or user's currentStageId changes
     // This ensures we re-verify access when these change
   }, [stageId, exerciseOrder, user?.currentStageId, router]);
+
+  // Set wasExerciseActiveRef after exercise loads successfully
+  // This prevents the double-run issue in the main useEffect
+  useEffect(() => {
+    if (currentExercise && !loading) {
+      wasExerciseActiveRef.current = true;
+      hasLoadedOnceRef.current = true; // Mark that we've successfully loaded at least once
+    }
+  }, [currentExercise, loading]);
 
   // Preload images when exercise changes - use InteractionManager to prevent blocking
   useEffect(() => {
@@ -481,23 +517,28 @@ export default function Task() {
         return;
       }
 
-      // Only reset if we're returning to the same exercise (not navigating to a new one)
-      // This prevents unnecessary remounting when navigating between exercises
-      const isSameExercise = previousExerciseOrderRef.current === exerciseOrder;
-
-      if (isSameExercise && currentExercise) {
-        // Only reset completion state, don't increment resetKey to prevent image reload
-        // resetKey should only change when exercise actually changes or explicit reset is needed
+      // Always reset completion state when screen gains focus
+      // This allows users to retry exercises when returning to them
+      if (currentExercise) {
         setIsCompleted(false);
         isCompletingRef.current = false;
         if (completionTimeoutRef.current) {
           clearTimeout(completionTimeoutRef.current);
           completionTimeoutRef.current = null;
         }
-      } else {
-        // Update the ref when exercise changes
-        previousExerciseOrderRef.current = exerciseOrder;
       }
+
+      // Update the ref when exercise changes
+      previousExerciseOrderRef.current = exerciseOrder;
+
+      // Return cleanup function that runs when screen loses focus
+      return () => {
+        // Mark that user is no longer actively working on exercises
+        // This allows us to detect when they return to the stage
+        ("[Task useFocusEffect cleanup] Setting wasExerciseActiveRef to false");
+        wasExerciseActiveRef.current = false;
+        isExerciseActiveRef.current = false;
+      };
     }, [currentExercise, exerciseOrder])
   );
 
@@ -592,6 +633,33 @@ export default function Task() {
 
   const handleComplete = useCallback(
     async (isCorrect: boolean = true) => {
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "task.tsx:handleComplete-entry",
+            message: "handleComplete called",
+            data: {
+              isCorrect: isCorrect,
+              loading: loading,
+              hasCurrentExercise: !!currentExercise,
+              isCompletingRef: isCompletingRef.current,
+              isCompleted: isCompleted,
+              currentExerciseType: currentExercise?.type,
+              stageId: stageId,
+              exerciseOrder: exerciseOrder,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "H4,H5",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+
       // Only allow completion if not loading and exercise exists
       if (loading || !currentExercise || isCompletingRef.current) {
         return;
@@ -639,6 +707,28 @@ export default function Task() {
       // This applies to both correct and incorrect answers
       setIsCompleted(true);
 
+      // #region agent log
+      fetch(
+        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "task.tsx:handleComplete-setCompleted",
+            message: "setIsCompleted(true) called",
+            data: {
+              isCorrect: isCorrect,
+              stageId: stageId,
+              exerciseOrder: exerciseOrder,
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            hypothesisId: "H4",
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
+
       // Start confetti immediately for all answers (both correct and incorrect)
       // Use requestAnimationFrame to ensure it doesn't block button state update
       if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
@@ -675,13 +765,10 @@ export default function Task() {
     // Compare with the ref to ensure we only render exercises for the current stageId
     if (currentStageIdRef.current !== stageId) return null;
 
-    // Create a stable key based on exercise identity
-    // Only include resetKey for exercises that need explicit remounting (not LookAndSay)
+    // Create a unique key to force remount on every stage entry
+    // Include resetKey for all exercises to ensure fresh state
     const baseKey = `${currentExercise.stageId}-${currentExercise.order}`;
-    const exerciseKey =
-      currentExercise.type === ExerciseType.LOOK_AND_SAY
-        ? baseKey
-        : `${baseKey}-${resetKey}`;
+    const exerciseKey = `${baseKey}-${resetKey}`;
 
     switch (currentExercise.type) {
       case ExerciseType.ODD_ONE_OUT:
@@ -952,6 +1039,12 @@ export default function Task() {
       })();
     }
 
+    // Clear exercises cache for this stage to ensure fresh data on return
+    // This prevents showing stale completed exercises when user comes back to this stage
+    if (stageId) {
+      clearExercisesCache(stageId);
+    }
+
     // Navigate IMMEDIATELY - don't wait for anything
     router.push("/");
 
@@ -1027,7 +1120,10 @@ export default function Task() {
             { paddingTop: insets.top + Spacing.padding.xxl },
           ]}
         >
-          <LoadingSpinner message={t("exercise.loadingExercises")} size="large" />
+          <LoadingSpinner
+            message={t("exercise.loadingExercises")}
+            size="large"
+          />
         </View>
       </PageContainer>
     );
@@ -1037,7 +1133,9 @@ export default function Task() {
     return (
       <PageContainer>
         <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
-          <Body style={styles.errorText}>{error || t("exercise.exerciseNotFound")}</Body>
+          <Body style={styles.errorText}>
+            {error || t("exercise.exerciseNotFound")}
+          </Body>
         </View>
       </PageContainer>
     );

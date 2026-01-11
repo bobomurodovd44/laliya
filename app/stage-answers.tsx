@@ -6,11 +6,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -19,10 +17,10 @@ import { LoadingSpinner } from "../components/LoadingSpinner";
 import StarRating from "../components/StarRating";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
+import { getCachedAnswers, setCachedAnswers } from "../lib/cache/answers-cache";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
-import { getCachedAnswers, setCachedAnswers } from "../lib/cache/answers-cache";
 
 interface Answer {
   _id: string;
@@ -371,108 +369,91 @@ export default function StageAnswers() {
     <PageContainer>
       {renderHeader()}
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 120 }]}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-        alwaysBounceVertical={true}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.primary}
-            colors={[Colors.primary]}
-            progressViewOffset={insets.top + 80}
-          />
-        }
-      >
-        <View style={styles.container}>
-          {/* Centered Card Content */}
-          <View style={styles.content}>
-            <View style={styles.card}>
-              {/* Image Area */}
-              <View style={styles.imageContainer}>
-                {imageUrl ? (
-                  <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.image}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Body>{t("answers.noImageAvailable")}</Body>
-                  </View>
-                )}
-              </View>
-
-              {/* Footer Area: Word + Play Button */}
-              <View style={styles.cardFooter}>
-                <View style={styles.wordContainer}>
-                  <Title size="large" style={styles.word} numberOfLines={2}>
-                    {itemWord}
-                  </Title>
-                </View>
-                <DuoButton
-                  title=""
-                  onPress={playAnswerAudio}
-                  color="blue"
-                  size="medium"
-                  customSize={70}
-                  style={styles.audioButton}
-                  icon={isPlaying ? "pause" : "play"}
-                  shape="circle"
-                  iconSize={32}
+      <View style={[styles.container, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 20 }]}>
+        {/* Centered Card Content */}
+        <View style={styles.content}>
+          <View style={styles.card}>
+            {/* Image Area */}
+            <View style={styles.imageContainer}>
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={styles.image}
+                  contentFit="cover"
                 />
-              </View>
-            </View>
-          </View>
-
-          {/* Bottom Controls */}
-          <View style={styles.controls}>
-            {/* Star Rating */}
-            <View style={styles.ratingContainer}>
-              <StarRating
-                value={selectedMark}
-                onChange={handleMarkChange}
-                size={48}
-              />
-            </View>
-
-            {/* Navigation Buttons */}
-            <View style={styles.navigationButtonsContainer}>
-              {currentIndex > 0 && (
-                <View style={styles.buttonWrapper}>
-                  <DuoButton
-                    title=""
-                    onPress={handlePrev}
-                    color="blue"
-                    size="large"
-                    icon="chevron-back"
-                    shape="rectangle"
-                    iconSize={28}
-                  />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Body>{t("answers.noImageAvailable")}</Body>
                 </View>
               )}
+            </View>
+
+            {/* Footer Area: Word + Play Button */}
+            <View style={styles.cardFooter}>
+              <View style={styles.wordContainer}>
+                <Title size="large" style={styles.word} numberOfLines={2}>
+                  {itemWord}
+                </Title>
+              </View>
+              <DuoButton
+                title=""
+                onPress={playAnswerAudio}
+                color="blue"
+                size="medium"
+                customSize={70}
+                style={styles.audioButton}
+                icon={isPlaying ? "pause" : "play"}
+                shape="circle"
+                iconSize={32}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom Controls */}
+        <View style={styles.controls}>
+          {/* Star Rating */}
+          <View style={styles.ratingContainer}>
+            <StarRating
+              value={selectedMark}
+              onChange={handleMarkChange}
+              size={48}
+            />
+          </View>
+
+          {/* Navigation Buttons */}
+          <View style={styles.navigationButtonsContainer}>
+            {currentIndex > 0 && (
               <View style={styles.buttonWrapper}>
                 <DuoButton
                   title=""
-                  onPress={handleNext}
-                  color="green"
+                  onPress={handlePrev}
+                  color="blue"
                   size="large"
-                  icon={
-                    currentIndex < answers.length - 1
-                      ? "chevron-forward"
-                      : "checkmark"
-                  }
+                  icon="chevron-back"
                   shape="rectangle"
                   iconSize={28}
                 />
               </View>
+            )}
+            <View style={styles.buttonWrapper}>
+              <DuoButton
+                title=""
+                onPress={handleNext}
+                color="green"
+                size="large"
+                icon={
+                  currentIndex < answers.length - 1
+                    ? "chevron-forward"
+                    : "checkmark"
+                  }
+                shape="rectangle"
+                iconSize={28}
+              />
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </PageContainer>
   );
 }
@@ -518,27 +499,18 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 48,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    minHeight: "100%",
-    paddingBottom: Spacing.padding.xxl,
-  },
   container: {
+    flex: 1,
     width: "100%",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 20,
-    minHeight: "100%",
   },
   content: {
+    flex: 1,
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.padding.md,
   },
   card: {
     width: "85%",

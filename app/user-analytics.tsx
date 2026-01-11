@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CircularProgress } from "../components/CircularProgress";
 import { PageContainer } from "../components/layout/PageContainer";
@@ -36,175 +36,180 @@ export default function UserAnalytics() {
   });
   const [stageAnalytics, setStageAnalytics] = useState<StageAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (!user?._id) {
-        setError(t("errors.userNotFound"));
-        setLoading(false);
-        return;
-      }
+  const fetchAnalytics = async () => {
+    if (!user?._id) {
+      setError(t("errors.userNotFound"));
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    if (!refreshing) setLoading(true); // Don't show full loader on refresh
+    setError(null);
 
-      try {
-        const userId =
-          typeof user._id === "string" ? user._id : String(user._id);
+    try {
+      const userId =
+        typeof user._id === "string" ? user._id : String(user._id);
 
-        // Fetch all data in parallel with error boundary for isolation
-        // This prevents analytics errors from affecting other features
-        const [maxStageOrder, stagesResponse, exercisesResponse, answersResponse] = 
-          await Promise.all([
-            getUserMaxStageOrder(user.currentStageId).catch(() => 0),
-            app.service("stages").find({
-              query: {
-                $sort: { order: 1 },
-                $limit: 1000,
-              },
-            }).catch(() => ({ data: [] })),
-            app.service("exercises").find({
-              query: {
-                $limit: 1000,
-                $select: ["_id", "stageId"],
-              },
-            }).catch(() => ({ data: [] })),
-            app.service("answers").find({
-              query: {
-                userId: userId,
-                $limit: 1000,
-                $populate: false,
-                $select: ["_id", "exerciseId", "isCorrect"],
-              },
-            }).catch(() => ({ data: [] })),
-          ]);
+      // Fetch all data in parallel with error boundary for isolation
+      // This prevents analytics errors from affecting other features
+      const [maxStageOrder, stagesResponse, exercisesResponse, answersResponse] = 
+        await Promise.all([
+          getUserMaxStageOrder(user.currentStageId).catch(() => 0),
+          app.service("stages").find({
+            query: {
+              $sort: { order: 1 },
+              $limit: 1000,
+            },
+          }).catch(() => ({ data: [] })),
+          app.service("exercises").find({
+            query: {
+              $limit: 1000,
+              $select: ["_id", "stageId"],
+            },
+          }).catch(() => ({ data: [] })),
+          app.service("answers").find({
+            query: {
+              userId: userId,
+              $limit: 1000,
+              $populate: false,
+              $select: ["_id", "exerciseId", "isCorrect"],
+            },
+          }).catch(() => ({ data: [] })),
+        ]);
 
-        const stages = Array.isArray(stagesResponse)
-          ? stagesResponse
-          : stagesResponse.data || [];
-        const exercises = Array.isArray(exercisesResponse)
-          ? exercisesResponse
-          : exercisesResponse.data || [];
-        const answersData = Array.isArray(answersResponse)
-          ? answersResponse
-          : answersResponse.data || [];
+      const stages = Array.isArray(stagesResponse)
+        ? stagesResponse
+        : stagesResponse.data || [];
+      const exercises = Array.isArray(exercisesResponse)
+        ? exercisesResponse
+        : exercisesResponse.data || [];
+      const answersData = Array.isArray(answersResponse)
+        ? answersResponse
+        : answersResponse.data || [];
 
-        // Calculate correct answers percentage (treat undefined isCorrect as true)
-        const totalAnswers = answersData.length;
-        const correctAnswers = answersData.filter(
+      // Calculate correct answers percentage (treat undefined isCorrect as true)
+      const totalAnswers = answersData.length;
+      const correctAnswers = answersData.filter(
+        (answer: any) => answer.isCorrect === true || answer.isCorrect === undefined
+      ).length;
+      const correctPercentage =
+        totalAnswers > 0
+          ? Math.round((correctAnswers / totalAnswers) * 100)
+          : 0;
+
+      setAnalyticsData({
+        correctPercentage,
+        totalAnswers,
+        availableStages: maxStageOrder,
+      });
+
+      // Optimize data processing with Maps for O(1) lookups
+      // Group exercises by stageId
+      const exercisesByStage = new Map<string, any[]>();
+      exercises.forEach((ex: any) => {
+        const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
+        if (!exercisesByStage.has(exStageId)) {
+          exercisesByStage.set(exStageId, []);
+        }
+        exercisesByStage.get(exStageId)!.push(ex);
+      });
+
+      // Create exercise ID to stage ID mapping for fast lookup
+      const exerciseIdToStageId = new Map<string, string>();
+      exercises.forEach((ex: any) => {
+        const exId = typeof ex._id === "string" ? ex._id : String(ex._id);
+        const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
+        exerciseIdToStageId.set(exId, exStageId);
+      });
+
+      // Group answers by stageId using the mapping
+      const answersByStage = new Map<string, any[]>();
+      answersData.forEach((answer: any) => {
+        const answeredExerciseId = typeof answer.exerciseId === "string" 
+          ? answer.exerciseId 
+          : String(answer.exerciseId);
+        const stageId = exerciseIdToStageId.get(answeredExerciseId);
+        if (stageId) {
+          if (!answersByStage.has(stageId)) {
+            answersByStage.set(stageId, []);
+          }
+          answersByStage.get(stageId)!.push(answer);
+        }
+      });
+
+      // Calculate per-stage analytics with optimized lookups
+      const stageStats: StageAnalytics[] = stages.map((stage: any) => {
+        const stageId = typeof stage._id === "string" ? stage._id : String(stage._id);
+        
+        // Get exercises for this stage from Map (O(1) lookup)
+        const stageExercises = exercisesByStage.get(stageId) || [];
+        const totalExercises = stageExercises.length;
+        
+        // Get answers for this stage from Map (O(1) lookup)
+        const stageAnswers = answersByStage.get(stageId) || [];
+        
+        // Count unique exercises that have been answered
+        const uniqueAnsweredExercises = new Set(
+          stageAnswers.map((answer: any) => 
+            typeof answer.exerciseId === "string" 
+              ? answer.exerciseId 
+              : String(answer.exerciseId)
+          )
+        );
+        const completedExercises = uniqueAnsweredExercises.size;
+        
+        // Count correct and wrong answers (treat undefined isCorrect as correct)
+        const correctAnswers = stageAnswers.filter(
           (answer: any) => answer.isCorrect === true || answer.isCorrect === undefined
         ).length;
-        const correctPercentage =
-          totalAnswers > 0
-            ? Math.round((correctAnswers / totalAnswers) * 100)
-            : 0;
-
-        setAnalyticsData({
+        const wrongAnswers = stageAnswers.filter(
+          (answer: any) => answer.isCorrect === false
+        ).length;
+        
+        // Calculate correct percentage
+        const correctPercentage = stageAnswers.length > 0
+          ? Math.round((correctAnswers / stageAnswers.length) * 100)
+          : 0;
+        
+        return {
+          stageId,
+          stageOrder: stage.order,
+          totalExercises,
+          completedExercises,
+          correctAnswers,
+          wrongAnswers,
           correctPercentage,
-          totalAnswers,
-          availableStages: maxStageOrder,
-        });
+        };
+      });
 
-        // Optimize data processing with Maps for O(1) lookups
-        // Group exercises by stageId
-        const exercisesByStage = new Map<string, any[]>();
-        exercises.forEach((ex: any) => {
-          const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
-          if (!exercisesByStage.has(exStageId)) {
-            exercisesByStage.set(exStageId, []);
-          }
-          exercisesByStage.get(exStageId)!.push(ex);
-        });
+      setStageAnalytics(stageStats);
+    } catch (error) {
+      // Isolated error handling - won't affect other features
+      console.error("Analytics fetch failed:", error);
+      setError(t("errors.generic"));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-        // Create exercise ID to stage ID mapping for fast lookup
-        const exerciseIdToStageId = new Map<string, string>();
-        exercises.forEach((ex: any) => {
-          const exId = typeof ex._id === "string" ? ex._id : String(ex._id);
-          const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
-          exerciseIdToStageId.set(exId, exStageId);
-        });
-
-        // Group answers by stageId using the mapping
-        const answersByStage = new Map<string, any[]>();
-        answersData.forEach((answer: any) => {
-          const answeredExerciseId = typeof answer.exerciseId === "string" 
-            ? answer.exerciseId 
-            : String(answer.exerciseId);
-          const stageId = exerciseIdToStageId.get(answeredExerciseId);
-          if (stageId) {
-            if (!answersByStage.has(stageId)) {
-              answersByStage.set(stageId, []);
-            }
-            answersByStage.get(stageId)!.push(answer);
-          }
-        });
-
-        // Calculate per-stage analytics with optimized lookups
-        const stageStats: StageAnalytics[] = stages.map((stage: any) => {
-          const stageId = typeof stage._id === "string" ? stage._id : String(stage._id);
-          
-          // Get exercises for this stage from Map (O(1) lookup)
-          const stageExercises = exercisesByStage.get(stageId) || [];
-          const totalExercises = stageExercises.length;
-          
-          // Get answers for this stage from Map (O(1) lookup)
-          const stageAnswers = answersByStage.get(stageId) || [];
-          
-          // Count unique exercises that have been answered
-          const uniqueAnsweredExercises = new Set(
-            stageAnswers.map((answer: any) => 
-              typeof answer.exerciseId === "string" 
-                ? answer.exerciseId 
-                : String(answer.exerciseId)
-            )
-          );
-          const completedExercises = uniqueAnsweredExercises.size;
-          
-          // Count correct and wrong answers (treat undefined isCorrect as correct)
-          const correctAnswers = stageAnswers.filter(
-            (answer: any) => answer.isCorrect === true || answer.isCorrect === undefined
-          ).length;
-          const wrongAnswers = stageAnswers.filter(
-            (answer: any) => answer.isCorrect === false
-          ).length;
-          
-          // Calculate correct percentage
-          const correctPercentage = stageAnswers.length > 0
-            ? Math.round((correctAnswers / stageAnswers.length) * 100)
-            : 0;
-          
-          return {
-            stageId,
-            stageOrder: stage.order,
-            totalExercises,
-            completedExercises,
-            correctAnswers,
-            wrongAnswers,
-            correctPercentage,
-          };
-        });
-
-        setStageAnalytics(stageStats);
-      } catch (error) {
-        // Isolated error handling - won't affect other features
-        console.error("Analytics fetch failed:", error);
-        setError(t("errors.generic"));
-        // Early return prevents cache pollution and ensures clean state
-        return;
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchAnalytics();
   }, [user, t]);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchAnalytics();
+  }, []);
 
   return (
     <PageContainer useFloatingShapes>
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push("/profile")}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={28} color={Colors.textPrimary} />
@@ -222,6 +227,15 @@ export default function UserAnalytics() {
           { paddingTop: insets.top + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]} // Android
+              progressViewOffset={insets.top + 80}
+            />
+          }
       >
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -368,21 +382,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.padding.lg,
-    paddingBottom: Spacing.margin.xxxl,
+    paddingBottom: Spacing.margin.xxl,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     minHeight: 400,
-    paddingVertical: Spacing.padding.xxxl,
+    paddingVertical: Spacing.padding.xxl,
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     minHeight: 400,
-    paddingVertical: Spacing.padding.xxxl,
+    paddingVertical: Spacing.padding.xxl,
     gap: Spacing.gap.lg,
   },
   errorText: {

@@ -7,7 +7,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Tabs, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -18,6 +18,7 @@ import { CustomHeader } from "../components/CustomHeader";
 import { configureGoogleSignIn } from "../lib/auth/google-signin";
 import { initializeLanguage, useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
+import { checkUserHasChildMeta } from "../lib/utils/check-childmeta";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,28 +59,43 @@ function RootLayoutNav() {
   const segments = useSegments();
   const { t } = useTranslation();
   const { isAuthenticated, isInitialized, user } = useAuthStore();
+  const currentPathRef = useRef<string>("");
 
   // Global redirect check: if authenticated but missing childMeta, redirect to add-child
+  // ONLY check when user lands on index page (not on every navigation)
   useEffect(() => {
     if (!isInitialized) return;
 
-    if (isAuthenticated && user) {
-      const currentPath = segments[0] || "";
-      const isOnAddChildPage = currentPath === "add-child";
+    const checkChildMeta = async () => {
+      if (isAuthenticated && user?._id) {
+        const currentPath = segments[0] || "";
+        const previousPath = currentPathRef.current;
+        currentPathRef.current = currentPath;
 
-      // Check if user is missing childMeta
-      const hasChildMeta =
-        user.childMeta &&
-        user.childMeta.fullName &&
-        user.childMeta.age &&
-        user.childMeta.gender;
+        // ONLY check on index page (home page)
+        // Skip all other pages including task, add-child, profile, etc.
+        if (currentPath !== "index" && currentPath !== "") {
+          return;
+        }
 
-      // Redirect to add-child if missing childMeta and not already on that page
-      if (!hasChildMeta && !isOnAddChildPage) {
-        router.replace("/add-child");
+        // Only check when we just arrived at index (path changed to index)
+        // Don't check if we're already on index (prevents re-checking on state updates)
+        if (previousPath === "index") {
+          return;
+        }
+
+        // Check if user has childMeta directly from backend
+        const hasChildMeta = await checkUserHasChildMeta(user._id);
+
+        // Redirect to add-child if missing childMeta
+        if (!hasChildMeta) {
+          router.replace("/add-child");
+        }
       }
-    }
-  }, [isAuthenticated, isInitialized, user, segments, router]);
+    };
+
+    checkChildMeta();
+  }, [isAuthenticated, isInitialized, user?._id, segments, router]);
 
   // Don't render tabs until auth is initialized
   if (!isInitialized) {

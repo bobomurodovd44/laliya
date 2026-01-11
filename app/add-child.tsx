@@ -19,6 +19,7 @@ import { Colors, Spacing, Typography } from "../constants";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
+import { checkUserHasChildMeta } from "../lib/utils/check-childmeta";
 
 export default function AddChild() {
   const router = useRouter();
@@ -32,22 +33,25 @@ export default function AddChild() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ageError, setAgeError] = useState("");
+  const [hasCheckedChildMeta, setHasCheckedChildMeta] = useState(false);
 
   // Prevent users who already have childMeta from accessing this page
   useEffect(() => {
-    if (user) {
-      const hasChildMeta =
-        user.childMeta &&
-        user.childMeta.fullName &&
-        user.childMeta.age &&
-        user.childMeta.gender;
+    const checkAndRedirect = async () => {
+      if (user?._id && !hasCheckedChildMeta) {
+        setHasCheckedChildMeta(true);
+        // Check childMeta from backend (same source as layout)
+        const hasChildMeta = await checkUserHasChildMeta(user._id);
 
-      if (hasChildMeta) {
-        // User already has childMeta, redirect to home
-        router.replace("/");
+        if (hasChildMeta) {
+          // User already has childMeta, redirect to home
+          router.replace("/");
+        }
       }
-    }
-  }, [user, router]);
+    };
+
+    checkAndRedirect();
+  }, [user?._id, router, hasCheckedChildMeta]);
 
   // Real-time age validation
   const validateAge = (ageValue: string) => {
@@ -165,7 +169,7 @@ export default function AddChild() {
       // Update auth store with the new user data (with currentStageId set)
       setAuthenticated(finalUser);
 
-      // Redirect to index page
+      // Navigate to index - layout will check backend for childMeta
       router.replace("/");
     } catch (err: any) {
       setError(err.message || t("child.errors.saveFailed"));

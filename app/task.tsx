@@ -921,9 +921,6 @@ export default function Task() {
       // Navigate IMMEDIATELY for fastest transition
       router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
 
-      // Update user score optimistically (non-blocking, background sync)
-      updateUserScore(currentExercise.score);
-
       // Update state optimistically for instant display (non-blocking)
       const nextIndex = nextOrder - 1;
       if (nextIndex < stageExercises.length && stageExercises.length > 0) {
@@ -1047,11 +1044,6 @@ export default function Task() {
 
     // Navigate IMMEDIATELY - don't wait for anything
     router.push("/");
-
-    // Update user score optimistically (non-blocking, background sync)
-    if (currentExercise) {
-      updateUserScore(currentExercise.score);
-    }
 
     // Update currentStageId and level in background (fire and forget)
     if (stageId && user?._id) {

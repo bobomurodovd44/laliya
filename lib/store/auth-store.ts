@@ -10,6 +10,7 @@ interface AuthState {
   setAuthenticated: (user?: any) => void;
   setUnauthenticated: () => void;
   init: () => Promise<void>;
+  refreshUser: () => Promise<any | null>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -70,6 +71,28 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isInitialized: true,
           });
+        }
+      },
+
+      refreshUser: async () => {
+        try {
+          const currentUser = get().user;
+          if (!currentUser?._id) {
+            return null;
+          }
+
+          // Fetch fresh user data from backend
+          const freshUser = await app.service("users").get(currentUser._id);
+          
+          // Update store with fresh user data
+          set({
+            user: freshUser,
+          });
+
+          return freshUser;
+        } catch (error) {
+          console.error("Failed to refresh user:", error);
+          return null;
         }
       },
     }),

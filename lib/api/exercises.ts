@@ -72,9 +72,7 @@ export const fetchExercisesByStageId = async (
 ): Promise<PopulatedExercise[]> => {
   try {
     // Log context for debugging if provided
-    if (context && __DEV__) {
-      console.log(`[fetchExercisesByStageId] Context: ${context}, StageId: ${stageId}`);
-    }
+ 
     
     const response = await app.service("exercises").find({
       query: {

@@ -24,9 +24,7 @@ export interface StagesResponse {
 export const fetchStages = async (context?: string): Promise<Stage[]> => {
   try {
     // Log context for debugging if provided
-    if (context && __DEV__) {
-      console.log(`[fetchStages] Context: ${context}`);
-    }
+
     
     const response = await app.service("stages").find({
       query: {

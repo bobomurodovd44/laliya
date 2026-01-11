@@ -83,7 +83,7 @@ const Ring = ({
   );
 };
 
-export default function LookAndSay({
+export default React.memo(function LookAndSay({
   exercise,
   onComplete,
   onRecordingComplete,
@@ -563,7 +563,7 @@ export default function LookAndSay({
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

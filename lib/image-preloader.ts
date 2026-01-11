@@ -17,7 +17,7 @@ class ImagePreloader {
   private preloadingUrls = new Set<string>();
   private priorityQueue: PreloadTask[] = [];
   private isProcessing = false;
-  private maxConcurrent = 6; // Limit concurrent downloads
+  private maxConcurrent = 3; // Reduced for better performance on mid-range devices
 
   /**
    * Check if an image URL is already preloaded

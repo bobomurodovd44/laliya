@@ -58,7 +58,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return arr;
 };
 
-export default function SortAndGroup({
+export default React.memo(function SortAndGroup({
   exercise,
   onComplete,
   apiExercise,
@@ -586,7 +586,7 @@ export default function SortAndGroup({
       </View>
     </View>
   );
-}
+});
 
 // Category Drop Zone Component
 interface CategoryDropZoneProps {
@@ -597,7 +597,7 @@ interface CategoryDropZoneProps {
   itemsInCategory: Item[];
 }
 
-function CategoryDropZone({
+const CategoryDropZone = React.memo(function CategoryDropZone({
   category,
   cardSize,
   onLayout,
@@ -669,7 +669,7 @@ function CategoryDropZone({
       </View>
     </Animated.View>
   );
-}
+});
 
 // Draggable Card Component
 interface DraggableCardProps {
@@ -695,7 +695,7 @@ interface DraggableCardProps {
   isCompleted: boolean;
 }
 
-function DraggableCard({
+const DraggableCard = React.memo(function DraggableCard({
   item,
   cardSize,
   dropThreshold,
@@ -874,7 +874,7 @@ function DraggableCard({
       </Animated.View>
     </GestureDetector>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

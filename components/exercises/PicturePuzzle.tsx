@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -33,7 +33,7 @@ const PIECES_CONFIG = [
   { id: 3, r: 1, c: 1 },
 ];
 
-export default function PicturePuzzle({
+export default React.memo(function PicturePuzzle({
   exercise,
   onComplete,
 }: PicturePuzzleProps) {
@@ -73,7 +73,7 @@ export default function PicturePuzzle({
       question={exercise.question}
     />
   );
-}
+});
 
 function PuzzleLogic({
   imageUrl,
@@ -169,7 +169,7 @@ function PuzzleLogic({
     isSolvedRef.current = false; // Reset solved state when image changes
   }, [imageUrl]);
 
-  const handleDrop = (draggedPieceId: number, targetSlotIndex: number) => {
+  const handleDrop = useCallback((draggedPieceId: number, targetSlotIndex: number) => {
     setPiecesPlacement((prev) => {
       const newPlacement = [...prev];
 
@@ -189,7 +189,7 @@ function PuzzleLogic({
 
       return newPlacement;
     });
-  };
+  }, []);
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -226,7 +226,7 @@ function PuzzleLogic({
   );
 }
 
-const DraggablePiece = ({
+const DraggablePiece = React.memo(({
   id,
   correctRow,
   correctCol,
@@ -263,9 +263,6 @@ const DraggablePiece = ({
   // Reactive Position: If parent moves us (e.g. swap), animate to new spot
   // checking !isDragging to avoid fighting the user
   useEffect(() => {
-    // We use requestAnimationFrame or just plain calls, but we need to check shared value.
-    // Since isDragging is modified on UI thread, there's a slight async gap,
-    // but logic flow ensures we only get new props AFTER drop (drag end).
     tx.value = withSpring(destX, { damping: 15 });
     ty.value = withSpring(destY, { damping: 15 });
   }, [destX, destY]);
@@ -284,7 +281,7 @@ const DraggablePiece = ({
       .enabled(enabled)
       .onStart(() => {
         ctx.value = { x: tx.value, y: ty.value };
-        scale.value = withSpring(1.08);
+        scale.value = withSpring(1.03);
         isDragging.value = true;
       })
       .onUpdate((e) => {
@@ -334,31 +331,33 @@ const DraggablePiece = ({
           runOnJS(onDrop)(id, bestSlot);
         } else {
           // Snap back to START if no valid drop
-          tx.value = withSpring(ctx.value.x);
-          ty.value = withSpring(ctx.value.y);
+          tx.value = withSpring(ctx.value.x, { damping: 15 });
+          ty.value = withSpring(ctx.value.y, { damping: 15 });
         }
       });
   }, [enabled, id, onDrop]);
 
   const animatedStyle = useAnimatedStyle(() => {
+    const dragging = isDragging.value;
+    const zVal = z.value;
     return {
       transform: [
         { translateX: tx.value },
         { translateY: ty.value },
         { scale: scale.value },
       ],
-      zIndex: z.value,
+      zIndex: zVal,
       position: "absolute",
       top: 0,
       left: 0,
       shadowColor: "#000",
       shadowOffset: {
         width: 0,
-        height: isDragging.value ? 10 : 2,
+        height: dragging ? 10 : 2,
       },
-      shadowOpacity: isDragging.value ? 0.4 : 0.15,
-      shadowRadius: isDragging.value ? 12 : 3,
-      elevation: isDragging.value ? 15 : z.value === 1 ? 1 : 5,
+      shadowOpacity: dragging ? 0.4 : 0.15,
+      shadowRadius: dragging ? 12 : 3,
+      elevation: dragging ? 15 : zVal === 1 ? 1 : 5,
     };
   });
 
@@ -379,14 +378,16 @@ const DraggablePiece = ({
             source={{ uri: imageUrl }}
             style={innerStyle}
             contentFit="cover"
+            cachePolicy="memory-disk"
             transition={200}
+            recyclingKey={`puzzle-${id}`}
           />
           {enabled && <View style={styles.borderOverlay} />}
         </View>
       </Animated.View>
     </GestureDetector>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

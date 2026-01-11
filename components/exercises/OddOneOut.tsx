@@ -23,7 +23,7 @@ interface OddOneOutProps {
   onComplete: (isCorrect?: boolean) => void;
 }
 
-export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
+export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -134,7 +134,7 @@ export default function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

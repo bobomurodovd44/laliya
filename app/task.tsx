@@ -730,11 +730,8 @@ export default function Task() {
       // #endregion
 
       // Start confetti immediately for all answers (both correct and incorrect)
-      // Use requestAnimationFrame to ensure it doesn't block button state update
       if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
-        requestAnimationFrame(() => {
-          confettiRef.current?.start();
-        });
+        confettiRef.current?.start();
       }
 
       // Note: Removed background stage access check after completion
@@ -842,9 +839,142 @@ export default function Task() {
       // Ensure active flag is set before navigation to prevent redirects
       isExerciseActiveRef.current = true;
 
+      // Calculate next order immediately
+      const nextOrder = exerciseOrder + 1;
+      const nextIndex = nextOrder - 1;
+
+      // Navigate IMMEDIATELY for fastest transition - use requestAnimationFrame for instant UI response
+      requestAnimationFrame(() => {
+        router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
+      });
+
+      // Defer all non-critical operations to after navigation completes
+      InteractionManager.runAfterInteractions(() => {
+        // Upload audio for LookAndSay exercise in background (non-blocking)
+        if (
+          currentExercise.type === ExerciseType.LOOK_AND_SAY &&
+          recordedAudioUriRef.current &&
+          user?._id
+        ) {
+          // Fire and forget - don't block navigation
+          (async () => {
+            try {
+              // Get exercise ID from API exercises
+              const currentApiExercise = apiExercises[exerciseOrder - 1];
+              if (!currentApiExercise?._id) {
+                return;
+              }
+
+              // Convert _id to string (it can be string or ObjectId)
+              const exerciseId =
+                typeof currentApiExercise._id === "string"
+                  ? currentApiExercise._id
+                  : String(currentApiExercise._id);
+
+              // Convert user._id to string
+              const userId =
+                typeof user._id === "string" ? user._id : String(user._id);
+
+              const mediaId = await uploadAudioMultipart(
+                recordedAudioUriRef.current!,
+                userId,
+                exerciseId
+              );
+
+              // Save/update answer in answers service if audio upload succeeded
+              if (mediaId) {
+                try {
+                  // Check if answer already exists for this user and exercise
+                  const existingAnswers = await app.service("answers").find({
+                    query: {
+                      userId: userId,
+                      exerciseId: exerciseId,
+                      $limit: 1,
+                    },
+                  });
+
+                  const existingAnswer = Array.isArray(existingAnswers)
+                    ? existingAnswers[0]
+                    : existingAnswers.data?.[0];
+
+                  if (existingAnswer) {
+                    // Update existing answer with new audioId
+                    await app.service("answers").patch(existingAnswer._id, {
+                      audioId: mediaId,
+                    });
+                  } else {
+                    // Create new answer
+                    await app.service("answers").create({
+                      audioId: mediaId,
+                      userId: userId,
+                      exerciseId: exerciseId,
+                    });
+                  }
+                } catch (answerErr) {
+                  // Silent fail - don't block user experience
+                }
+              }
+
+              // Clear recorded URI after upload
+              recordedAudioUriRef.current = null;
+            } catch (err) {
+              // Silent fail - don't block user experience
+            }
+          })();
+        }
+
+        // Update state optimistically for instant display (deferred)
+        if (nextIndex < stageExercises.length && stageExercises.length > 0) {
+          const nextExercise = stageExercises[nextIndex];
+          if (nextExercise) {
+            // Pre-set the next exercise for instant display
+            setCurrentExercise(nextExercise);
+            setIsLastExercise(nextOrder >= stageExercises.length);
+
+            // Set items immediately if available
+            const nextApiExercise = apiExercises[nextIndex];
+            if (nextApiExercise) {
+              const { items: exerciseItems } =
+                mapPopulatedExerciseToExercise(nextApiExercise);
+              setItems(exerciseItems);
+            }
+
+            // Reset completion state for new exercise
+            setIsCompleted(false);
+            setResetKey((prev) => prev + 1);
+            isCompletingRef.current = false;
+            // Clear recorded audio URI when moving to next exercise
+            recordedAudioUriRef.current = null;
+          }
+        }
+      });
+    }
+  }, [
+    isLastExercise,
+    stageId,
+    exerciseOrder,
+    router,
+    currentExercise,
+    updateUserScore,
+    stageExercises,
+    apiExercises,
+    user?._id,
+  ]);
+
+  const handleSubmit = useCallback(() => {
+    // Note: Answer creation is already handled in handleComplete() when user completes the exercise
+    // No need to create it again here - it would be duplicate work
+
+    // Navigate IMMEDIATELY using requestAnimationFrame for instant UI response
+    requestAnimationFrame(() => {
+      router.push("/");
+    });
+
+    // Defer all non-critical operations to after navigation completes
+    InteractionManager.runAfterInteractions(() => {
       // Upload audio for LookAndSay exercise in background (non-blocking)
       if (
-        currentExercise.type === ExerciseType.LOOK_AND_SAY &&
+        currentExercise?.type === ExerciseType.LOOK_AND_SAY &&
         recordedAudioUriRef.current &&
         user?._id
       ) {
@@ -915,177 +1045,54 @@ export default function Task() {
         })();
       }
 
-      // Calculate next order immediately
-      const nextOrder = exerciseOrder + 1;
-
-      // Navigate IMMEDIATELY for fastest transition
-      router.push(`/task?stageId=${stageId}&exerciseOrder=${nextOrder}`);
-
-      // Update state optimistically for instant display (non-blocking)
-      const nextIndex = nextOrder - 1;
-      if (nextIndex < stageExercises.length && stageExercises.length > 0) {
-        const nextExercise = stageExercises[nextIndex];
-        if (nextExercise) {
-          // Pre-set the next exercise for instant display
-          setCurrentExercise(nextExercise);
-          setIsLastExercise(nextOrder >= stageExercises.length);
-
-          // Set items immediately if available
-          const nextApiExercise = apiExercises[nextIndex];
-          if (nextApiExercise) {
-            const { items: exerciseItems } =
-              mapPopulatedExerciseToExercise(nextApiExercise);
-            setItems(exerciseItems);
-          }
-
-          // Reset completion state for new exercise
-          setIsCompleted(false);
-          setResetKey((prev) => prev + 1);
-          isCompletingRef.current = false;
-          // Clear recorded audio URI when moving to next exercise
-          recordedAudioUriRef.current = null;
-        }
+      // Clear exercises cache for this stage to ensure fresh data on return
+      // This prevents showing stale completed exercises when user comes back to this stage
+      if (stageId) {
+        clearExercisesCache(stageId);
       }
-    }
-  }, [
-    isLastExercise,
-    stageId,
-    exerciseOrder,
-    router,
-    currentExercise,
-    updateUserScore,
-    stageExercises,
-    apiExercises,
-    user?._id,
-  ]);
 
-  const handleSubmit = useCallback(() => {
-    // Note: Answer creation is already handled in handleComplete() when user completes the exercise
-    // No need to create it again here - it would be duplicate work
+      // Update currentStageId and level in background (fire and forget)
+      if (stageId && user?._id) {
+        // Fire and forget - don't block navigation
+        (async () => {
+          try {
+            const completedStage = await app.service("stages").get(stageId);
+            let allStages = getCachedStages();
 
-    // Upload audio for LookAndSay exercise in background (non-blocking)
-    if (
-      currentExercise?.type === ExerciseType.LOOK_AND_SAY &&
-      recordedAudioUriRef.current &&
-      user?._id
-    ) {
-      // Fire and forget - don't block navigation
-      (async () => {
-        try {
-          // Get exercise ID from API exercises
-          const currentApiExercise = apiExercises[exerciseOrder - 1];
-          if (!currentApiExercise?._id) {
-            return;
-          }
+            if (!allStages) {
+              // Cache miss - fetch from API
+              const stagesResponse = await app.service("stages").find();
+              allStages = Array.isArray(stagesResponse)
+                ? stagesResponse
+                : (stagesResponse as any).data || [];
+            }
 
-          // Convert _id to string (it can be string or ObjectId)
-          const exerciseId =
-            typeof currentApiExercise._id === "string"
-              ? currentApiExercise._id
-              : String(currentApiExercise._id);
+            // Get user's current stage order (their actual progress)
+            const userCurrentStageOrder = await getUserMaxStageOrder(
+              user.currentStageId
+            );
 
-          // Convert user._id to string
-          const userId =
-            typeof user._id === "string" ? user._id : String(user._id);
+            // Find the next stage by order after the completed stage
+            const nextStage = allStages?.find(
+              (stage: any) => stage.order === completedStage.order + 1
+            );
 
-          const mediaId = await uploadAudioMultipart(
-            recordedAudioUriRef.current!,
-            userId,
-            exerciseId
-          );
-
-          // Save/update answer in answers service if audio upload succeeded
-          if (mediaId) {
-            try {
-              // Check if answer already exists for this user and exercise
-              const existingAnswers = await app.service("answers").find({
-                query: {
-                  userId: userId,
-                  exerciseId: exerciseId,
-                  $limit: 1,
-                },
+            // Only update if nextStage exists AND is ahead of user's current progress
+            // This prevents level from decreasing if user goes back to earlier stages
+            if (nextStage && nextStage.order > userCurrentStageOrder) {
+              const updatedUser = await app.service("users").patch(user._id, {
+                currentStageId: nextStage._id,
               });
 
-              const existingAnswer = Array.isArray(existingAnswers)
-                ? existingAnswers[0]
-                : existingAnswers.data?.[0];
-
-              if (existingAnswer) {
-                // Update existing answer with new audioId
-                await app.service("answers").patch(existingAnswer._id, {
-                  audioId: mediaId,
-                });
-              } else {
-                // Create new answer
-                await app.service("answers").create({
-                  audioId: mediaId,
-                  userId: userId,
-                  exerciseId: exerciseId,
-                });
-              }
-            } catch (answerErr) {
-              // Silent fail - don't block user experience
+              // Update auth store with new user data
+              setAuthenticated(updatedUser);
             }
+          } catch (err) {
+            console.error("Failed to update level:", err);
           }
-
-          // Clear recorded URI after upload
-          recordedAudioUriRef.current = null;
-        } catch (err) {
-          // Silent fail - don't block user experience
-        }
-      })();
-    }
-
-    // Clear exercises cache for this stage to ensure fresh data on return
-    // This prevents showing stale completed exercises when user comes back to this stage
-    if (stageId) {
-      clearExercisesCache(stageId);
-    }
-
-    // Navigate IMMEDIATELY - don't wait for anything
-    router.push("/");
-
-    // Update currentStageId and level in background (fire and forget)
-    if (stageId && user?._id) {
-      // Fire and forget - don't block navigation
-      (async () => {
-        try {
-          const completedStage = await app.service("stages").get(stageId);
-          let allStages = getCachedStages();
-
-          if (!allStages) {
-            // Cache miss - fetch from API
-            const stagesResponse = await app.service("stages").find();
-            allStages = Array.isArray(stagesResponse)
-              ? stagesResponse
-              : (stagesResponse as any).data || [];
-          }
-
-          // Get user's current stage order (their actual progress)
-          const userCurrentStageOrder = await getUserMaxStageOrder(
-            user.currentStageId
-          );
-
-          // Find the next stage by order after the completed stage
-          const nextStage = allStages?.find(
-            (stage: any) => stage.order === completedStage.order + 1
-          );
-
-          // Only update if nextStage exists AND is ahead of user's current progress
-          // This prevents level from decreasing if user goes back to earlier stages
-          if (nextStage && nextStage.order > userCurrentStageOrder) {
-            const updatedUser = await app.service("users").patch(user._id, {
-              currentStageId: nextStage._id,
-            });
-
-            // Update auth store with new user data
-            setAuthenticated(updatedUser);
-          }
-        } catch (err) {
-          console.error("Failed to update level:", err);
-        }
-      })();
-    }
+        })();
+      }
+    });
   }, [
     router,
     currentExercise,
@@ -1173,12 +1180,13 @@ export default function Task() {
 
       <ConfettiCannon
         ref={confettiRef}
-        count={100}
-        origin={{ x: Dimensions.get("window").width / 2, y: -10 }}
+        count={40}
+        origin={{ x: Dimensions.get("window").width / 2, y: -50 }}
         autoStart={false}
         fadeOut={true}
         explosionSpeed={0}
         fallSpeed={3000}
+        colors={['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A']}
       />
     </PageContainer>
   );

@@ -84,7 +84,7 @@ const getRandomColor = (): string => {
   return SHAPE_COLORS[randomIndex];
 };
 
-export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
+export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
   const { t } = useTranslation();
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
@@ -272,7 +272,7 @@ export default function ShapeMatch({ exercise, onComplete }: ShapeMatchProps) {
       </View>
     </View>
   );
-}
+});
 
 // Draggable Original Card
 interface DraggableCardProps {
@@ -286,7 +286,7 @@ interface DraggableCardProps {
   isCompleted: boolean;
 }
 
-function DraggableCard({
+const DraggableCard = React.memo(function DraggableCard({
   item,
   cardSize,
   dropThreshold,
@@ -493,7 +493,7 @@ function DraggableCard({
       </GestureDetector>
     </Animated.View>
   );
-}
+});
 
 // Target Drop Zone (Blurred)
 interface TargetCardProps {
@@ -504,7 +504,7 @@ interface TargetCardProps {
   shapeColor: string;
 }
 
-function TargetCard({
+const TargetCard = React.memo(function TargetCard({
   item,
   cardSize,
   onLayout,
@@ -583,7 +583,7 @@ function TargetCard({
       </Animated.View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

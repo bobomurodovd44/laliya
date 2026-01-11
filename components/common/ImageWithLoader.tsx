@@ -19,7 +19,7 @@ interface ImageWithLoaderProps {
   onError?: () => void;
 }
 
-export default function ImageWithLoader({
+export default React.memo(function ImageWithLoader({
   source,
   style,
   resizeMode = 'cover',
@@ -179,5 +179,4 @@ export default function ImageWithLoader({
       )}
     </View>
   );
-}
-
+});

@@ -31,7 +31,7 @@ interface ListenAndPickProps {
   onComplete: (isCorrect?: boolean) => void;
 }
 
-export default function ListenAndPick({
+export default React.memo(function ListenAndPick({
   exercise,
   onComplete,
 }: ListenAndPickProps) {
@@ -375,7 +375,7 @@ export default function ListenAndPick({
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -482,3 +482,4 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 });
+

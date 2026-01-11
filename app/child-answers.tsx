@@ -18,6 +18,7 @@ import { Colors, Spacing, Typography } from "../constants";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
+import { getCachedAnswers, setCachedAnswers } from "../lib/cache/answers-cache";
 
 interface Answer {
   _id: string;
@@ -80,6 +81,54 @@ export default function ChildAnswers() {
     []
   );
 
+  // Process answers data and group by stages
+  const processAnswersData = useCallback((filteredAnswersData: Answer[]) => {
+    // Group answers by stageId
+    const stageMap = new Map<
+      string,
+      {
+        stageId: string;
+        stageOrder: number;
+        answers: Answer[];
+        latestDate: number;
+      }
+    >();
+
+    filteredAnswersData.forEach((answer: Answer) => {
+      const stageId = answer.exercise?.stageId || answer.exercise?.stage?._id;
+      if (!stageId) return;
+
+      const stageOrder = answer.exercise?.stage?.order || 0;
+      const existing = stageMap.get(stageId);
+
+      if (existing) {
+        existing.answers.push(answer);
+        if (answer.createdAt > existing.latestDate) {
+          existing.latestDate = answer.createdAt;
+        }
+      } else {
+        stageMap.set(stageId, {
+          stageId,
+          stageOrder,
+          answers: [answer],
+          latestDate: answer.createdAt,
+        });
+      }
+    });
+
+    // Convert map to array and sort by stage order
+    const stagesArray: StageGroup[] = Array.from(stageMap.values())
+      .map((group) => ({
+        stageId: group.stageId,
+        stageOrder: group.stageOrder,
+        answerCount: group.answers.length,
+        latestAnswerDate: group.latestDate,
+      }))
+      .sort((a, b) => a.stageOrder - b.stageOrder);
+
+    setStages(stagesArray);
+  }, []);
+
   // Fetch answers and group by stages
   const fetchStages = useCallback(async () => {
     if (!user?._id) {
@@ -89,17 +138,27 @@ export default function ChildAnswers() {
     }
 
     try {
+      const userId = typeof user._id === "string" ? user._id : String(user._id);
+
+      // Check cache first
+      const cachedAnswers = getCachedAnswers(userId);
+      if (cachedAnswers) {
+        // Use cached data - instant load
+        processAnswersData(cachedAnswers);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
-      const userId = typeof user._id === "string" ? user._id : String(user._id);
-
-      // Fetch all look_and_say answers (no pagination limit)
+      // Fetch all answers with population for exercise data
       const response = await app.service("answers").find({
         query: {
           userId: userId,
           $sort: { createdAt: -1 },
-          $limit: 1000, // Large limit to get all answers
+          $limit: 1000,
+          $populate: true, // Need exercise.stage data for grouping
         },
       });
 
@@ -107,62 +166,23 @@ export default function ChildAnswers() {
         ? response
         : response.data || [];
 
-      // Filter to only show look_and_say exercises
+      // Filter to only look_and_say exercises (backend doesn't support nested query)
       const filteredAnswersData = answersData.filter(
         (item: Answer) => item.exercise?.type === "look_and_say"
       );
 
-      // Group answers by stageId
-      const stageMap = new Map<
-        string,
-        {
-          stageId: string;
-          stageOrder: number;
-          answers: Answer[];
-          latestDate: number;
-        }
-      >();
+      // Cache the filtered results
+      setCachedAnswers(userId, filteredAnswersData);
 
-      filteredAnswersData.forEach((answer: Answer) => {
-        const stageId = answer.exercise?.stageId || answer.exercise?.stage?._id;
-        if (!stageId) return;
-
-        const stageOrder = answer.exercise?.stage?.order || 0;
-        const existing = stageMap.get(stageId);
-
-        if (existing) {
-          existing.answers.push(answer);
-          if (answer.createdAt > existing.latestDate) {
-            existing.latestDate = answer.createdAt;
-          }
-        } else {
-          stageMap.set(stageId, {
-            stageId,
-            stageOrder,
-            answers: [answer],
-            latestDate: answer.createdAt,
-          });
-        }
-      });
-
-      // Convert map to array and sort by stage order
-      const stagesArray: StageGroup[] = Array.from(stageMap.values())
-        .map((group) => ({
-          stageId: group.stageId,
-          stageOrder: group.stageOrder,
-          answerCount: group.answers.length,
-          latestAnswerDate: group.latestDate,
-        }))
-        .sort((a, b) => a.stageOrder - b.stageOrder);
-
-      setStages(stagesArray);
+      // Process and display data
+      processAnswersData(filteredAnswersData);
     } catch (err: any) {
       setError(err.message || t("answers.failedToLoadStages"));
       console.error("Error fetching stages:", err);
     } finally {
       setLoading(false);
     }
-  }, [user?._id]);
+  }, [user?._id, processAnswersData, t]);
 
   // Initial load
   useEffect(() => {

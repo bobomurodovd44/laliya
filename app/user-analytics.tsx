@@ -53,41 +53,42 @@ export default function UserAnalytics() {
         const userId =
           typeof user._id === "string" ? user._id : String(user._id);
 
-        // Fetch max stage order
-        const maxStageOrder = await getUserMaxStageOrder(user.currentStageId);
+        // Fetch all data in parallel with error boundary for isolation
+        // This prevents analytics errors from affecting other features
+        const [maxStageOrder, stagesResponse, exercisesResponse, answersResponse] = 
+          await Promise.all([
+            getUserMaxStageOrder(user.currentStageId).catch(() => 0),
+            app.service("stages").find({
+              query: {
+                $sort: { order: 1 },
+                $limit: 1000,
+              },
+            }).catch(() => ({ data: [] })),
+            app.service("exercises").find({
+              query: {
+                $limit: 1000,
+                $select: ["_id", "stageId"],
+              },
+            }).catch(() => ({ data: [] })),
+            app.service("answers").find({
+              query: {
+                userId: userId,
+                $limit: 1000,
+                $populate: false,
+                $select: ["_id", "exerciseId", "isCorrect"],
+              },
+            }).catch(() => ({ data: [] })),
+          ]);
 
-        // Fetch all stages
-        const stagesResponse = await app.service("stages").find({
-          query: {
-            $sort: { order: 1 },
-            $limit: 100,
-          },
-        });
         const stages = Array.isArray(stagesResponse)
           ? stagesResponse
           : stagesResponse.data || [];
-
-        // Fetch all exercises
-        const exercisesResponse = await app.service("exercises").find({
-          query: {
-            $limit: 1000,
-          },
-        });
         const exercises = Array.isArray(exercisesResponse)
           ? exercisesResponse
           : exercisesResponse.data || [];
-
-        // Fetch all user answers
-        const response = await app.service("answers").find({
-          query: {
-            userId: userId,
-            $limit: 1000,
-          },
-        });
-
-        const answersData = Array.isArray(response)
-          ? response
-          : response.data || [];
+        const answersData = Array.isArray(answersResponse)
+          ? answersResponse
+          : answersResponse.data || [];
 
         // Calculate correct answers percentage (treat undefined isCorrect as true)
         const totalAnswers = answersData.length;
@@ -105,30 +106,50 @@ export default function UserAnalytics() {
           availableStages: maxStageOrder,
         });
 
-        // Calculate per-stage analytics
+        // Optimize data processing with Maps for O(1) lookups
+        // Group exercises by stageId
+        const exercisesByStage = new Map<string, any[]>();
+        exercises.forEach((ex: any) => {
+          const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
+          if (!exercisesByStage.has(exStageId)) {
+            exercisesByStage.set(exStageId, []);
+          }
+          exercisesByStage.get(exStageId)!.push(ex);
+        });
+
+        // Create exercise ID to stage ID mapping for fast lookup
+        const exerciseIdToStageId = new Map<string, string>();
+        exercises.forEach((ex: any) => {
+          const exId = typeof ex._id === "string" ? ex._id : String(ex._id);
+          const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
+          exerciseIdToStageId.set(exId, exStageId);
+        });
+
+        // Group answers by stageId using the mapping
+        const answersByStage = new Map<string, any[]>();
+        answersData.forEach((answer: any) => {
+          const answeredExerciseId = typeof answer.exerciseId === "string" 
+            ? answer.exerciseId 
+            : String(answer.exerciseId);
+          const stageId = exerciseIdToStageId.get(answeredExerciseId);
+          if (stageId) {
+            if (!answersByStage.has(stageId)) {
+              answersByStage.set(stageId, []);
+            }
+            answersByStage.get(stageId)!.push(answer);
+          }
+        });
+
+        // Calculate per-stage analytics with optimized lookups
         const stageStats: StageAnalytics[] = stages.map((stage: any) => {
           const stageId = typeof stage._id === "string" ? stage._id : String(stage._id);
           
-          // Get all exercises for this stage
-          const stageExercises = exercises.filter(
-            (ex: any) => {
-              const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
-              return exStageId === stageId;
-            }
-          );
-          
+          // Get exercises for this stage from Map (O(1) lookup)
+          const stageExercises = exercisesByStage.get(stageId) || [];
           const totalExercises = stageExercises.length;
           
-          // Get all answers for exercises in this stage
-          const stageAnswers = answersData.filter((answer: any) => {
-            const answeredExerciseId = typeof answer.exerciseId === "string" 
-              ? answer.exerciseId 
-              : String(answer.exerciseId);
-            return stageExercises.some((ex: any) => {
-              const exId = typeof ex._id === "string" ? ex._id : String(ex._id);
-              return exId === answeredExerciseId;
-            });
-          });
+          // Get answers for this stage from Map (O(1) lookup)
+          const stageAnswers = answersByStage.get(stageId) || [];
           
           // Count unique exercises that have been answered
           const uniqueAnsweredExercises = new Set(
@@ -149,7 +170,7 @@ export default function UserAnalytics() {
           ).length;
           
           // Calculate correct percentage
-          const correctPercentage = completedExercises > 0
+          const correctPercentage = stageAnswers.length > 0
             ? Math.round((correctAnswers / stageAnswers.length) * 100)
             : 0;
           
@@ -166,8 +187,11 @@ export default function UserAnalytics() {
 
         setStageAnalytics(stageStats);
       } catch (error) {
-        console.error("Failed to fetch analytics:", error);
+        // Isolated error handling - won't affect other features
+        console.error("Analytics fetch failed:", error);
         setError(t("errors.generic"));
+        // Early return prevents cache pollution and ensures clean state
+        return;
       } finally {
         setLoading(false);
       }

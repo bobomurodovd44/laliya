@@ -342,8 +342,8 @@ export default function Task() {
 
       const loadExercises = async () => {
         try {
-          // Fetch exercises from API
-          const apiExercises = await fetchExercisesByStageId(stageId);
+          // Fetch exercises from API with context for debugging
+          const apiExercises = await fetchExercisesByStageId(stageId, 'task-page');
 
           if (apiExercises.length === 0) {
             setError(t("exercise.noExercises"));
@@ -1057,7 +1057,8 @@ export default function Task() {
         (async () => {
           try {
             const completedStage = await app.service("stages").get(stageId);
-            let allStages = getCachedStages();
+            // Use 'task' namespace for isolation from index page cache
+            let allStages = getCachedStages('task');
 
             if (!allStages) {
               // Cache miss - fetch from API

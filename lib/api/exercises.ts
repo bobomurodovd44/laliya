@@ -62,13 +62,20 @@ export interface ExercisesResponse {
 /**
  * Fetches exercises for a specific stage from the backend API
  * @param stageId - The ObjectId string of the stage
+ * @param context - Optional context identifier for debugging and isolation
  * @returns Promise<PopulatedExercise[]> Array of populated exercises sorted by order
  * @throws Error if the API request fails
  */
 export const fetchExercisesByStageId = async (
-  stageId: string
+  stageId: string,
+  context?: string
 ): Promise<PopulatedExercise[]> => {
   try {
+    // Log context for debugging if provided
+    if (context && __DEV__) {
+      console.log(`[fetchExercisesByStageId] Context: ${context}, StageId: ${stageId}`);
+    }
+    
     const response = await app.service("exercises").find({
       query: {
         stageId: stageId,
@@ -88,6 +95,9 @@ export const fetchExercisesByStageId = async (
 
     return sortedExercises;
   } catch (error: any) {
+    if (context && __DEV__) {
+      console.error(`[fetchExercisesByStageId] Error in context ${context}:`, error);
+    }
     throw new Error(error.message || "Failed to load exercises");
   }
 };

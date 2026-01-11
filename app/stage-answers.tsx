@@ -6,6 +6,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -20,6 +22,7 @@ import { Colors, Spacing } from "../constants";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
+import { getCachedAnswers, setCachedAnswers } from "../lib/cache/answers-cache";
 
 interface Answer {
   _id: string;
@@ -63,6 +66,7 @@ export default function StageAnswers() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedMark, setSelectedMark] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -73,7 +77,7 @@ export default function StageAnswers() {
   const itemWord = currentAnswer?.exercise?.options?.[0]?.word || "";
 
   // Fetch answers for the stage
-  const fetchAnswers = useCallback(async () => {
+  const fetchAnswers = useCallback(async (skipCache = false) => {
     if (!user?._id || !stageId) {
       setError(t("answers.userNotFound") + " " + t("answers.stageIdNotFound"));
       setLoading(false);
@@ -81,16 +85,35 @@ export default function StageAnswers() {
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       const userId = typeof user._id === "string" ? user._id : String(user._id);
 
+      // Check cache first (unless skipping cache for refresh)
+      if (!skipCache) {
+        const cachedAnswers = getCachedAnswers(userId, stageId);
+        if (cachedAnswers) {
+          // Use cached data - instant load
+          setAnswers(cachedAnswers);
+          if (cachedAnswers.length > 0) {
+            setSelectedMark(cachedAnswers[0].mark ?? 0);
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Show loading only if not refreshing
+      if (!skipCache) {
+        setLoading(true);
+      }
+      setError(null);
+
+      // Fetch answers with population for needed data
       const response = await app.service("answers").find({
         query: {
           userId: userId,
           stageId: stageId,
           $sort: { createdAt: -1 },
+          $populate: true, // Need exercise.options and audio data
         },
       });
 
@@ -98,9 +121,13 @@ export default function StageAnswers() {
         ? response
         : response.data || [];
 
+      // Filter to only look_and_say exercises (backend doesn't support nested query)
       const filteredAnswers = answersData.filter(
         (item: Answer) => item.exercise?.type === "look_and_say"
       );
+
+      // Cache the filtered results
+      setCachedAnswers(userId, filteredAnswers, stageId);
 
       setAnswers(filteredAnswers);
       if (filteredAnswers.length > 0) {
@@ -112,8 +139,15 @@ export default function StageAnswers() {
       console.error("Error fetching answers:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [user?._id, stageId]);
+  }, [user?._id, stageId, t]);
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAnswers(true); // Skip cache to get fresh data
+  }, [fetchAnswers]);
 
   // Reset index when stageId changes
   useEffect(() => {
@@ -337,91 +371,108 @@ export default function StageAnswers() {
     <PageContainer>
       {renderHeader()}
 
-      <View style={[styles.container, { paddingTop: insets.top + 120 }]}>
-        {/* Centered Card Content */}
-        <View style={styles.content}>
-          <View style={styles.card}>
-            {/* Image Area */}
-            <View style={styles.imageContainer}>
-              {imageUrl ? (
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.image}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Body>{t("answers.noImageAvailable")}</Body>
-                </View>
-              )}
-            </View>
-
-            {/* Footer Area: Word + Play Button */}
-            <View style={styles.cardFooter}>
-              <View style={styles.wordContainer}>
-                <Title size="large" style={styles.word} numberOfLines={2}>
-                  {itemWord}
-                </Title>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 120 }]}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+            progressViewOffset={insets.top + 80}
+          />
+        }
+      >
+        <View style={styles.container}>
+          {/* Centered Card Content */}
+          <View style={styles.content}>
+            <View style={styles.card}>
+              {/* Image Area */}
+              <View style={styles.imageContainer}>
+                {imageUrl ? (
+                  <Image
+                    source={{ uri: imageUrl }}
+                    style={styles.image}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Body>{t("answers.noImageAvailable")}</Body>
+                  </View>
+                )}
               </View>
-              <DuoButton
-                title=""
-                onPress={playAnswerAudio}
-                color="blue"
-                size="medium"
-                customSize={70}
-                style={styles.audioButton}
-                icon={isPlaying ? "pause" : "play"}
-                shape="circle"
-                iconSize={32}
+
+              {/* Footer Area: Word + Play Button */}
+              <View style={styles.cardFooter}>
+                <View style={styles.wordContainer}>
+                  <Title size="large" style={styles.word} numberOfLines={2}>
+                    {itemWord}
+                  </Title>
+                </View>
+                <DuoButton
+                  title=""
+                  onPress={playAnswerAudio}
+                  color="blue"
+                  size="medium"
+                  customSize={70}
+                  style={styles.audioButton}
+                  icon={isPlaying ? "pause" : "play"}
+                  shape="circle"
+                  iconSize={32}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Controls */}
+          <View style={styles.controls}>
+            {/* Star Rating */}
+            <View style={styles.ratingContainer}>
+              <StarRating
+                value={selectedMark}
+                onChange={handleMarkChange}
+                size={48}
               />
             </View>
-          </View>
-        </View>
 
-        {/* Bottom Controls */}
-        <View style={styles.controls}>
-          {/* Star Rating */}
-          <View style={styles.ratingContainer}>
-            <StarRating
-              value={selectedMark}
-              onChange={handleMarkChange}
-              size={48}
-            />
-          </View>
-
-          {/* Navigation Buttons */}
-          <View style={styles.navigationButtonsContainer}>
-            {currentIndex > 0 && (
+            {/* Navigation Buttons */}
+            <View style={styles.navigationButtonsContainer}>
+              {currentIndex > 0 && (
+                <View style={styles.buttonWrapper}>
+                  <DuoButton
+                    title=""
+                    onPress={handlePrev}
+                    color="blue"
+                    size="large"
+                    icon="chevron-back"
+                    shape="rectangle"
+                    iconSize={28}
+                  />
+                </View>
+              )}
               <View style={styles.buttonWrapper}>
                 <DuoButton
                   title=""
-                  onPress={handlePrev}
-                  color="blue"
+                  onPress={handleNext}
+                  color="green"
                   size="large"
-                  icon="chevron-back"
+                  icon={
+                    currentIndex < answers.length - 1
+                      ? "chevron-forward"
+                      : "checkmark"
+                  }
                   shape="rectangle"
                   iconSize={28}
                 />
               </View>
-            )}
-            <View style={styles.buttonWrapper}>
-              <DuoButton
-                title=""
-                onPress={handleNext}
-                color="green"
-                size="large"
-                icon={
-                  currentIndex < answers.length - 1
-                    ? "chevron-forward"
-                    : "checkmark"
-                }
-                shape="rectangle"
-                iconSize={28}
-              />
             </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </PageContainer>
   );
 }
@@ -467,19 +518,27 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 48,
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    minHeight: "100%",
+    paddingBottom: Spacing.padding.xxl,
+  },
+  container: {
     width: "100%",
     alignItems: "center",
     justifyContent: "space-between",
     paddingBottom: 20,
+    minHeight: "100%",
   },
   content: {
     width: "100%",
     alignItems: "center",
-    flex: 1,
     justifyContent: "center",
     paddingTop: 20,
+    paddingBottom: 20,
   },
   card: {
     width: "85%",

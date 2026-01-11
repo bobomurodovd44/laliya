@@ -5,6 +5,7 @@ interface CachedExercises {
   exercises: Exercise[];
   apiExercises: PopulatedExercise[];
   timestamp: number;
+  version: number;
 }
 
 // In-memory cache for exercises by stageId
@@ -12,6 +13,9 @@ const exercisesCache = new Map<string, CachedExercises>();
 
 // Cache expiry time: 5 minutes (provides performance benefits during active sessions)
 const CACHE_EXPIRY = 5 * 60 * 1000;
+
+// Cache version - increment this when data structure changes to invalidate old caches
+const CACHE_VERSION = 1;
 
 /**
  * Gets cached exercises for a stage if they exist and are not expired
@@ -21,6 +25,12 @@ const CACHE_EXPIRY = 5 * 60 * 1000;
 export const getCachedExercises = (stageId: string): CachedExercises | null => {
   const cached = exercisesCache.get(stageId);
   if (!cached) return null;
+  
+  // Check if cache version is outdated
+  if (cached.version !== CACHE_VERSION) {
+    exercisesCache.delete(stageId);
+    return null;
+  }
   
   // Check if cache is expired
   const now = Date.now();
@@ -47,6 +57,7 @@ export const setCachedExercises = (
     exercises,
     apiExercises,
     timestamp: Date.now(),
+    version: CACHE_VERSION,
   });
 };
 

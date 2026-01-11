@@ -17,12 +17,23 @@ export interface StagesResponse {
 
 /**
  * Fetches all stages from the backend API
+ * @param context - Optional context identifier for debugging and isolation
  * @returns Promise<Stage[]> Array of stages sorted by order
  * @throws Error if the API request fails
  */
-export const fetchStages = async (): Promise<Stage[]> => {
+export const fetchStages = async (context?: string): Promise<Stage[]> => {
   try {
-    const response = await app.service("stages").find();
+    // Log context for debugging if provided
+    if (context && __DEV__) {
+      console.log(`[fetchStages] Context: ${context}`);
+    }
+    
+    const response = await app.service("stages").find({
+      query: {
+        $limit: 1000,
+        $sort: { order: 1 }
+      }
+    });
     
     // Handle both paginated and non-paginated responses
     const stagesData: Stage[] = Array.isArray(response) 
@@ -34,6 +45,9 @@ export const fetchStages = async (): Promise<Stage[]> => {
     
     return sortedStages;
   } catch (error: any) {
+    if (context && __DEV__) {
+      console.error(`[fetchStages] Error in context ${context}:`, error);
+    }
     throw new Error(error.message || "Failed to load stages");
   }
 };

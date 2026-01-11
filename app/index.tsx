@@ -21,7 +21,6 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing, Typography } from "../constants";
 import { exercises } from "../data/data";
 import { fetchStages, Stage } from "../lib/api/stages";
-import { getCachedExercises } from "../lib/cache/exercises-cache";
 import { getCachedStages, setCachedStages } from "../lib/cache/stages-cache";
 import { imagePreloader } from "../lib/image-preloader";
 import { useTranslation } from "../lib/localization";
@@ -122,8 +121,8 @@ export default function Index() {
   const loadStages = useCallback(async (skipCache = false) => {
     try {
       if (!skipCache) {
-        // Check cache first (only on initial load)
-        const cachedStages = getCachedStages();
+        // Check cache first (only on initial load) - use 'index' namespace for isolation
+        const cachedStages = getCachedStages('index');
         if (cachedStages) {
           // Use cached data - no loading needed
           setStages(cachedStages);
@@ -138,10 +137,10 @@ export default function Index() {
         setLoading(true);
       }
       setError(null);
-      const stagesData = await fetchStages();
+      const stagesData = await fetchStages('index-page');
 
-      // Cache the stages
-      setCachedStages(stagesData);
+      // Cache the stages in 'index' namespace for isolation
+      setCachedStages(stagesData, 'index');
 
       setStages(stagesData);
     } catch (err: any) {
@@ -203,12 +202,8 @@ export default function Index() {
         return;
       }
 
-      // Clear exercises cache for this stage to force fresh fetch
-      // This ensures new exercises added to backend are immediately visible
-      const { clearExercisesCache } = require("../lib/cache/exercises-cache");
-      clearExercisesCache(stageId);
-
-      // Navigate IMMEDIATELY - task.tsx will handle fetching fresh data
+      // Navigate IMMEDIATELY - task.tsx will handle its own cache management
+      // Removed cross-feature cache clearing to prevent interference
       router.push(`/task?stageId=${stageId}&exerciseOrder=1`);
     },
     [lessons, router]

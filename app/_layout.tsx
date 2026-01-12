@@ -7,7 +7,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Tabs, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -68,19 +68,20 @@ function RootLayoutNav() {
 
     const checkChildMeta = async () => {
       if (isAuthenticated && user?._id) {
-        const currentPath = segments[0] || "";
+        const currentPath = segments[0];
         const previousPath = currentPathRef.current;
-        currentPathRef.current = currentPath;
+        currentPathRef.current = currentPath ?? "";
 
         // ONLY check on index page (home page)
+        // When on the index/home route, segments[0] is undefined
         // Skip all other pages including task, add-child, profile, etc.
-        if (currentPath !== "index" && currentPath !== "") {
+        if (currentPath) {
           return;
         }
 
         // Only check when we just arrived at index (path changed to index)
         // Don't check if we're already on index (prevents re-checking on state updates)
-        if (previousPath === "index") {
+        if (previousPath === "") {
           return;
         }
 
@@ -113,9 +114,9 @@ function RootLayoutNav() {
           borderTopColor: "#F0F0F0",
           elevation: 0,
           shadowOpacity: 0,
-          height: 70 + insets.bottom,
-          paddingBottom: insets.bottom,
-          paddingTop: 20,
+          height: 90 + insets.bottom,
+          paddingBottom: insets.bottom + 10,
+          paddingTop: 25,
         },
         sceneStyle: {
           backgroundColor: "transparent",

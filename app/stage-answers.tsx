@@ -4,11 +4,11 @@ import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    Alert,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DuoButton } from "../components/DuoButton";
@@ -17,7 +17,6 @@ import { LoadingSpinner } from "../components/LoadingSpinner";
 import StarRating from "../components/StarRating";
 import { Body, Title } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
-import { getCachedAnswers, setCachedAnswers } from "../lib/cache/answers-cache";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
@@ -85,20 +84,7 @@ export default function StageAnswers() {
     try {
       const userId = typeof user._id === "string" ? user._id : String(user._id);
 
-      // Check cache first (unless skipping cache for refresh)
-      if (!skipCache) {
-        const cachedAnswers = getCachedAnswers(userId, stageId);
-        if (cachedAnswers) {
-          // Use cached data - instant load
-          setAnswers(cachedAnswers);
-          if (cachedAnswers.length > 0) {
-            setSelectedMark(cachedAnswers[0].mark ?? 0);
-          }
-          setLoading(false);
-          return;
-        }
-      }
-
+      // Always fetch fresh data from backend (no cache)
       // Show loading only if not refreshing
       if (!skipCache) {
         setLoading(true);
@@ -123,9 +109,6 @@ export default function StageAnswers() {
       const filteredAnswers = answersData.filter(
         (item: Answer) => item.exercise?.type === "look_and_say"
       );
-
-      // Cache the filtered results
-      setCachedAnswers(userId, filteredAnswers, stageId);
 
       setAnswers(filteredAnswers);
       if (filteredAnswers.length > 0) {
@@ -227,6 +210,23 @@ export default function StageAnswers() {
     }
 
     try {
+      // Check permissions before playing
+      if (Platform.OS !== "web") {
+        const { status } = await Audio.getPermissionsAsync();
+
+        if (status !== "granted") {
+          const { status: newStatus } = await Audio.requestPermissionsAsync();
+
+          if (newStatus !== "granted") {
+            Alert.alert(
+              t("answers.permissionRequired"),
+              t("answers.audioPermissionMessage")
+            );
+            return;
+          }
+        }
+      }
+
       // Unload any prior sound
       if (sound) {
         try {
@@ -234,14 +234,41 @@ export default function StageAnswers() {
         } catch (e) {}
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync({
-        uri: audioUrl,
-      });
+      // Set audio mode for playback - ensure it plays even in silent mode
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          // Android specific: ensure audio plays through speaker/headphones
+          shouldDuckAndroid: false, // Don't duck other audio
+        });
+      } catch (audioModeError) {
+        // Continue anyway - might still work
+        console.warn("Audio mode configuration failed:", audioModeError);
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true }
+      );
       setSound(newSound);
       setIsPlaying(true);
-      await newSound.playAsync();
+
+      // Get initial status
+      const status = await newSound.getStatusAsync();
+
+      if (status.isLoaded) {
+        if (status.shouldPlay && !status.isPlaying) {
+          await newSound.playAsync();
+        } else if (!status.shouldPlay) {
+          await newSound.playAsync();
+        }
+      }
 
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (isUnmountingRef.current) return;
+
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -249,9 +276,14 @@ export default function StageAnswers() {
     } catch (error) {
       setIsPlaying(false);
       setSound(null);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("Error playing audio:", error);
+      Alert.alert(
+        t("answers.audioPlayError") || "Audio Error",
+        t("answers.audioPlayErrorMessage") || `Failed to play audio: ${errorMessage}`
+      );
     }
-  }, [currentAnswer, sound, isPlaying]);
+  }, [currentAnswer, sound, isPlaying, t]);
 
   // Save mark helper function
   const saveMark = useCallback(async (answer: Answer, mark: number) => {

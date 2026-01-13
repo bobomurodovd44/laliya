@@ -1057,39 +1057,56 @@ export default function Task() {
         (async () => {
           try {
             const completedStage = await app.service("stages").get(stageId);
+            
             // Use 'task' namespace for isolation from index page cache
             let allStages = getCachedStages('task');
 
             if (!allStages) {
-              // Cache miss - fetch from API
-              const stagesResponse = await app.service("stages").find();
+              // Cache miss - fetch from API with high limit to get all stages
+              const stagesResponse = await app.service("stages").find({
+                query: {
+                  $limit: 100, // Fetch all stages (default is 10)
+                  $sort: { order: 1 }
+                }
+              });
               allStages = Array.isArray(stagesResponse)
                 ? stagesResponse
                 : (stagesResponse as any).data || [];
             }
+            
 
             // Get user's current stage order (their actual progress)
             const userCurrentStageOrder = await getUserMaxStageOrder(
               user.currentStageId
             );
+            
 
             // Find the next stage by order after the completed stage
             const nextStage = allStages?.find(
               (stage: any) => stage.order === completedStage.order + 1
             );
+            
 
             // Only update if nextStage exists AND is ahead of user's current progress
             // This prevents level from decreasing if user goes back to earlier stages
             if (nextStage && nextStage.order > userCurrentStageOrder) {
-              const updatedUser = await app.service("users").patch(user._id, {
+              
+              const patchResponse = await app.service("users").patch(user._id, {
                 currentStageId: nextStage._id,
               });
 
+              // Handle both array and single object responses
+              const updatedUser = Array.isArray(patchResponse) 
+                ? patchResponse[0] 
+                : patchResponse;
+
+
               // Update auth store with new user data
               setAuthenticated(updatedUser);
+            } else {
             }
           } catch (err) {
-            console.error("Failed to update level:", err);
+            console.error("❌ Failed to update level:", err);
           }
         })();
       }

@@ -1,20 +1,20 @@
 import * as Haptics from "expo-haptics";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
 } from "react-native-reanimated";
 import { Colors, Spacing, Typography } from "../../constants";
 import { categories, Exercise, Item } from "../../data/data";
@@ -32,14 +32,17 @@ interface SortAndGroupProps {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// Calculate card size for center grid (2x2)
-const getCardSize = () => {
-  const containerPadding = 32;
+// Calculate card size for center grid (up to 3x2)
+const getCardSize = (itemCount: number) => {
+  const containerPadding = 48; // Match styles.container padding (24 * 2)
   const gap = 16;
+  const numColumns = itemCount > 4 ? 3 : 2;
   const availableWidth = SCREEN_WIDTH - containerPadding;
-  const calculatedSize = Math.floor((availableWidth - gap) / 2);
+  const calculatedSize = Math.floor(
+    (availableWidth - (numColumns - 1) * gap) / numColumns
+  );
   const minSize = 90;
-  const maxSize = 120;
+  const maxSize = numColumns === 3 ? 100 : 120;
   return Math.max(minSize, Math.min(calculatedSize, maxSize));
 };
 
@@ -104,20 +107,12 @@ export default React.memo(function SortAndGroup({
   // #endregion
 
   const { t } = useTranslation();
-  const CARD_SIZE = useMemo(() => getCardSize(), []);
-  const CATEGORY_CARD_SIZE = useMemo(
-    () => getCategoryCardSize(CARD_SIZE),
-    [CARD_SIZE]
-  );
-  const DROP_THRESHOLD = CARD_SIZE * 0.7;
 
   // Get items for this exercise
   const exerciseItems = useMemo(() => {
     const foundItems = exercise.optionIds
       .map((id) => items.find((item) => item.id === id))
       .filter((item): item is Item => item !== undefined);
-
-    // Log all item details for debugging
 
     // Log if some items weren't found
     if (foundItems.length !== exercise.optionIds.length) {
@@ -133,6 +128,13 @@ export default React.memo(function SortAndGroup({
 
     return foundItems;
   }, [exercise.optionIds]);
+
+  const CARD_SIZE = useMemo(() => getCardSize(exerciseItems.length), [exerciseItems.length]);
+  const CATEGORY_CARD_SIZE = useMemo(
+    () => getCategoryCardSize(CARD_SIZE),
+    [CARD_SIZE]
+  );
+  const DROP_THRESHOLD = CARD_SIZE * 0.7;
 
   // Group items by category
   const categoryGroups = useMemo(() => {
@@ -200,13 +202,13 @@ export default React.memo(function SortAndGroup({
       ];
     }
 
-    // Validate: total options must be 2-4
-    if (totalOptions < 2 || totalOptions > 4) {
+    // Validate: total options must be 2-6
+    if (totalOptions < 2 || totalOptions > 6) {
       return [
         null,
         null,
         false,
-        t("exercise.expectedTwoToFourOptions", { found: totalOptions }),
+        t("exercise.expectedTwoToSixOptions", { found: totalOptions }),
       ];
     }
 
@@ -482,8 +484,8 @@ export default React.memo(function SortAndGroup({
     // Increment wrong drop counter
     wrongDropCountRef.current += 1;
 
-    // Call onComplete(false) after 4 wrong drops to show confetti celebration
-    if (wrongDropCountRef.current >= 4 && !isCompletedRef.current) {
+    // Call onComplete(false) after 6 wrong drops to show confetti celebration
+    if (wrongDropCountRef.current >= 6 && !isCompletedRef.current) {
       isCompletedRef.current = true;
       onCompleteRef.current(false);
     }
@@ -549,7 +551,17 @@ export default React.memo(function SortAndGroup({
 
       {/* Center Grid - Draggable Items */}
       <View style={styles.centerSection}>
-        <View style={[styles.grid, { width: CARD_SIZE * 2 + 16 }]}>
+        <View
+          style={[
+            styles.grid,
+            {
+              width:
+                exerciseItems.length > 4
+                  ? CARD_SIZE * 3 + 32
+                  : CARD_SIZE * 2 + 16,
+            },
+          ]}
+        >
           {shuffledItems.map((item) => {
             const placement = itemPlacements.get(item.id);
             // Only show in center if not placed in a category
@@ -733,42 +745,61 @@ const DraggableCard = React.memo(function DraggableCard({
   };
 
   const checkDropAndHandle = useCallback(
-    (finalX: number, finalY: number) => {
+    (absoluteX: number, absoluteY: number) => {
       if (isCompletedRef.current) {
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
         return;
       }
 
-      const currentX = startPositionRef.current.x + finalX + cardSize / 2;
-      const currentY = startPositionRef.current.y + finalY + cardSize / 2;
+      const currentX = absoluteX;
+      const currentY = absoluteY;
 
       const topCategory = topCategoryPositionRef.current;
       const bottomCategory = bottomCategoryPositionRef.current;
 
       let bestMatch: { categoryId: number; distance: number } | null = null;
 
+      // Improved drop detection: Check if touch point is inside the category rectangle
+      // Fallback to center distance for better UX near edges
+
       // Check top category
       if (topCategory) {
+        const isInside =
+          currentX >= topCategory.x &&
+          currentX <= topCategory.x + topCategory.width &&
+          currentY >= topCategory.y &&
+          currentY <= topCategory.y + topCategory.height;
+
         const centerX = topCategory.x + topCategory.width / 2;
         const centerY = topCategory.y + topCategory.height / 2;
         const dist = Math.sqrt(
           Math.pow(currentX - centerX, 2) + Math.pow(currentY - centerY, 2)
         );
-        if (dist < dropThreshold) {
+
+        if (isInside || dist < dropThreshold) {
           bestMatch = { categoryId: topCategoryId, distance: dist };
         }
       }
 
       // Check bottom category
       if (bottomCategory) {
+        const isInside =
+          currentX >= bottomCategory.x &&
+          currentX <= bottomCategory.x + bottomCategory.width &&
+          currentY >= bottomCategory.y &&
+          currentY <= bottomCategory.y + bottomCategory.height;
+
         const centerX = bottomCategory.x + bottomCategory.width / 2;
         const centerY = bottomCategory.y + bottomCategory.height / 2;
         const dist = Math.sqrt(
           Math.pow(currentX - centerX, 2) + Math.pow(currentY - centerY, 2)
         );
-        if (dist < dropThreshold && (!bestMatch || dist < bestMatch.distance)) {
-          bestMatch = { categoryId: bottomCategoryId, distance: dist };
+
+        if (isInside || dist < dropThreshold) {
+          if (!bestMatch || dist < bestMatch.distance) {
+            bestMatch = { categoryId: bottomCategoryId, distance: dist };
+          }
         }
       }
 
@@ -805,7 +836,6 @@ const DraggableCard = React.memo(function DraggableCard({
     [
       item.id,
       item.categoryId,
-      cardSize,
       dropThreshold,
       topCategoryId,
       bottomCategoryId,
@@ -827,7 +857,7 @@ const DraggableCard = React.memo(function DraggableCard({
       .onEnd((e) => {
         scale.value = withSpring(1, { damping: 15 });
         zIndex.value = 1;
-        runOnJS(checkDropAndHandle)(e.translationX, e.translationY);
+        runOnJS(checkDropAndHandle)(e.absoluteX, e.absoluteY);
       });
   }, [checkDropAndHandle]);
 
@@ -938,6 +968,7 @@ const styles = StyleSheet.create({
   },
   dropZoneItems: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.gap.sm,
     justifyContent: "center",
     alignItems: "center",

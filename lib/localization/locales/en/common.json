@@ -82,10 +82,10 @@
     "audioModeError": "Audio Mode Error",
     "audioModeErrorMessage": "Failed to configure audio mode for recording. Please try again.",
     "sortAndGroup": "Sort and Group",
-    "invalidExercise": "Invalid exercise: Need exactly 2 categories with 2-4 total options (at least 1 per category)",
+    "invalidExercise": "Invalid exercise: Need exactly 2 categories with 2-6 total options (at least 1 per category)",
     "categoryDetails": "Category {{id}}: {{count}} item(s)",
     "expectedTwoCategories": "Expected 2 categories, found {{found}}. {{details}}. All items must belong to exactly 2 different categories.",
-    "expectedTwoToFourOptions": "Expected 2-4 options, found {{found}}",
+    "expectedTwoToSixOptions": "Expected 2-6 options, found {{found}}",
     "categoryItemCount": "Category 1 has {{cat1Count}} items, Category 2 has {{cat2Count}} items"
   },
   "profile": {

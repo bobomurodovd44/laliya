@@ -82,10 +82,10 @@
     "audioModeError": "Audio rejimi xatosi",
     "audioModeErrorMessage": "Yozish uchun audio rejimini sozlash muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
     "sortAndGroup": "Saralash va guruhlash",
-    "invalidExercise": "Noto'g'ri mashq: Aynan 2 ta kategoriya va jami 2-4 ta variant kerak (har bir kategoriyada kamida 1 ta)",
+    "invalidExercise": "Noto'g'ri mashq: Aynan 2 ta kategoriya va jami 2-6 ta variant kerak (har bir kategoriyada kamida 1 ta)",
     "categoryDetails": "Kategoriya {{id}}: {{count}} ta element",
     "expectedTwoCategories": "2 ta kategoriya kutilgan, {{found}} ta topildi. {{details}}. Barcha elementlar aynan 2 ta turli kategoriyaga tegishli bo'lishi kerak.",
-    "expectedTwoToFourOptions": "2-4 ta variant kutilgan, {{found}} ta topildi",
+    "expectedTwoToSixOptions": "2-6 ta variant kutilgan, {{found}} ta topildi",
     "categoryItemCount": "Kategoriya 1 da {{cat1Count}} ta element, Kategoriya 2 da {{cat2Count}} ta element"
   },
   "profile": {

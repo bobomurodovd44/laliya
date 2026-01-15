@@ -1,4 +1,5 @@
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { Ionicons } from "@expo/vector-icons";
+import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -39,8 +40,10 @@ export default React.memo(function ListenAndPick({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [questionSound, setQuestionSound] = useState<any>(null);
+  const [optionSound, setOptionSound] = useState<any>(null);
 
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
@@ -59,15 +62,64 @@ export default React.memo(function ListenAndPick({
     return () => {
       isUnmountingRef.current = true;
       if (sound) {
-        // Remove status update listener before cleanup to prevent false errors
         sound.setOnPlaybackStatusUpdate(null);
-        // Cleanup sound on unmount - suppress any errors
-        sound.unloadAsync().catch(() => {
-          // Silently ignore cleanup errors - they're expected during unmount
-        });
+        sound.unloadAsync().catch(() => {});
+      }
+      if (questionSound) {
+        questionSound.setOnPlaybackStatusUpdate(null);
+        questionSound.unloadAsync().catch(() => {});
+      }
+      if (optionSound) {
+        optionSound.setOnPlaybackStatusUpdate(null);
+        optionSound.unloadAsync().catch(() => {});
       }
     };
-  }, [sound]);
+  }, [sound, questionSound, optionSound]);
+
+  const playOptionAudio = async (audioUrl: string | undefined) => {
+    if (!audioUrl) return;
+
+    try {
+      if (optionSound) {
+        try {
+          await optionSound.stopAsync();
+          await optionSound.unloadAsync();
+        } catch (e) {}
+        setOptionSound(null);
+      }
+
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true }
+      );
+      setOptionSound(newSound);
+    } catch (error) {
+      console.error("Failed to play option audio:", error);
+    }
+  };
+
+  const playQuestionAudio = async () => {
+    if (!exercise.questionAudioUrl) return;
+
+    try {
+      if (questionSound) {
+        try {
+          await questionSound.stopAsync();
+          await questionSound.unloadAsync();
+        } catch (e) {}
+        setQuestionSound(null);
+      }
+
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: exercise.questionAudioUrl },
+        { shouldPlay: true }
+      );
+
+      setQuestionSound(newSound);
+    } catch (error) {
+      console.error("Failed to play question audio:", error);
+    }
+  };
 
   // Shuffle items when exercise changes
   useEffect(() => {
@@ -143,10 +195,10 @@ export default React.memo(function ListenAndPick({
     try {
       // Check permissions before playing
       if (Platform.OS !== "web") {
-        const { status } = await Audio.getPermissionsAsync();
+        const { status } = await (ExpoAudio as any).getPermissionsAsync();
 
         if (status !== "granted") {
-          const { status: newStatus } = await Audio.requestPermissionsAsync();
+          const { status: newStatus } = await (ExpoAudio as any).requestPermissionsAsync();
 
           if (newStatus !== "granted") {
             Alert.alert(
@@ -173,7 +225,7 @@ export default React.memo(function ListenAndPick({
 
       // Set audio mode for playback - ensure it plays even in silent mode
       try {
-        await Audio.setAudioModeAsync({
+        await (ExpoAudio as any).setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
           staysActiveInBackground: false,
@@ -184,7 +236,7 @@ export default React.memo(function ListenAndPick({
         // Continue anyway - might still work
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true }
       );
@@ -300,14 +352,14 @@ export default React.memo(function ListenAndPick({
 
   // Validation: Check if all options have imageUrl
   const optionsWithoutImages = shuffledItems.filter(
-    (item) => !item.imageUrl || item.imageUrl.trim() === ""
+    (item: Item) => !item.imageUrl || item.imageUrl.trim() === ""
   );
   if (optionsWithoutImages.length > 0) {
     return (
       <View style={styles.container}>
         <Body style={styles.errorText}>
           Some options are missing images (IDs:{" "}
-          {optionsWithoutImages.map((i) => i.id).join(", ")})
+          {optionsWithoutImages.map((i: Item) => i.id).join(", ")})
         </Body>
       </View>
     );
@@ -315,12 +367,27 @@ export default React.memo(function ListenAndPick({
 
   return (
     <View style={styles.container}>
-      <Title size="large" style={styles.title}>
+      <Title size="small" style={styles.title}>
         {t('exercise.listenAndPick')}
       </Title>
-      <Body size="large" style={styles.question}>
-        {exercise.question}
-      </Body>
+      <View style={styles.questionContainer}>
+        <Body size="large" style={styles.question}>
+          {exercise.question}
+        </Body>
+        {exercise.questionAudioUrl && (
+          <DuoButton
+            title=""
+            onPress={playQuestionAudio}
+            color="blue"
+            size="medium"
+            customSize={54}
+            style={styles.audioButton}
+            icon="play"
+            shape="circle"
+            iconSize={26}
+          />
+        )}
+      </View>
 
       {/* Answer Item Card with Audio */}
       <View style={styles.answerCard}>
@@ -343,7 +410,7 @@ export default React.memo(function ListenAndPick({
       {/* Option Cards Grid */}
       <View style={styles.content}>
         <View style={styles.grid}>
-          {shuffledItems.map((item) => {
+          {shuffledItems.map((item: Item) => {
             const isSelected = selectedId === item.id;
 
             return (
@@ -366,6 +433,17 @@ export default React.memo(function ListenAndPick({
                       style={styles.image}
                       resizeMode="cover"
                     />
+                  )}
+                  {item.audioUrl && (
+                    <TouchableOpacity
+                      style={styles.optionAudioButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        playOptionAudio(item.audioUrl);
+                      }}
+                    >
+                      <Ionicons name="play" size={24} color="white" />
+                    </TouchableOpacity>
                   )}
                 </TouchableOpacity>
               </Animated.View>
@@ -390,11 +468,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: -20,
   },
+  questionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    gap: 12,
+    width: "100%",
+  },
   question: {
     color: "#666",
     textAlign: "center",
-    marginBottom: 24,
     maxWidth: "80%",
+    fontSize: 28,
   },
   answerCard: {
     width: "90%",
@@ -440,7 +526,6 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    overflow: "hidden",
     borderWidth: 2,
     borderColor: "#E8E8E8",
     shadowColor: "#000",
@@ -466,6 +551,25 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  optionAudioButton: {
+    position: "absolute",
+    top: -12,
+    right: -12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FF4B4B",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   imageCardWrong: {
     borderColor: "#FF4B4B", // Match DuoButton red scheme
     borderWidth: 6,
@@ -474,6 +578,7 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+    borderRadius: 18,
   },
   errorText: {
     fontSize: 16,

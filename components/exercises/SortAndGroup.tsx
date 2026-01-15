@@ -1,3 +1,4 @@
+import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, {
     useCallback,
@@ -21,6 +22,7 @@ import { categories, Exercise, Item } from "../../data/data";
 import { PopulatedExercise } from "../../lib/api/exercises";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
+import { DuoButton } from "../DuoButton";
 import { Body } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 
@@ -68,6 +70,64 @@ export default React.memo(function SortAndGroup({
 }: SortAndGroupProps) {
   // #region agent log
   const componentId = useRef(Math.random().toString(36).substr(2, 9));
+  const [sound, setSound] = useState<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.setOnPlaybackStatusUpdate(null);
+        sound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [sound]);
+
+  const playQuestionAudio = async () => {
+    if (!exercise.questionAudioUrl) return;
+
+    try {
+      if (sound) {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await sound.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            // If finished, replay from start
+            if (status.positionMillis === status.durationMillis) {
+              await sound.setPositionAsync(0);
+            }
+            await sound.playAsync();
+            setIsPlaying(true);
+          }
+          return;
+        }
+        await sound.unloadAsync();
+        setSound(null);
+      }
+
+      setIsPlaying(true);
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: exercise.questionAudioUrl },
+        { shouldPlay: true }
+      );
+
+      setSound(newSound);
+      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (status.isLoaded) {
+          setIsPlaying(status.isPlaying);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        }
+      });
+    } catch (error) {
+      setIsPlaying(false);
+      console.error("Failed to play question audio:", error);
+    }
+  };
+
   useEffect(() => {
     fetch("http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2", {
       method: "POST",
@@ -534,9 +594,24 @@ export default React.memo(function SortAndGroup({
 
   return (
     <View style={styles.container}>
-      <Body size="large" style={styles.question}>
-        {exercise.question}
-      </Body>
+      <View style={styles.questionContainer}>
+        <Body size="large" style={styles.question}>
+          {exercise.question}
+        </Body>
+        {exercise.questionAudioUrl && (
+          <DuoButton
+            title=""
+            onPress={playQuestionAudio}
+            color="blue"
+            size="medium"
+            customSize={54}
+            style={styles.audioButton}
+            icon={isPlaying ? "pause" : "volume-high"}
+            shape="circle"
+            iconSize={26}
+          />
+        )}
+      </View>
 
       {/* Top Category Section */}
       <View style={styles.categorySection}>
@@ -920,13 +995,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: -20,
   },
+  questionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    gap: 12,
+    width: "100%",
+  },
   question: {
     color: "#666",
     textAlign: "center",
-    marginBottom: 24,
     maxWidth: "80%",
-    alignSelf: "center",
-    fontSize: 24,
+    fontSize: 28,
+  },
+  audioButton: {
+    // Styling for the audio button if needed beyond DuoButton props
   },
   categorySection: {
     marginVertical: Spacing.margin.sm,

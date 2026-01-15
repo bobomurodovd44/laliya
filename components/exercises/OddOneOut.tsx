@@ -1,3 +1,4 @@
+import { Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
@@ -5,6 +6,7 @@ import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
+import { DuoButton } from "../DuoButton";
 import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 
@@ -31,6 +33,11 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
 
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
+
+  // Ref to track if component is unmounting to avoid false errors
+  const isUnmountingRef = useRef(false);
+
+  const [questionSound, setQuestionSound] = useState<any>(null);
 
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
@@ -65,6 +72,40 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
     setShuffledItems(shuffled);
   }, [exercise.optionIds]);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+      if (questionSound) {
+        questionSound.setOnPlaybackStatusUpdate(null);
+        questionSound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [questionSound]);
+
+  const playQuestionAudio = async () => {
+    if (!exercise.questionAudioUrl) return;
+
+    try {
+      if (questionSound) {
+        try {
+          await questionSound.stopAsync();
+          await questionSound.unloadAsync();
+        } catch (e) {}
+        setQuestionSound(null);
+      }
+
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: exercise.questionAudioUrl },
+        { shouldPlay: true }
+      );
+
+      setQuestionSound(newSound);
+    } catch (error) {
+      console.error("Failed to play question audio:", error);
+    }
+  };
+
   const handleSelect = useCallback(
     (itemId: number) => {
       // If already completed, do nothing
@@ -93,12 +134,27 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
 
   return (
     <View style={styles.container}>
-      <Title size="large" style={styles.title}>
+      <Title size="small" style={styles.title}>
         {t("exercise.oddOneOut")}
       </Title>
-      <Body size="large" style={styles.question}>
-        {exercise.question}
-      </Body>
+      <View style={styles.questionContainer}>
+        <Body size="large" style={styles.question}>
+          {exercise.question}
+        </Body>
+        {exercise.questionAudioUrl && (
+          <DuoButton
+            title=""
+            onPress={playQuestionAudio}
+            color="blue"
+            size="medium"
+            customSize={54}
+            style={styles.audioButton}
+            icon="play"
+            shape="circle"
+            iconSize={26}
+          />
+        )}
+      </View>
 
       <View style={styles.content}>
         <View style={styles.grid}>
@@ -150,12 +206,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 0,
   },
+  questionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    gap: 12,
+    width: "100%",
+  },
   question: {
     color: "#666",
     textAlign: "center",
-    marginBottom: 32,
     maxWidth: "80%",
-    fontSize: 20,
+    fontSize: 28,
+  },
+  audioButton: {
+    // Styling for audio button
   },
   content: {
     width: "100%",

@@ -1,10 +1,10 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -23,14 +23,14 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import { Exercise, ExerciseType } from "../data/data";
 import {
-    fetchExercisesByStageId,
-    mapPopulatedExerciseToExercise,
-    PopulatedExercise,
+  fetchExercisesByStageId,
+  mapPopulatedExerciseToExercise,
+  PopulatedExercise,
 } from "../lib/api/exercises";
 import {
-    clearExercisesCache,
-    getCachedExercises,
-    setCachedExercises,
+  clearExercisesCache,
+  getCachedExercises,
+  setCachedExercises,
 } from "../lib/cache/exercises-cache";
 import { getCachedStages } from "../lib/cache/stages-cache";
 import app from "../lib/feathers/feathers-client";
@@ -40,8 +40,8 @@ import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
 import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 import {
-    checkStageAccess,
-    getUserMaxStageOrder,
+  checkStageAccess,
+  getUserMaxStageOrder,
 } from "../lib/utils/stage-access";
 
 export default function Task() {
@@ -597,7 +597,6 @@ export default function Task() {
     async (exerciseId: string, tryCount: number = 0) => {
       if (!user?._id) return;
 
-      console.log(`[createOrUpdateAnswer] exerciseId: ${exerciseId}, try_count: ${tryCount}`);
 
       try {
         const userId =
@@ -639,7 +638,6 @@ export default function Task() {
 
   const handleComplete = useCallback(
     async (isCorrect: boolean = true, tryCount: number = 0) => {
-      console.log(`[handleComplete] isCorrect: ${isCorrect}, tryCount: ${tryCount}`);
       // #region agent log
       fetch(
         "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",

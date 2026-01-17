@@ -123,7 +123,6 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
         setIsCorrect(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        console.log(`[OddOneOut] Correct! Final tryCount: ${tryCount}`);
         // Call onComplete with isCorrect = true and the current tryCount
         onComplete(true, tryCount);
       } else {
@@ -133,7 +132,6 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
         // Increment tryCount on wrong answer
         setTryCount(prev => {
           const next = prev + 1;
-          console.log(`[OddOneOut] Wrong answer! New tryCount: ${next}`);
           return next;
         });
 

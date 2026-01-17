@@ -3,11 +3,11 @@ import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Platform,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
@@ -312,7 +312,6 @@ export default React.memo(function ListenAndPick({
         setIsCorrect(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        console.log(`[ListenAndPick] Correct! Final tryCount: ${tryCount}`);
         // Call onComplete with isCorrect = true and the current tryCount
         onComplete(true, tryCount);
       } else {
@@ -322,7 +321,6 @@ export default React.memo(function ListenAndPick({
         // Increment tryCount on wrong answer
         setTryCount(prev => {
           const next = prev + 1;
-          console.log(`[ListenAndPick] Wrong answer! New tryCount: ${next}`);
           return next;
         });
 

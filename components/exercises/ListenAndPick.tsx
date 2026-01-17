@@ -3,19 +3,20 @@ import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
-import { DuoButton } from "../DuoButton";
-import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
+import { DuoButton } from "../DuoButton";
+import TryAgainModal from "../TryAgainModal";
+import { Body, Title } from "../Typography";
 
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -44,6 +45,7 @@ export default React.memo(function ListenAndPick({
   const [isPlaying, setIsPlaying] = useState(false);
   const [questionSound, setQuestionSound] = useState<any>(null);
   const [optionSound, setOptionSound] = useState<any>(null);
+  const [showTryAgainModal, setShowTryAgainModal] = useState(false);
 
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
@@ -314,8 +316,8 @@ export default React.memo(function ListenAndPick({
         setIsCorrect(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         
-        // Call onComplete with isCorrect = false (will show confetti celebration)
-        onComplete(false);
+        // Show try again modal instead of completing the exercise
+        setShowTryAgainModal(true);
       }
     },
     [isCorrect, exercise.answerId, onComplete]
@@ -418,7 +420,8 @@ export default React.memo(function ListenAndPick({
                 key={item.id}
                 style={[
                   styles.imageCard,
-                  isSelected && isCorrect !== null && styles.imageCardCorrect,
+                  isSelected && isCorrect === true && styles.imageCardCorrect,
+                  isSelected && isCorrect === false && styles.imageCardWrong,
                 ]}
               >
                 <TouchableOpacity
@@ -451,8 +454,17 @@ export default React.memo(function ListenAndPick({
           })}
         </View>
       </View>
+      {/* Try Again Modal */}
+      <TryAgainModal
+        visible={showTryAgainModal}
+        onClose={() => {
+          setShowTryAgainModal(false);
+          // Don't reset isCorrect here so the red border remains, 
+          // but allow another selection
+        }}
+      />
     </View>
-  );
+);
 });
 
 const styles = StyleSheet.create({
@@ -571,9 +583,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   imageCardWrong: {
-    borderColor: "#FF4B4B", // Match DuoButton red scheme
+    borderColor: "#FFC107", // Soft yellow
     borderWidth: 6,
-    backgroundColor: "#FFF0F0",
+    backgroundColor: "#FFF9C4", // Light yellow background
   },
   image: {
     width: "100%",

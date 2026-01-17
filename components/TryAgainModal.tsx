@@ -25,7 +25,9 @@ export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) 
             entering={ZoomIn.duration(300)}
             style={styles.modalCard}
           >
-            <Ionicons name="close-circle" size={80} color="#FF4B4B" />
+            <View style={styles.iconContainer}>
+              <Ionicons name="alert-circle" size={80} color="#FFC107" />
+            </View>
             <Text style={styles.title}>{t("exercise.tryAgain")}</Text>
             <Text style={styles.subtitle}>{t("exercise.notQuiteRight")}</Text>
             
@@ -33,7 +35,7 @@ export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) 
               <DuoButton 
                 title={t("common.retry")} 
                 onPress={onClose} 
-                color="red" 
+                color="yellow" 
                 size="medium" 
               />
             </View>
@@ -47,39 +49,48 @@ export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Semi-transparent black
+    backgroundColor: 'rgba(0,0,0,0.4)', // Slightly lighter overlay
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalCard: {
-    width: 300,
+    width: 320,
     backgroundColor: 'white',
-    borderRadius: 24,
+    borderRadius: 32,
     padding: 32,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 15,
+    borderWidth: 4,
+    borderColor: '#FFC107',
+  },
+  iconContainer: {
+    marginBottom: 16,
+    padding: 10,
+    backgroundColor: '#FFFDE7',
+    borderRadius: 50,
   },
   title: {
     fontFamily: 'FredokaOne',
-    fontSize: 32,
-    color: '#FF4B4B',
-    marginTop: 16,
+    fontSize: 28,
+    color: '#F9A825', // Darker yellow/orange
+    marginTop: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: 'BalsamiqSans',
     fontSize: 20,
     color: '#666',
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 32,
     textAlign: 'center',
+    lineHeight: 26,
   },
   buttonContainer: {
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
   }
 });

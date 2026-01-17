@@ -119,6 +119,40 @@
     "network": "Network error. Please check your connection.",
     "unknown": "An unknown error occurred"
   },
+  "firebaseErrors": {
+    "user-not-found": "No account found with this email",
+    "wrong-password": "Incorrect password",
+    "email-already-in-use": "Email already registered",
+    "weak-password": "Password is too weak (minimum 6 characters)",
+    "invalid-email": "Invalid email address",
+    "user-disabled": "This account has been disabled",
+    "too-many-requests": "Too many failed attempts. Please try again later",
+    "network-request-failed": "Network error. Please check your connection",
+    "auth-failed": "Authentication failed. Please try again.",
+    "auth-failed-title": "Authentication Error"
+  },
+  "googleErrors": {
+    "sign-in-cancelled": "Sign in was cancelled",
+    "in-progress": "Sign in is already in progress",
+    "play-services-not-available": "Google Play Services not available or outdated",
+    "no-saved-credential": "No saved credential found. Please try signing in again",
+    "invalid-response": "Invalid response from Google Sign-In",
+    "no-id-token": "Failed to get ID token from Google Sign-In",
+    "credential-creation-failed": "Failed to create Firebase credential",
+    "google-signin-failed": "Google Sign-In failed. Please try again.",
+    "google-signin-failed-title": "Google Sign-In Error"
+  },
+  "backendErrors": {
+    "email-required": "Email is required for user creation",
+    "role-mismatch": "This account is registered with a different login method",
+    "authentication-failed": "Authentication failed. Please try again.",
+    "invalid-token": "Invalid authentication token",
+    "token-verification-failed": "Failed to verify authentication token",
+    "user-creation-failed": "Failed to create user account",
+    "user-not-found": "User not found. Please log in again.",
+    "server-error": "Server error occurred. Please try again later.",
+    "authentication-error-title": "Authentication Error"
+  },
   "child": {
     "addChild": "Add Child",
     "whoLearning": "Who's learning today?",

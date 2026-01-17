@@ -42,24 +42,18 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Step 1: Sign in with Firebase
       const { accessToken } = await signInWithEmailPassword(
         email.trim(),
         password
       );
 
-      // Step 2: Authenticate with Feathers backend
-      // For login, user already exists, so we pass minimal userData
-      // The backend should use the Firebase token to identify the user
       const feathersResult = await authenticateWithFeathers(accessToken, {
         fullName: "",
         role: "user",
       });
 
-      // Step 3: Update auth store with user data
       setAuthenticated(feathersResult.user);
 
-      // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
       setError(err.message || t("auth.login.loginFailed"));
@@ -73,11 +67,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Step 1: Sign in with Google and get Firebase access token
       const googleResult = await signInWithGoogle();
 
-      // Step 2: Authenticate with Feathers backend
-      // Extract fullName from Google profile (use email as fallback)
       const fullName =
         googleResult.user.name || googleResult.user.email.split("@")[0] || "";
 
@@ -89,10 +80,8 @@ export default function Login() {
         }
       );
 
-      // Step 3: Update auth store with user data
       setAuthenticated(feathersResult.user);
 
-      // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
       setError(err.message || t("auth.login.loginFailed"));
@@ -255,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
   },
   errorText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.md,
     color: Colors.error,
     textAlign: "center",
   },

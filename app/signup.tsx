@@ -35,7 +35,7 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      setError(t("auth.signup.fillAllFields") || t("auth.login.fillAllFields"));
+      setError(t("auth.login.fillAllFields"));
       return;
     }
 
@@ -48,24 +48,18 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Step 1: Create user with Firebase
       const { accessToken } = await signUpWithEmailPassword(
         email.trim(),
         password
       );
 
-      // Step 2: Authenticate with Feathers backend
-      // For signup, we pass fullName and role to create the user in the backend
       const feathersResult = await authenticateWithFeathers(accessToken, {
         fullName: name.trim(),
         role: "user",
       });
 
-      // Step 3: Update auth store with user data
-      // The _layout.tsx will handle redirects based on user state
       setAuthenticated(feathersResult.user);
 
-      // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
       setError(err.message || t("auth.signup.signupFailed"));
@@ -79,12 +73,8 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Step 1: Sign in with Google and get Firebase access token
-      // Google Sign-In handles both login and signup automatically
       const googleResult = await signInWithGoogle();
 
-      // Step 2: Authenticate with Feathers backend
-      // Extract fullName from Google profile (use email as fallback)
       const fullName =
         googleResult.user.name || googleResult.user.email.split("@")[0] || "";
 
@@ -96,11 +86,8 @@ export default function Signup() {
         }
       );
 
-      // Step 3: Update auth store with user data
-      // The _layout.tsx will handle redirects based on user state
       setAuthenticated(feathersResult.user);
 
-      // Navigate to home - _layout will redirect to add-child if needed
       router.replace("/");
     } catch (err: any) {
       setError(err.message || t("auth.signup.googleSignInFailed"));
@@ -275,7 +262,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
   },
   errorText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.md,
     color: Colors.error,
     textAlign: "center",
   },

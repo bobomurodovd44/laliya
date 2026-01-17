@@ -4,6 +4,7 @@ import {
   User,
   AuthError,
 } from "firebase/auth";
+import i18n from "../localization/i18n";
 import { auth } from "../firebase/config";
 
 export interface FirebaseAuthResult {
@@ -14,32 +15,37 @@ export interface FirebaseAuthResult {
 export interface FirebaseAuthError {
   code: string;
   message: string;
+  translationKey: string;
+}
+
+const FIREBASE_ERROR_MAP: Record<string, string> = {
+  "auth/user-not-found": "firebaseErrors.user-not-found",
+  "auth/wrong-password": "firebaseErrors.wrong-password",
+  "auth/email-already-in-use": "firebaseErrors.email-already-in-use",
+  "auth/weak-password": "firebaseErrors.weak-password",
+  "auth/invalid-email": "firebaseErrors.invalid-email",
+  "auth/user-disabled": "firebaseErrors.user-disabled",
+  "auth/too-many-requests": "firebaseErrors.too-many-requests",
+  "auth/network-request-failed": "firebaseErrors.network-request-failed",
+};
+
+function getFirebaseErrorTranslationKey(errorCode: string): string {
+  return FIREBASE_ERROR_MAP[errorCode] || "firebaseErrors.auth-failed";
+}
+
+function getFirebaseErrorTitle(): string {
+  return i18n.t("firebaseErrors.auth-failed-title");
 }
 
 /**
- * Map Firebase auth error codes to user-friendly messages
+ * Get localized Firebase auth error message
  */
-export function getFirebaseErrorMessage(error: AuthError): string {
-  switch (error.code) {
-    case "auth/user-not-found":
-      return "No account found with this email";
-    case "auth/wrong-password":
-      return "Incorrect password";
-    case "auth/email-already-in-use":
-      return "Email already registered";
-    case "auth/weak-password":
-      return "Password is too weak (minimum 6 characters)";
-    case "auth/invalid-email":
-      return "Invalid email address";
-    case "auth/user-disabled":
-      return "This account has been disabled";
-    case "auth/too-many-requests":
-      return "Too many failed attempts. Please try again later";
-    case "auth/network-request-failed":
-      return "Network error. Please check your connection";
-    default:
-      return error.message || "Authentication failed. Please try again.";
-  }
+export function getFirebaseErrorMessage(error: AuthError): { message: string; translationKey: string; title: string } {
+  const translationKey = getFirebaseErrorTranslationKey(error.code);
+  const message = i18n.t(translationKey);
+  const title = getFirebaseErrorTitle();
+
+  return { message, translationKey, title };
 }
 
 /**
@@ -64,9 +70,12 @@ export async function signInWithEmailPassword(
     };
   } catch (error) {
     const authError = error as AuthError;
+    const { message, translationKey, title } = getFirebaseErrorMessage(authError);
     throw {
       code: authError.code,
-      message: getFirebaseErrorMessage(authError),
+      message,
+      translationKey,
+      title,
     } as FirebaseAuthError;
   }
 }
@@ -93,9 +102,12 @@ export async function signUpWithEmailPassword(
     };
   } catch (error) {
     const authError = error as AuthError;
+    const { message, translationKey, title } = getFirebaseErrorMessage(authError);
     throw {
       code: authError.code,
-      message: getFirebaseErrorMessage(authError),
+      message,
+      translationKey,
+      title,
     } as FirebaseAuthError;
   }
 }

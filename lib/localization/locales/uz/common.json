@@ -120,6 +120,40 @@
     "unknown": "Noma'lum xatolik yuz berdi",
     "userNotFound": "Foydalanuvchi topilmadi"
   },
+  "firebaseErrors": {
+    "user-not-found": "Bu email bilan hisob topilmadi",
+    "wrong-password": "Noto'g'ri parol",
+    "email-already-in-use": "Bu email allaqachon ro'yxatdan o'tgan",
+    "weak-password": "Parol juda ham zaif (kamida 6 ta belgi kerak)",
+    "invalid-email": "Noto'g'ri email manzil",
+    "user-disabled": "Bu hisob bloklangan",
+    "too-many-requests": "Ko'p marta noto'g'ri urinish. Iltimos, keyinroq qayta urinib ko'ring",
+    "network-request-failed": "Tarmoq xatosi. Iltimos, ulanishni tekshiring",
+    "auth-failed": "Autentifikatsiya muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
+    "auth-failed-title": "Autentifikatsiya Xatosi"
+  },
+  "googleErrors": {
+    "sign-in-cancelled": "Kirish bekor qilindi",
+    "in-progress": "Kirish allaqachon davom etmoqda",
+    "play-services-not-available": "Google Play Services mavjud emas yoki eskirgan",
+    "no-saved-credential": "Saqlangan malumot topilmadi. Iltimos, qayta kirishga urinib ko'ring",
+    "invalid-response": "Google Sign-In dan noto'g'ri javob",
+    "no-id-token": "Google Sign-In dan ID token olish muvaffaqiyatsiz",
+    "credential-creation-failed": "Firebase credential yaratish muvaffaqiyatsiz",
+    "google-signin-failed": "Google orqali kirish muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
+    "google-signin-failed-title": "Google Kirish Xatosi"
+  },
+  "backendErrors": {
+    "email-required": "Foydalanuvchi yaratish uchun email kerak",
+    "role-mismatch": "Bu hisob boshqa rol bilan ro'yxatdan o'tgan",
+    "authentication-failed": "Autentifikatsiya muvaffaqiyatsiz. Iltimos, qayta urinib ko'ring.",
+    "invalid-token": "Noto'g'ri autentifikatsiya tokeni",
+    "token-verification-failed": "Autentifikatsiya tokenini tekshirish muvaffaqiyatsiz",
+    "user-creation-failed": "Foydalanuvchi hisobini yaratish muvaffaqiyatsiz",
+    "user-not-found": "Foydalanuvchi topilmadi. Iltimos, qayta kiring.",
+    "server-error": "Server xatosi yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
+    "authentication-error-title": "Autentifikatsiya Xatosi"
+  },
   "child": {
     "addChild": "Kichkintoy bilan tanishamiz",
     "whoLearning": "Bugun kim o'rganmoqda?",

@@ -75,6 +75,7 @@ export default function Task() {
   const previousUserCurrentStageIdRef = useRef<string | undefined | null>(null); // Track previous currentStageId to detect changes
   const wasExerciseActiveRef = useRef(false); // Track previous isExerciseActive state to detect returns
   const hasLoadedOnceRef = useRef(false); // Track if we've successfully loaded at least once
+  const [focusTrigger, setFocusTrigger] = useState(0);
 
   useEffect(() => {
     // Reset state immediately before async operations to prevent stale state
@@ -413,7 +414,7 @@ export default function Task() {
     loadData();
     // Clear stage access cache when stageId or user's currentStageId changes
     // This ensures we re-verify access when these change
-  }, [stageId, exerciseOrder, user?.currentStageId, router]);
+  }, [stageId, exerciseOrder, user?.currentStageId, router, focusTrigger]);
 
   // Set wasExerciseActiveRef after exercise loads successfully
   // This prevents the double-run issue in the main useEffect
@@ -531,6 +532,9 @@ export default function Task() {
       // Update the ref when exercise changes
       previousExerciseOrderRef.current = exerciseOrder;
 
+      // Trigger a refresh of the main useEffect logic
+      setFocusTrigger((prev) => prev + 1);
+
       // Return cleanup function that runs when screen loses focus
       return () => {
         // Mark that user is no longer actively working on exercises
@@ -539,7 +543,7 @@ export default function Task() {
         wasExerciseActiveRef.current = false;
         isExerciseActiveRef.current = false;
       };
-    }, [currentExercise, exerciseOrder])
+    }, [exerciseOrder]) // Removed currentExercise to prevent loops
   );
 
   // Helper function to update user score (optimistic update)

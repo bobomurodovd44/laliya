@@ -112,7 +112,14 @@
     "yearsOld": "years old",
     "boy": "Boy",
     "girl": "Girl",
-    "child": "Child"
+    "child": "Child",
+    "deleteAccount": "Delete Account",
+    "deleteAccountTitle": "Delete Account",
+    "deleteAccountSubtitle": "Are you sure you want to delete your account? This action cannot be undone. All your progress and data will be permanently removed.",
+    "deleteAccountConfirmLabel": "Type 'tasdiqlash' below to confirm:",
+    "deleteAccountPlaceholder": "tasdiqlash",
+    "deleteAccountError": "Error deleting account",
+    "deleteAccountSuccess": "Your account has been successfully deleted"
   },
   "errors": {
     "generic": "Something went wrong",

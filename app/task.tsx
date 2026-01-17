@@ -1,10 +1,10 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -23,25 +23,26 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import { Exercise, ExerciseType } from "../data/data";
 import {
-  fetchExercisesByStageId,
-  mapPopulatedExerciseToExercise,
-  PopulatedExercise,
+    fetchExercisesByStageId,
+    mapPopulatedExerciseToExercise,
+    PopulatedExercise,
 } from "../lib/api/exercises";
 import {
-  clearExercisesCache,
-  getCachedExercises,
-  setCachedExercises,
+    clearExercisesCache,
+    getCachedExercises,
+    setCachedExercises,
 } from "../lib/cache/exercises-cache";
 import { getCachedStages } from "../lib/cache/stages-cache";
 import app from "../lib/feathers/feathers-client";
 import { imagePreloader } from "../lib/image-preloader";
 import { setItems } from "../lib/items-store";
 import { useTranslation } from "../lib/localization";
+import { playSound } from "../lib/sound";
 import { useAuthStore } from "../lib/store/auth-store";
 import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 import {
-  checkStageAccess,
-  getUserMaxStageOrder,
+    checkStageAccess,
+    getUserMaxStageOrder,
 } from "../lib/utils/stage-access";
 
 export default function Task() {
@@ -737,6 +738,9 @@ export default function Task() {
       // Start confetti immediately for all answers (both correct and incorrect)
       if (currentExercise.type !== ExerciseType.LOOK_AND_SAY && !loading) {
         confettiRef.current?.start();
+        if (isCorrect) {
+          playSound('correct');
+        }
       }
 
       // Note: Removed background stage access check after completion

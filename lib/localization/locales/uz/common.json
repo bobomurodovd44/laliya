@@ -112,7 +112,14 @@
     "yearsOld": "yosh",
     "boy": "O'g'il bola",
     "girl": "Qiz bola",
-    "child": "Kichkintoy"
+    "child": "Kichkintoy",
+    "deleteAccount": "Hisobni o'chirish",
+    "deleteAccountTitle": "Hisobni o'chirish",
+    "deleteAccountSubtitle": "Hisobingizni o'chirishni xohlaysizmi? Bu amalni qaytarib bo'lmaydi. Barcha natijalaringiz va ma'lumotlaringiz o'chirib tashlanadi.",
+    "deleteAccountConfirmLabel": "Tasdiqlash uchun pastga 'tasdiqlash' so'zini yozing:",
+    "deleteAccountPlaceholder": "tasdiqlash",
+    "deleteAccountError": "Hisobni o'chirishda xatolik yuz berdi",
+    "deleteAccountSuccess": "Hisobingiz muvaffaqiyatli o'chirildi"
   },
   "errors": {
     "generic": "Nimadir noto'g'ri ketdi",

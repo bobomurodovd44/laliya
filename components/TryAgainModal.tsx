@@ -5,6 +5,8 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useTranslation } from '../lib/localization';
 import { DuoButton } from './DuoButton';
 
+import { playSound } from '../lib/sound';
+
 interface TryAgainModalProps {
   visible: boolean;
   onClose: () => void;
@@ -12,6 +14,12 @@ interface TryAgainModalProps {
 
 export default function TryAgainModal({ visible, onClose }: TryAgainModalProps) {
   const { t } = useTranslation();
+
+  React.useEffect(() => {
+    if (visible) {
+      playSound('wrong');
+    }
+  }, [visible]);
   return (
     <Modal
       animationType="none"

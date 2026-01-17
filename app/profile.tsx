@@ -1,10 +1,10 @@
-import { Ionicons } from "@expo/vector-icons";
-import Octicons from "@expo/vector-icons/Octicons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import Octicons from "@expo/vector-icons/Octicons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import DeleteAccountModal from "../components/DeleteAccountModal";
 import { PageContainer } from "../components/layout/PageContainer";
 import { ProfileMenuItem } from "../components/ProfileMenuItem";
 import { Body, Title } from "../components/Typography";
@@ -36,6 +36,8 @@ export default function Profile() {
     "https://i.pinimg.com/736x/36/f7/02/36f702b674bb8061396b3853ccaf80cf.jpg";
   const [maxStageOrder, setMaxStageOrder] = useState<number>(0);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
   // Fetch user's max stage order
   useEffect(() => {
@@ -94,6 +96,38 @@ export default function Profile() {
       setUnauthenticated();
       router.replace("/login");
       setIsLoggingOut(false);
+    }
+  };
+    
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount || !user) return;
+    
+    setIsDeletingAccount(true);
+    try {
+      // 1. Delete user from backend (which backgrounds Firebase and S3 cleanup)
+      await app.service('users').remove(user._id);
+      
+      // 2. Clear local auth state
+      setUnauthenticated();
+      
+      // 3. Close modal and navigate to welcome/login
+      setShowDeleteModal(false);
+      
+      // Show success alert
+      Alert.alert(
+        t("common.success") || "Muvaffaqiyatli",
+        t("profile.deleteAccountSuccess")
+      );
+
+      router.replace("/welcome");
+    } catch (error) {
+      console.error("Account deletion error:", error);
+      Alert.alert(
+        t("common.error"),
+        t("profile.deleteAccountError")
+      );
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -189,10 +223,24 @@ export default function Profile() {
             variant="danger"
             disabled={isLoggingOut}
           />
+          <ProfileMenuItem
+            iconName="trash-outline"
+            title={t("profile.deleteAccount")}
+            onPress={() => setShowDeleteModal(true)}
+            variant="danger"
+            disabled={isLoggingOut || isDeletingAccount}
+          />
         </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      <DeleteAccountModal 
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeletingAccount}
+      />
     </PageContainer>
   );
 }

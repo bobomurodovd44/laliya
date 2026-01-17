@@ -1,20 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   Animated,
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  View,
   ViewStyle
 } from 'react-native';
 
 interface DuoButtonProps {
   title: string;
   onPress?: () => void;
-  color?: 'green' | 'blue' | 'red' | 'yellow' | 'purple' | 'orange';
+  color?: 'green' | 'blue' | 'red' | 'yellow' | 'purple' | 'orange' | 'gray';
   size?: 'small' | 'medium' | 'large';
   style?: ViewStyle;
   disabled?: boolean;
@@ -105,7 +104,7 @@ function DuoButtonComponent({
 
     // Determine dimensions if customSize is provided
     // For circles, customSize = diameter of the TOP FACE
-    const buttonWidth = customSize ? customSize : (shape === 'circle' ? undefined : '100%');
+    const buttonWidth: number | string | undefined = customSize ? customSize : (shape === 'circle' ? undefined : '100%');
     // For circles, height of the top face is customSize.
     // The container will be taller by shadowDepth.
     const faceHeight = customSize && shape === 'circle' ? customSize : undefined;
@@ -276,7 +275,7 @@ function DuoButtonComponent({
             {
               backgroundColor: colors.shadow,
               borderRadius: borderRadius,
-              width: buttonWidth,
+              width: buttonWidth as any,
               height: shape === 'circle' && customSize ? customSize + shadowDepth : undefined,
               paddingBottom: shape === 'circle' ? shadowDepth : sizeStyle.shadowDepth,
               borderWidth: 0,
@@ -299,7 +298,7 @@ function DuoButtonComponent({
                 alignItems: 'center', 
                 justifyContent: 'center', 
                 gap: shape === 'circle' && !title ? 0 : 8,
-                width: buttonWidth || (shape === 'circle' ? '100%' : undefined),
+                width: (buttonWidth || (shape === 'circle' ? '100%' : undefined)) as any,
                 height: faceHeight,
                 aspectRatio: shape === 'circle' && !customSize ? 1 : undefined,
                 minWidth: shape === 'circle' && customSize ? customSize : undefined,

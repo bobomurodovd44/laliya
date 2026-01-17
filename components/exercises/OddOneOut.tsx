@@ -23,7 +23,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 interface OddOneOutProps {
   exercise: Exercise;
-  onComplete: (isCorrect?: boolean) => void;
+  onComplete: (isCorrect?: boolean, tryCount?: number) => void;
 }
 
 export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOutProps) {
@@ -40,6 +40,7 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
 
   const [questionSound, setQuestionSound] = useState<any>(null);
   const [showTryAgainModal, setShowTryAgainModal] = useState(false);
+  const [tryCount, setTryCount] = useState(0);
 
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
@@ -54,6 +55,7 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
     // Reset state
     setSelectedId(null);
     setIsCorrect(null);
+    setTryCount(0);
     isCompletedRef.current = false;
 
     // Shuffle items - ensure different order each time
@@ -121,17 +123,25 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
         setIsCorrect(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Call onComplete with isCorrect = true (default)
-        onComplete(true);
+        console.log(`[OddOneOut] Correct! Final tryCount: ${tryCount}`);
+        // Call onComplete with isCorrect = true and the current tryCount
+        onComplete(true, tryCount);
       } else {
         setIsCorrect(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+        // Increment tryCount on wrong answer
+        setTryCount(prev => {
+          const next = prev + 1;
+          console.log(`[OddOneOut] Wrong answer! New tryCount: ${next}`);
+          return next;
+        });
 
         // Show try again modal instead of completing the exercise
         setShowTryAgainModal(true);
       }
     },
-    [isCorrect, exercise.answerId, onComplete]
+    [isCorrect, exercise.answerId, onComplete, tryCount]
   );
 
   return (

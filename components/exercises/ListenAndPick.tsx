@@ -30,7 +30,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 interface ListenAndPickProps {
   exercise: Exercise;
-  onComplete: (isCorrect?: boolean) => void;
+  onComplete: (isCorrect?: boolean, tryCount?: number) => void;
 }
 
 export default React.memo(function ListenAndPick({
@@ -46,6 +46,7 @@ export default React.memo(function ListenAndPick({
   const [questionSound, setQuestionSound] = useState<any>(null);
   const [optionSound, setOptionSound] = useState<any>(null);
   const [showTryAgainModal, setShowTryAgainModal] = useState(false);
+  const [tryCount, setTryCount] = useState(0);
 
   // Guard to prevent multiple onComplete calls
   const isCompletedRef = useRef(false);
@@ -147,6 +148,7 @@ export default React.memo(function ListenAndPick({
     // Reset state
     setSelectedId(null);
     setIsCorrect(null);
+    setTryCount(0);
     isCompletedRef.current = false;
 
     // Only shuffle if we have items
@@ -310,17 +312,25 @@ export default React.memo(function ListenAndPick({
         setIsCorrect(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // Call onComplete with isCorrect = true (default)
-        onComplete(true);
+        console.log(`[ListenAndPick] Correct! Final tryCount: ${tryCount}`);
+        // Call onComplete with isCorrect = true and the current tryCount
+        onComplete(true, tryCount);
       } else {
         setIsCorrect(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         
+        // Increment tryCount on wrong answer
+        setTryCount(prev => {
+          const next = prev + 1;
+          console.log(`[ListenAndPick] Wrong answer! New tryCount: ${next}`);
+          return next;
+        });
+
         // Show try again modal instead of completing the exercise
         setShowTryAgainModal(true);
       }
     },
-    [isCorrect, exercise.answerId, onComplete]
+    [isCorrect, exercise.answerId, onComplete, tryCount]
   );
 
   // Validation: Check if answerItem exists and has required properties

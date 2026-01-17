@@ -1,20 +1,20 @@
 import * as Haptics from "expo-haptics";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming,
 } from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
 import { items } from "../../lib/items-store";
@@ -24,7 +24,7 @@ import ImageWithLoader from "../common/ImageWithLoader";
 
 interface ShapeMatchProps {
   exercise: Exercise;
-  onComplete: () => void;
+  onComplete: (isCorrect?: boolean, tryCount?: number) => void;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -92,6 +92,7 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
   // Local state for exercise items (read from items store)
   const [exerciseItems, setExerciseItems] = useState<Item[]>([]);
   const [answerItem, setAnswerItem] = useState<Item | null>(null);
+  const [tryCount, setTryCount] = useState(0);
 
   // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
   const answerIdRef = useRef<number | undefined>(exercise.answerId);
@@ -187,6 +188,7 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
     setIsCompleted(false);
     isCompletedRef.current = false;
     targetPositionRef.current = null;
+    setTryCount(0);
 
     // Get new random color for the shape
     setShapeColor(getRandomColor());
@@ -210,12 +212,14 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
 
-    // Call onComplete directly
-    onComplete();
-  }, [isCompleted, onComplete]);
+    // Call onComplete directly with tryCount
+    onComplete(true, tryCount);
+  }, [isCompleted, onComplete, tryCount]);
 
   const handleWrongMatch = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    // Increment tryCount on wrong answer
+    setTryCount((prev) => prev + 1);
   }, []);
 
   const registerTargetPosition = useCallback((x: number, y: number) => {

@@ -232,6 +232,12 @@ export default function Profile() {
           />
         </View>
 
+        <View style={styles.versionContainer}>
+          <Body style={styles.versionText}>
+            Version 1.0.0
+          </Body>
+        </View>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -338,5 +344,15 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: Spacing.margin.xxxl,
+  },
+  versionContainer: {
+    alignItems: "center",
+    marginTop: Spacing.margin.xl,
+    marginBottom: Spacing.margin.lg,
+  },
+  versionText: {
+    fontSize: Typography.fontSize.md,
+    color: Colors.textTertiary,
+    opacity: 0.8,
   },
 });

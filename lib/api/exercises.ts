@@ -16,8 +16,8 @@ export interface PopulatedOption {
     fileType: string;
     size?: number;
   };
-  syllablesAudioId: string | {};
-  syllablesAudio: {
+  syllablesAudioId?: string | {};
+  syllablesAudio?: {
     name: string;
     fileType: string;
     size?: number;
@@ -31,7 +31,7 @@ export interface PopulatedOption {
 export interface PopulatedExercise {
   _id: string | {};
   question: string;
-  questionAudioId: string | {};
+  questionAudioId?: string | {};
   questionAudio?: {
     name: string;
     fileType: string;
@@ -72,8 +72,8 @@ export const fetchExercisesByStageId = async (
 ): Promise<PopulatedExercise[]> => {
   try {
     // Log context for debugging if provided
- 
-    
+
+
     const response = await app.service("exercises").find({
       query: {
         stageId: stageId,

@@ -11,7 +11,11 @@
     "back": "Back",
     "save": "Save",
     "delete": "Delete",
-    "edit": "Edit"
+    "edit": "Edit",
+    "continueNextStage": "Next Stage",
+    "goHome": "Go Home",
+    "viewProfile": "View Profile",
+    "reviewAnswers": "Review Answers"
   },
   "auth": {
     "login": {
@@ -89,7 +93,12 @@
     "categoryDetails": "Category {{id}}: {{count}} item(s)",
     "expectedTwoCategories": "Expected 2 categories, found {{found}}. {{details}}. All items must belong to exactly 2 different categories.",
     "expectedTwoToSixOptions": "Expected 2-6 options, found {{found}}",
-    "categoryItemCount": "Category 1 has {{cat1Count}} items, Category 2 has {{cat2Count}} items"
+    "categoryItemCount": "Category 1 has {{cat1Count}} items, Category 2 has {{cat2Count}} items",
+    "stageComplete": "Stage Complete!",
+    "stageCompleted": "You completed Stage {{stage}}!",
+    "stageCompletedGeneric": "Great job! You completed this stage!",
+    "nextStageIs": "Next: {{stage}}",
+    "allStagesCompleted": "All Stages Completed!"
   },
   "profile": {
     "title": "Profile",

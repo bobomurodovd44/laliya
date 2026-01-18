@@ -11,7 +11,11 @@
     "back": "Orqaga",
     "save": "Saqlash",
     "delete": "O'chirish",
-    "edit": "Tahrirlash"
+    "edit": "Tahrirlash",
+    "continueNextStage": "Keyingi bosqich",
+    "goHome": "Bosh sahifaga",
+    "viewProfile": "Profilni ko'rish",
+    "reviewAnswers": "Javoblarni ko'rish"
   },
   "auth": {
     "login": {
@@ -89,7 +93,12 @@
     "categoryDetails": "Kategoriya {{id}}: {{count}} ta element",
     "expectedTwoCategories": "2 ta kategoriya kutilgan, {{found}} ta topildi. {{details}}. Barcha elementlar aynan 2 ta turli kategoriyaga tegishli bo'lishi kerak.",
     "expectedTwoToSixOptions": "2-6 ta variant kutilgan, {{found}} ta topildi",
-    "categoryItemCount": "Kategoriya 1 da {{cat1Count}} ta element, Kategoriya 2 da {{cat2Count}} ta element"
+    "categoryItemCount": "Kategoriya 1 da {{cat1Count}} ta element, Kategoriya 2 da {{cat2Count}} ta element",
+    "stageComplete": "Bosqich tugallandi!",
+    "stageCompleted": "Siz {{stage}}-bosqichni tugatdingiz!",
+    "stageCompletedGeneric": "Ajoyib! Bu bosqichni tugatdingiz!",
+    "nextStageIs": "Keyingi: {{stage}}",
+    "allStagesCompleted": "Barcha bosqichlar tugatildi!"
   },
   "profile": {
     "title": "Profil",

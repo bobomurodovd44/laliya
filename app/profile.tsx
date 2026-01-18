@@ -216,11 +216,11 @@ export default function Profile() {
             onPress={() => router.push("/child-answers")}
             iconLibrary="fontawesome"
           />
+          <View style={styles.menuDivider} />
           <ProfileMenuItem
             iconName="log-out-outline"
             title={isLoggingOut ? t("profile.loggingOut") : t("profile.logout")}
             onPress={handleLogout}
-            variant="danger"
             disabled={isLoggingOut}
           />
           <ProfileMenuItem
@@ -325,6 +325,12 @@ const styles = StyleSheet.create({
     height: Spacing.borderWidth.medium,
     backgroundColor: Colors.borderDark,
     marginBottom: Spacing.margin.xl,
+    borderRadius: 1,
+  },
+  menuDivider: {
+    height: Spacing.borderWidth.xthick,
+    backgroundColor: Colors.borderDark,
+    marginVertical: Spacing.margin.md,
     borderRadius: 1,
   },
   section: {

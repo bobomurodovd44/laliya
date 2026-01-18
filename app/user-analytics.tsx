@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CircularProgress } from "../components/CircularProgress";
 import { PageContainer } from "../components/layout/PageContainer";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { Body, Title } from "../components/Typography";
@@ -11,16 +10,19 @@ import { Colors, Spacing, Typography } from "../constants";
 import app from "../lib/feathers/feathers-client";
 import { useTranslation } from "../lib/localization";
 import { useAuthStore } from "../lib/store/auth-store";
-import { getUserMaxStageOrder } from "../lib/utils/stage-access";
 
-interface StageAnalytics {
-  stageId: string;
-  stageOrder: number;
-  totalExercises: number;
-  completedExercises: number;
-  correctAnswers: number;
-  wrongAnswers: number;
-  correctPercentage: number;
+interface UserAnalyticsResult {
+  totalAnswers: number;
+  currentStageOrder: number;
+  stages: {
+    stageId: string;
+    stageOrder: number;
+    answerCount: number;
+    exercises: {
+      type: string;
+      avgTryCount: number;
+    }[];
+  }[];
 }
 
 export default function UserAnalytics() {
@@ -29,167 +31,25 @@ export default function UserAnalytics() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
 
-  const [analyticsData, setAnalyticsData] = useState({
-    correctPercentage: 0,
-    totalAnswers: 0,
-    availableStages: 0,
-  });
-  const [stageAnalytics, setStageAnalytics] = useState<StageAnalytics[]>([]);
+  const [analytics, setAnalytics] = useState<UserAnalyticsResult | null>(null);
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalytics = async () => {
-    if (!user?._id) {
-      setError(t("errors.userNotFound"));
-      setLoading(false);
-      return;
-    }
+    if (!user?._id) return;
 
-    if (!refreshing) setLoading(true); // Don't show full loader on refresh
+    if (!refreshing) setLoading(true);
     setError(null);
 
     try {
-      const userId =
-        typeof user._id === "string" ? user._id : String(user._id);
-
-      // Fetch all data in parallel with error boundary for isolation
-      // This prevents analytics errors from affecting other features
-      const [maxStageOrder, stagesResponse, exercisesResponse, answersResponse] = 
-        await Promise.all([
-          getUserMaxStageOrder(user.currentStageId).catch(() => 0),
-          app.service("stages").find({
-            query: {
-              $sort: { order: 1 },
-              $limit: 1000,
-            },
-          }).catch(() => ({ data: [] })),
-          app.service("exercises").find({
-            query: {
-              $limit: 1000,
-              $select: ["_id", "stageId"],
-            },
-          }).catch(() => ({ data: [] })),
-          app.service("answers").find({
-            query: {
-              userId: userId,
-              $limit: 1000,
-              $populate: false,
-              $select: ["_id", "exerciseId", "isCorrect"],
-            },
-          }).catch(() => ({ data: [] })),
-        ]);
-
-      const stages = Array.isArray(stagesResponse)
-        ? stagesResponse
-        : stagesResponse.data || [];
-      const exercises = Array.isArray(exercisesResponse)
-        ? exercisesResponse
-        : exercisesResponse.data || [];
-      const answersData = Array.isArray(answersResponse)
-        ? answersResponse
-        : answersResponse.data || [];
-
-      // Calculate correct answers percentage (treat undefined isCorrect as true)
-      const totalAnswers = answersData.length;
-      const correctAnswers = answersData.filter(
-        (answer: any) => answer.isCorrect === true || answer.isCorrect === undefined
-      ).length;
-      const correctPercentage =
-        totalAnswers > 0
-          ? Math.round((correctAnswers / totalAnswers) * 100)
-          : 0;
-
-      setAnalyticsData({
-        correctPercentage,
-        totalAnswers,
-        availableStages: maxStageOrder,
-      });
-
-      // Optimize data processing with Maps for O(1) lookups
-      // Group exercises by stageId
-      const exercisesByStage = new Map<string, any[]>();
-      exercises.forEach((ex: any) => {
-        const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
-        if (!exercisesByStage.has(exStageId)) {
-          exercisesByStage.set(exStageId, []);
-        }
-        exercisesByStage.get(exStageId)!.push(ex);
-      });
-
-      // Create exercise ID to stage ID mapping for fast lookup
-      const exerciseIdToStageId = new Map<string, string>();
-      exercises.forEach((ex: any) => {
-        const exId = typeof ex._id === "string" ? ex._id : String(ex._id);
-        const exStageId = typeof ex.stageId === "string" ? ex.stageId : String(ex.stageId);
-        exerciseIdToStageId.set(exId, exStageId);
-      });
-
-      // Group answers by stageId using the mapping
-      const answersByStage = new Map<string, any[]>();
-      answersData.forEach((answer: any) => {
-        const answeredExerciseId = typeof answer.exerciseId === "string" 
-          ? answer.exerciseId 
-          : String(answer.exerciseId);
-        const stageId = exerciseIdToStageId.get(answeredExerciseId);
-        if (stageId) {
-          if (!answersByStage.has(stageId)) {
-            answersByStage.set(stageId, []);
-          }
-          answersByStage.get(stageId)!.push(answer);
-        }
-      });
-
-      // Calculate per-stage analytics with optimized lookups
-      const stageStats: StageAnalytics[] = stages.map((stage: any) => {
-        const stageId = typeof stage._id === "string" ? stage._id : String(stage._id);
-        
-        // Get exercises for this stage from Map (O(1) lookup)
-        const stageExercises = exercisesByStage.get(stageId) || [];
-        const totalExercises = stageExercises.length;
-        
-        // Get answers for this stage from Map (O(1) lookup)
-        const stageAnswers = answersByStage.get(stageId) || [];
-        
-        // Count unique exercises that have been answered
-        const uniqueAnsweredExercises = new Set(
-          stageAnswers.map((answer: any) => 
-            typeof answer.exerciseId === "string" 
-              ? answer.exerciseId 
-              : String(answer.exerciseId)
-          )
-        );
-        const completedExercises = uniqueAnsweredExercises.size;
-        
-        // Count correct and wrong answers (treat undefined isCorrect as correct)
-        const correctAnswers = stageAnswers.filter(
-          (answer: any) => answer.isCorrect === true || answer.isCorrect === undefined
-        ).length;
-        const wrongAnswers = stageAnswers.filter(
-          (answer: any) => answer.isCorrect === false
-        ).length;
-        
-        // Calculate correct percentage
-        const correctPercentage = stageAnswers.length > 0
-          ? Math.round((correctAnswers / stageAnswers.length) * 100)
-          : 0;
-        
-        return {
-          stageId,
-          stageOrder: stage.order,
-          totalExercises,
-          completedExercises,
-          correctAnswers,
-          wrongAnswers,
-          correctPercentage,
-        };
-      });
-
-      setStageAnalytics(stageStats);
-    } catch (error) {
-      // Isolated error handling - won't affect other features
-      console.error("Analytics fetch failed:", error);
-      setError(t("errors.generic"));
+      const userId = typeof user._id === 'string' ? user._id : String(user._id);
+      const data = await app.service('analytics').get(userId);
+      setAnalytics(data);
+    } catch (err) {
+      console.error('Failed to fetch user analytics:', err);
+      setError(t('errors.generic'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -248,100 +108,105 @@ export default function UserAnalytics() {
           </View>
         ) : (
           <>
-            {/* Analytics Cards */}
+            {/* Analytics Summary Cards */}
             <View style={styles.cardsContainer}>
-              {/* Card 1: Correct Answers Percentage */}
-              <View
-                style={[styles.analyticsCard, { borderColor: Colors.success }]}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={36}
-                  color={Colors.success}
-                />
+              <View style={[styles.analyticsCard, { borderColor: Colors.accentBlue }]}>
+                <Ionicons name="checkbox-outline" size={32} color={Colors.accentBlue} />
                 <Title size="small" style={styles.analyticsValue}>
-                  {analyticsData.correctPercentage}%
+                  {analytics?.totalAnswers || 0}
                 </Title>
-                <Body style={styles.analyticsLabel}>
-                  {t("profile.correctAnswers")}
-                </Body>
+                <Body style={styles.analyticsLabel}>{t("profile.totalAnswers")}</Body>
               </View>
 
-              {/* Card 2: Total Answers Count */}
-              <View
-                style={[styles.analyticsCard, { borderColor: Colors.primary }]}
-              >
-                <Ionicons name="list" size={36} color={Colors.primary} />
+              <View style={[styles.analyticsCard, { borderColor: Colors.badgeLevel }]}>
+                <Ionicons name="map-outline" size={32} color={Colors.badgeLevel} />
                 <Title size="small" style={styles.analyticsValue}>
-                  {analyticsData.totalAnswers}
+                  {analytics?.currentStageOrder || 1}
                 </Title>
-                <Body style={styles.analyticsLabel}>
-                  {t("profile.totalAnswers")}
-                </Body>
-              </View>
-
-              {/* Card 3: Available Stages */}
-              <View
-                style={[
-                  styles.analyticsCard,
-                  { borderColor: Colors.badgeLevel },
-                ]}
-              >
-                <Ionicons name="layers" size={36} color={Colors.badgeLevel} />
-                <Title size="small" style={styles.analyticsValue}>
-                  {analyticsData.availableStages}
-                </Title>
-                <Body style={styles.analyticsLabel}>
-                  {t("profile.availableStages")}
-                </Body>
+                <Body style={styles.analyticsLabel}>{t("profile.currentStage")}</Body>
               </View>
             </View>
 
-            {/* Stage Analytics Section */}
-            {stageAnalytics.length > 0 && (
-              <View style={styles.stageAnalyticsSection}>
-                <Title size="medium" style={styles.sectionTitle}>
-                  {t("profile.stageProgress")}
-                </Title>
+            {/* Stage-by-Stage Accordion */}
+            <View style={styles.accordionContainer}>
+              <Title size="medium" style={styles.sectionTitle}>
+                {t("profile.stageDetails")}
+              </Title>
 
-                {stageAnalytics.map((stage) => {
-                  const isCompleted = stage.completedExercises === stage.totalExercises && stage.totalExercises > 0;
-                  
-                  return (
-                    <View key={stage.stageId} style={styles.stageRow}>
-                      {/* Stage Number Badge */}
-                      <View style={styles.stageBadge}>
-                        <Body style={styles.stageBadgeText}>
-                          {stage.stageOrder}
-                        </Body>
-                      </View>
-
-                      {/* Circular Progress with text below */}
-                      <View style={styles.progressSection}>
-                        <CircularProgress
-                          progress={stage.correctPercentage}
-                          size={70}
-                          strokeWidth={6}
-                        />
-                        <Body style={styles.progressText}>
-                          {stage.correctAnswers} {t("profile.of")} {stage.completedExercises} {t("profile.correct")}
-                        </Body>
-                      </View>
-
-                      {/* Completed Badge */}
-                      {isCompleted && (
-                        <View style={styles.completedBadge}>
-                          <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                          <Body style={styles.completedText}>
-                            {t("profile.completed")}
+              {analytics?.stages.map((stage) => {
+                const isExpanded = expandedStage === stage.stageId;
+                
+                return (
+                  <View key={stage.stageId} style={styles.accordionItem}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setExpandedStage(isExpanded ? null : stage.stageId)}
+                      style={[
+                        styles.accordionHeader,
+                        isExpanded && styles.accordionHeaderActive
+                      ]}
+                    >
+                      <View style={styles.accordionTitleRow}>
+                        <View style={styles.stageNumberBadge}>
+                          <Body weight="bold" style={styles.stageNumberText}>
+                            {stage.stageOrder}
                           </Body>
                         </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+                        <View style={styles.stageSummaryInfo}>
+                          <Body weight="bold" style={styles.stageTitleText}>
+                            {t("answers.stage")} {stage.stageOrder}
+                          </Body>
+                          <Body size="small" style={styles.answerCountText}>
+                            {stage.answerCount} {t("profile.totalAnswers")}
+                          </Body>
+                        </View>
+                        <Ionicons 
+                          name={isExpanded ? "chevron-up" : "chevron-down"} 
+                          size={24} 
+                          color={Colors.textSecondary} 
+                        />
+                      </View>
+                    </TouchableOpacity>
+
+                    {isExpanded && (
+                      <View style={styles.accordionContent}>
+                        {stage.exercises.length > 0 ? (
+                          stage.exercises.map((ex, idx) => (
+                            <View key={idx} style={styles.exerciseTypeRow}>
+                              <Ionicons 
+                                name={
+                                  ex.type === 'shape_match' ? 'shapes-outline' :
+                                  ex.type === 'odd_one_out' ? 'help-circle-outline' :
+                                  'musical-notes-outline'
+                                } 
+                                size={24} 
+                                color={Colors.accentBlue} 
+                                style={styles.exerciseIcon}
+                              />
+                              <View style={styles.exerciseTextColumn}>
+                                <Body style={styles.exerciseTypeText}>
+                                  {t(`exercise.${ex.type}`)}
+                                </Body>
+                                <View style={styles.tryCountRow}>
+                                  <Body size="small" style={styles.tryCountLabel}>
+                                    {t("profile.avgTries")}:{" "}
+                                  </Body>
+                                  <Body weight="bold" style={styles.tryCountValue}>
+                                    {ex.avgTryCount}
+                                  </Body>
+                                </View>
+                              </View>
+                            </View>
+                          ))
+                        ) : (
+                          <Body style={styles.noDataText}>{t("profile.noExerciseData")}</Body>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
           </>
         )}
 
@@ -425,78 +290,116 @@ const styles = StyleSheet.create({
   },
   analyticsValue: {
     color: Colors.textPrimary,
-    marginTop: Spacing.margin.xs,
+    fontSize: Typography.fontSize.xl,
   },
   analyticsLabel: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: Colors.textSecondary,
     textAlign: "center",
   },
-  bottomSpacer: {
-    height: Spacing.margin.xxxl,
-  },
-  stageAnalyticsSection: {
-    marginTop: Spacing.margin.xxl,
-    gap: Spacing.gap.md,
+  accordionContainer: {
+    marginTop: Spacing.margin.xl,
+    paddingBottom: Spacing.margin.xl,
   },
   sectionTitle: {
     marginBottom: Spacing.margin.md,
     color: Colors.textPrimary,
+    fontFamily: Typography.fontFamily.secondary,
+    fontWeight: "500",
   },
-  stageRow: {
-    flexDirection: "row",
+  accordionItem: {
     backgroundColor: Colors.backgroundLight,
-    borderRadius: Spacing.radius.xl,
-    padding: Spacing.padding.lg,
-    borderWidth: Spacing.borderWidth.medium,
-    borderBottomWidth: Spacing.borderWidth.thick,
+    borderRadius: Spacing.radius.lg,
+    marginBottom: Spacing.margin.sm,
+    borderWidth: Spacing.borderWidth.thin,
     borderColor: Colors.borderDark,
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: Spacing.gap.lg,
-    ...Spacing.shadow.medium,
-  },
-  stageBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.badgeLevel,
-    borderWidth: Spacing.borderWidth.medium,
-    borderColor: Colors.accentBlue,
-    justifyContent: "center",
-    alignItems: "center",
+    overflow: "hidden",
     ...Spacing.shadow.small,
   },
-  stageBadgeText: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: "bold",
-    color: Colors.textWhite,
+  accordionHeader: {
+    padding: Spacing.padding.md,
+    backgroundColor: Colors.backgroundLight,
   },
-  progressSection: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: Spacing.gap.xs,
+  accordionHeaderActive: {
+    backgroundColor: Colors.backgroundDark,
+    borderBottomWidth: Spacing.borderWidth.thin,
+    borderBottomColor: Colors.border,
   },
-  progressText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.textSecondary,
-    marginTop: Spacing.margin.xs,
-  },
-  completedBadge: {
+  accordionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.gap.xs,
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.padding.md,
-    paddingVertical: Spacing.padding.sm,
-    borderRadius: Spacing.radius.lg,
-    borderWidth: Spacing.borderWidth.thin,
-    borderColor: Colors.success,
   },
-  completedText: {
+  stageNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.accentBlue,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.margin.md,
+  },
+  stageNumberText: {
+    color: Colors.textWhite,
+    fontSize: Typography.fontSize.md,
+    fontWeight: "bold",
+  },
+  stageSummaryInfo: {
+    flex: 1,
+  },
+  stageTitleText: {
+    fontSize: Typography.fontSize.lg,
+    color: Colors.textPrimary,
+  },
+  answerCountText: {
+    color: Colors.textSecondary,
     fontSize: Typography.fontSize.sm,
-    color: Colors.success,
+    marginTop: 2,
+  },
+  accordionContent: {
+    padding: Spacing.padding.md,
+    backgroundColor: Colors.backgroundLight,
+    gap: Spacing.padding.sm,
+  },
+  exerciseTypeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: Spacing.padding.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    gap: Spacing.gap.md,
+  },
+  exerciseIcon: {
+    marginTop: 2,
+  },
+  exerciseTextColumn: {
+    flex: 1,
+    gap: 2,
+  },
+  exerciseTypeText: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: "bold",
+    color: Colors.textPrimary,
+  },
+  tryCountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tryCountValue: {
+    color: Colors.secondary,
+    fontSize: Typography.fontSize.md,
+    fontWeight: "bold",
+  },
+  tryCountLabel: {
+    fontSize: Typography.fontSize.sm,
     fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+  noDataText: {
+    textAlign: "center",
+    color: Colors.textTertiary,
+    fontStyle: "italic",
+  },
+  bottomSpacer: {
+    height: Spacing.margin.xxxl,
   },
 });

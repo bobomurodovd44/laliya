@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Modal, StyleSheet, Text, View, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import { Colors } from '../constants';
 import { useTranslation } from '../lib/localization';
 import { DuoButton } from './DuoButton';
-import { Colors } from '../constants';
 
 interface DeleteAccountModalProps {
   visible: boolean;
@@ -54,7 +54,16 @@ export default function DeleteAccountModal({
               <Text style={styles.subtitle}>{t("profile.deleteAccountSubtitle")}</Text>
               
               <View style={styles.inputSection}>
-                <Text style={styles.label}>{t("profile.deleteAccountConfirmLabel")}</Text>
+                <Text style={styles.label}>
+                  {t("profile.deleteAccountConfirmLabel").split("'tasdiqlash'").map((part, index, array) => (
+                    <React.Fragment key={index}>
+                      {part}
+                      {index < array.length - 1 && (
+                        <Text style={styles.keyword}>'tasdiqlash'</Text>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </Text>
                 <TextInput
                   style={styles.input}
                   value={confirmationText}
@@ -144,9 +153,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: 'BalsamiqSans',
-    fontSize: 14,
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  keyword: {
+    color: Colors.secondary,
   },
   input: {
     width: '100%',

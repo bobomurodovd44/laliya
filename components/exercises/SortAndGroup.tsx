@@ -23,7 +23,7 @@ import { PopulatedExercise } from "../../lib/api/exercises";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import { DuoButton } from "../DuoButton";
-import { Body } from "../Typography";
+import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 
 interface SortAndGroupProps {
@@ -70,8 +70,10 @@ export default React.memo(function SortAndGroup({
 }: SortAndGroupProps) {
   // #region agent log
   const componentId = useRef(Math.random().toString(36).substr(2, 9));
-  const [sound, setSound] = useState<any>(null);
+  const [sound, setSound] = useState<any>(null); // Kept for legacy if needed elsewhere, but questionSound is preferred
+  const [questionSound, setQuestionSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isUnmountingRef = useRef(false);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -87,24 +89,12 @@ export default React.memo(function SortAndGroup({
     if (!exercise.questionAudioUrl) return;
 
     try {
-      if (sound) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          if (status.isPlaying) {
-            await sound.pauseAsync();
-            setIsPlaying(false);
-          } else {
-            // If finished, replay from start
-            if (status.positionMillis === status.durationMillis) {
-              await sound.setPositionAsync(0);
-            }
-            await sound.playAsync();
-            setIsPlaying(true);
-          }
-          return;
-        }
-        await sound.unloadAsync();
-        setSound(null);
+      if (questionSound) {
+        try {
+          await questionSound.stopAsync();
+          await questionSound.unloadAsync();
+        } catch (e) {}
+        setQuestionSound(null);
       }
 
       setIsPlaying(true);
@@ -113,8 +103,9 @@ export default React.memo(function SortAndGroup({
         { shouldPlay: true }
       );
 
-      setSound(newSound);
+      setQuestionSound(newSound);
       newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (isUnmountingRef.current) return;
         if (status.isLoaded) {
           setIsPlaying(status.isPlaying);
           if (status.didJustFinish) {
@@ -594,6 +585,9 @@ export default React.memo(function SortAndGroup({
 
   return (
     <View style={styles.container}>
+      <Title size="small" style={styles.title}>
+        {t("exercise.sortAndGroup")}
+      </Title>
       <View style={styles.questionContainer}>
         <Body size="large" style={styles.question}>
           {exercise.question}
@@ -606,7 +600,7 @@ export default React.memo(function SortAndGroup({
             size="medium"
             customSize={54}
             style={styles.audioButton}
-            icon={isPlaying ? "pause" : "volume-high"}
+            icon={isPlaying ? "pause" : "play"}
             shape="circle"
             iconSize={26}
           />
@@ -999,7 +993,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 12,
     width: "100%",
   },

@@ -1,3 +1,4 @@
+import { Audio as ExpoAudio } from "expo-av";
 import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
@@ -13,6 +14,7 @@ import { Exercise } from "../../data/data";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import { Body, Title } from "../Typography";
+import { DuoButton } from "../DuoButton";
 
 interface PicturePuzzleProps {
   exercise: Exercise;
@@ -68,25 +70,30 @@ export default React.memo(function PicturePuzzle({
   return (
     <PuzzleLogic
       key={item.imageUrl}
-      imageUrl={item.imageUrl}
+       imageUrl={item.imageUrl}
       onSolved={onComplete}
       question={exercise.question}
+      questionAudioUrl={exercise.questionAudioUrl}
     />
   );
 });
 
 function PuzzleLogic({
-  imageUrl,
+   imageUrl,
   onSolved,
   question,
+  questionAudioUrl,
 }: {
   imageUrl: string;
   onSolved: () => void;
   question: string;
+  questionAudioUrl?: string;
 }) {
   const { t } = useTranslation();
   // Guard to prevent multiple onSolved calls
-  const isSolvedRef = useRef(false);
+   const isSolvedRef = useRef(false);
+  const [questionSound, setQuestionSound] = useState<any>(null);
+  const isUnmountingRef = useRef(false);
 
   // Fisher-Yates shuffle algorithm for true randomization
   const shuffleArray = (array: number[]): number[] => {
@@ -145,8 +152,42 @@ function PuzzleLogic({
   useEffect(() => {
     if (!isSolved) {
       isSolvedRef.current = false;
-    }
+     }
   }, [isSolved]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+      if (questionSound) {
+        questionSound.setOnPlaybackStatusUpdate(null);
+        questionSound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [questionSound]);
+
+  const playQuestionAudio = async () => {
+    if (!questionAudioUrl) return;
+
+    try {
+      if (questionSound) {
+        try {
+          await questionSound.stopAsync();
+          await questionSound.unloadAsync();
+        } catch (e) {}
+        setQuestionSound(null);
+      }
+
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: questionAudioUrl },
+        { shouldPlay: true }
+      );
+
+      setQuestionSound(newSound);
+    } catch (error) {
+      console.error("Failed to play question audio:", error);
+    }
+  };
 
   // Generate fresh shuffle when imageUrl changes
   useEffect(() => {
@@ -193,10 +234,25 @@ function PuzzleLogic({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      <Title size="medium" style={styles.title}>
+       <Title size="medium" style={styles.title}>
         {t('exercise.picturePuzzle')}
       </Title>
-      <Body style={styles.question}>{question}</Body>
+      <View style={styles.questionContainer}>
+        <Body style={styles.question}>{question}</Body>
+        {questionAudioUrl && (
+          <DuoButton
+            title=""
+            onPress={playQuestionAudio}
+            color="blue"
+            size="medium"
+            customSize={54}
+            style={styles.audioButton}
+            icon="play"
+            shape="circle"
+            iconSize={26}
+          />
+        )}
+      </View>
 
       {/* Board Container */}
       <View
@@ -402,13 +458,24 @@ const styles = StyleSheet.create({
     color: "#FF1493",
     marginBottom: 8,
   },
-  question: {
+   question: {
     fontFamily: "BalsamiqSans",
-    fontSize: 20,
+    fontSize: 28, // Increased for consistency
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 0,
     textAlign: "center",
   },
+  questionContainer: {
+     flexDirection: "row",
+     alignItems: "center",
+     justifyContent: "center",
+     marginBottom: 20,
+     gap: 12,
+     width: "100%",
+   },
+   audioButton: {
+     // Styling for audio button
+   },
   board: {
     backgroundColor: "#F0F0F0",
     borderRadius: 16,

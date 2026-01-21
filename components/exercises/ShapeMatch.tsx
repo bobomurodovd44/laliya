@@ -1,3 +1,4 @@
+import { Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, {
     useCallback,
@@ -21,6 +22,7 @@ import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
+import { DuoButton } from "../DuoButton";
 
 interface ShapeMatchProps {
   exercise: Exercise;
@@ -93,6 +95,8 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
   const [exerciseItems, setExerciseItems] = useState<Item[]>([]);
   const [answerItem, setAnswerItem] = useState<Item | null>(null);
   const [tryCount, setTryCount] = useState(0);
+  const [questionSound, setQuestionSound] = useState<any>(null);
+  const isUnmountingRef = useRef(false);
 
   // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
   const answerIdRef = useRef<number | undefined>(exercise.answerId);
@@ -151,6 +155,40 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
       clearInterval(intervalId);
     };
   }, [exercise.optionIds, answerId]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+      if (questionSound) {
+        questionSound.setOnPlaybackStatusUpdate(null);
+        questionSound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [questionSound]);
+
+  const playQuestionAudio = async () => {
+    if (!exercise.questionAudioUrl) return;
+
+    try {
+      if (questionSound) {
+        try {
+          await questionSound.stopAsync();
+          await questionSound.unloadAsync();
+        } catch (e) {}
+        setQuestionSound(null);
+      }
+
+      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
+        { uri: exercise.questionAudioUrl },
+        { shouldPlay: true }
+      );
+
+      setQuestionSound(newSound);
+    } catch (error) {
+      console.error("Failed to play question audio:", error);
+    }
+  };
 
   const CARD_SIZE = useMemo(
     () => getCardSize(exerciseItems.length),
@@ -232,9 +270,24 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
         <Title size="medium" style={styles.title}>
           {t('exercise.shapeMatch')}
         </Title>
-        <Body size="medium" style={styles.question}>
-          {exercise.question}
-        </Body>
+        <View style={styles.questionContainer}>
+          <Body size="medium" style={styles.question}>
+            {exercise.question}
+          </Body>
+          {exercise.questionAudioUrl && (
+            <DuoButton
+              title=""
+              onPress={playQuestionAudio}
+              color="blue"
+              size="medium"
+              customSize={54}
+              style={styles.audioButton}
+              icon="play"
+              shape="circle"
+              iconSize={26}
+            />
+          )}
+        </View>
       </View>
 
       {/* Original Images (Top) - Draggable */}
@@ -610,7 +663,18 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 0,
-    fontSize: 20,
+    fontSize: 28,
+  },
+  questionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    gap: 12,
+    width: "100%",
+  },
+  audioButton: {
+    // Styling for audio button
   },
   section: {
     marginBottom: 12,

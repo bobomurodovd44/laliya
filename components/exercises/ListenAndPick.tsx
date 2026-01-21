@@ -1,13 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
 import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
@@ -44,7 +43,6 @@ export default React.memo(function ListenAndPick({
   const [sound, setSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [questionSound, setQuestionSound] = useState<any>(null);
-  const [optionSound, setOptionSound] = useState<any>(null);
   const [showTryAgainModal, setShowTryAgainModal] = useState(false);
   const [tryCount, setTryCount] = useState(0);
 
@@ -72,34 +70,9 @@ export default React.memo(function ListenAndPick({
         questionSound.setOnPlaybackStatusUpdate(null);
         questionSound.unloadAsync().catch(() => {});
       }
-      if (optionSound) {
-        optionSound.setOnPlaybackStatusUpdate(null);
-        optionSound.unloadAsync().catch(() => {});
-      }
     };
-  }, [sound, questionSound, optionSound]);
+  }, [sound, questionSound]);
 
-  const playOptionAudio = async (audioUrl: string | undefined) => {
-    if (!audioUrl) return;
-
-    try {
-      if (optionSound) {
-        try {
-          await optionSound.stopAsync();
-          await optionSound.unloadAsync();
-        } catch (e) {}
-        setOptionSound(null);
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true }
-      );
-      setOptionSound(newSound);
-    } catch (error) {
-      console.error("Failed to play option audio:", error);
-    }
-  };
 
   const playQuestionAudio = async () => {
     if (!exercise.questionAudioUrl) return;
@@ -445,17 +418,6 @@ export default React.memo(function ListenAndPick({
                       resizeMode="cover"
                     />
                   )}
-                  {item.audioUrl && (
-                    <TouchableOpacity
-                      style={styles.optionAudioButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        playOptionAudio(item.audioUrl);
-                      }}
-                    >
-                      <Ionicons name="play" size={24} color="white" />
-                    </TouchableOpacity>
-                  )}
                 </TouchableOpacity>
               </Animated.View>
             );
@@ -570,25 +532,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 8,
-  },
-  optionAudioButton: {
-    position: "absolute",
-    top: -12,
-    right: -12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FF4B4B",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 100,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   imageCardWrong: {
     borderColor: "#FFC107", // Soft yellow

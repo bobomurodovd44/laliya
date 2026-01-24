@@ -4,6 +4,7 @@ import { PopulatedExercise } from "../api/exercises";
 interface CachedExercises {
   exercises: Exercise[];
   apiExercises: PopulatedExercise[];
+  total: number;
   timestamp: number;
   version: number;
 }
@@ -15,7 +16,7 @@ const exercisesCache = new Map<string, CachedExercises>();
 const CACHE_EXPIRY = 5 * 60 * 1000;
 
 // Cache version - increment this when data structure changes to invalidate old caches
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2; // Incremented version due to structural change
 
 /**
  * Gets cached exercises for a stage if they exist and are not expired
@@ -47,11 +48,13 @@ export const getCachedExercises = (stageId: string): CachedExercises | null => {
  * @param stageId - The stage ID to cache exercises for
  * @param exercises - Mapped exercises array
  * @param apiExercises - Original API exercises array
+ * @param total - Total number of exercises in the stage
  */
 export const setCachedExercises = (
   stageId: string,
   exercises: Exercise[],
-  apiExercises: PopulatedExercise[]
+  apiExercises: PopulatedExercise[],
+  total?: number
 ): void => {
   const existing = exercisesCache.get(stageId);
   const now = Date.now();
@@ -61,6 +64,7 @@ export const setCachedExercises = (
     exercisesCache.set(stageId, {
       exercises: [...exercises],
       apiExercises: [...apiExercises],
+      total: total || 0,
       timestamp: now,
       version: CACHE_VERSION,
     });
@@ -95,6 +99,7 @@ export const setCachedExercises = (
     exercisesCache.set(stageId, {
       exercises: mergedExercises,
       apiExercises: mergedApiExercises,
+      total: total !== undefined ? total : existing.total,
       timestamp: now,
       version: CACHE_VERSION,
     });

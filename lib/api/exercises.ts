@@ -59,11 +59,18 @@ export interface ExercisesResponse {
   skip?: number;
 }
 
+export interface FetchExercisesResult {
+  exercises: PopulatedExercise[];
+  total: number;
+}
+
 /**
  * Fetches exercises for a specific stage from the backend API
  * @param stageId - The ObjectId string of the stage
  * @param context - Optional context identifier for debugging and isolation
- * @returns Promise<PopulatedExercise[]> Array of populated exercises sorted by order
+ * @param limit - Number of exercises to fetch
+ * @param skip - Number of exercises to skip
+ * @returns Promise<FetchExercisesResult> Object containing populated exercises and total count
  * @throws Error if the API request fails
  */
 export const fetchExercisesByStageId = async (
@@ -71,11 +78,8 @@ export const fetchExercisesByStageId = async (
   context?: string,
   limit: number = 20,
   skip: number = 0
-): Promise<PopulatedExercise[]> => {
+): Promise<FetchExercisesResult> => {
   try {
-    // Log context for debugging if provided
-
-
     const response = await app.service("exercises").find({
       query: {
         stageId: stageId,
@@ -86,16 +90,23 @@ export const fetchExercisesByStageId = async (
     });
 
     // Handle both paginated and non-paginated responses
-    const exercisesData: PopulatedExercise[] = Array.isArray(response)
+    const exercisesData = Array.isArray(response)
       ? response
       : (response as ExercisesResponse).data || [];
+
+    const total = Array.isArray(response)
+      ? response.length
+      : (response as ExercisesResponse).total || 0;
 
     // Sort by order to ensure correct display order
     const sortedExercises = [...exercisesData].sort(
       (a, b) => a.order - b.order
     );
 
-    return sortedExercises;
+    return {
+      exercises: sortedExercises,
+      total,
+    };
   } catch (error: any) {
     if (context && __DEV__) {
       console.error(`[fetchExercisesByStageId] Error in context ${context}:`, error);

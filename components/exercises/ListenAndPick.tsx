@@ -1,15 +1,11 @@
-import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
-import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Platform,
     StyleSheet,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
-import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import ImageWithLoader from "../common/ImageWithLoader";
@@ -29,7 +25,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 interface ListenAndPickProps {
   exercise: Exercise;
-  onComplete: (isCorrect?: boolean, tryCount?: number) => void;
+  onComplete: () => void;
 }
 
 export default React.memo(function ListenAndPick({
@@ -40,9 +36,7 @@ export default React.memo(function ListenAndPick({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [shuffledItems, setShuffledItems] = useState<Item[]>([]);
-  const [sound, setSound] = useState<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [questionSound, setQuestionSound] = useState<any>(null);
+  const { play: playAudio, isPlaying } = useAudioCache();
   const [showTryAgainModal, setShowTryAgainModal] = useState(false);
   const [tryCount, setTryCount] = useState(0);
 
@@ -58,65 +52,23 @@ export default React.memo(function ListenAndPick({
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
 
-  // Cleanup audio on unmount
   useEffect(() => {
+    isUnmountingRef.current = false;
     return () => {
       isUnmountingRef.current = true;
-      if (sound) {
-        sound.setOnPlaybackStatusUpdate(null);
-        sound.unloadAsync().catch(() => {});
-      }
-      if (questionSound) {
-        questionSound.setOnPlaybackStatusUpdate(null);
-        questionSound.unloadAsync().catch(() => {});
-      }
     };
-  }, [sound, questionSound]);
-
+  }, []);
 
   const playQuestionAudio = async () => {
-    if (!exercise.questionAudioUrl) return;
-
-    try {
-      if (questionSound) {
-        try {
-          await questionSound.stopAsync();
-          await questionSound.unloadAsync();
-        } catch (e) {}
-        setQuestionSound(null);
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: exercise.questionAudioUrl },
-        { shouldPlay: true }
-      );
-
-      setQuestionSound(newSound);
-    } catch (error) {
-      console.error("Failed to play question audio:", error);
-    }
+    if (!exercise.questionAudioUrl || isPlaying) return;
+    await playAudio(exercise.questionAudioUrl);
   };
 
   // Shuffle items when exercise changes
   useEffect(() => {
-    // Get items inside effect to avoid dependency issues
-    // Map exercise.optionIds to items from items-store
-    // The items-store is populated by task.tsx from API data via mapPopulatedExerciseToExercise
     const currentExerciseItems = exercise.optionIds
       .map((id) => items.find((item) => item.id === id))
       .filter((item): item is Item => item !== undefined);
-
-    // Verify we found all options
-    if (currentExerciseItems.length !== exercise.optionIds.length) {
-      const missingIds = exercise.optionIds.filter(
-        (id) => !items.find((item) => item.id === id)
-      );
-      console.warn(
-        `ListenAndPick: Some option IDs not found in items-store. Missing IDs: ${missingIds.join(
-          ", "
-        )}`
-      );
-    }
 
     // Reset state
     setSelectedId(null);
@@ -132,7 +84,6 @@ export default React.memo(function ListenAndPick({
 
     // Shuffle items - ensure different order each time
     let shuffled = shuffleArray(currentExerciseItems);
-    // Make sure it's actually shuffled (not same order)
     let attempts = 0;
     const maxAttempts = 10;
     while (
@@ -150,126 +101,8 @@ export default React.memo(function ListenAndPick({
 
   const playAnswerAudio = async () => {
     const audioUrl = answerItem?.audioUrl;
-
-    if (!audioUrl || audioUrl.trim() === "") {
-      Alert.alert(
-        t('exercise.audioNotAvailable'),
-        t('exercise.audioFileNotAvailable')
-      );
-      return;
-    }
-
-    // Validate URL format
-    if (
-      !audioUrl.startsWith("http://") &&
-      !audioUrl.startsWith("https://") &&
-      !audioUrl.startsWith("file://")
-    ) {
-      Alert.alert(t('exercise.invalidUrl'), t('exercise.invalidUrlMessage'));
-      return;
-    }
-
-    try {
-      // Check permissions before playing
-      if (Platform.OS !== "web") {
-        const { status } = await (ExpoAudio as any).getPermissionsAsync();
-
-        if (status !== "granted") {
-          const { status: newStatus } = await (ExpoAudio as any).requestPermissionsAsync();
-
-          if (newStatus !== "granted") {
-            Alert.alert(
-              t('exercise.permissionRequired'),
-              t('exercise.audioPlaybackPermission')
-            );
-            return;
-          }
-        }
-      }
-
-      // Stop and unload active sound if any
-      if (sound) {
-        try {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-        setSound(null);
-      }
-
-      setIsPlaying(true);
-
-      // Set audio mode for playback - ensure it plays even in silent mode
-      try {
-        await (ExpoAudio as any).setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          // Android specific: ensure audio plays through speaker/headphones
-          shouldDuckAndroid: false, // Don't duck other audio
-        });
-      } catch (audioModeError) {
-        // Continue anyway - might still work
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true }
-      );
-
-      setSound(newSound);
-
-      // Get initial status
-      const status = await newSound.getStatusAsync();
-
-      if (status.isLoaded) {
-        if (status.shouldPlay && !status.isPlaying) {
-          await newSound.playAsync();
-        } else if (!status.shouldPlay) {
-          await newSound.playAsync();
-        }
-
-        // Check status again after a brief delay to confirm playback
-        setTimeout(async () => {
-          try {
-            const updatedStatus = await newSound.getStatusAsync();
-            if (updatedStatus.isLoaded) {
-              if (
-                !updatedStatus.isPlaying &&
-                updatedStatus.positionMillis === 0
-              ) {
-                Alert.alert(
-                  t('exercise.audioNotPlaying'),
-                  t('exercise.audioNotPlayingMessage')
-                );
-              }
-            }
-          } catch (e) {
-            // Ignore status check errors
-          }
-        }, 500);
-      }
-
-      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        // Don't process status updates if component is unmounting
-        if (isUnmountingRef.current) return;
-
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-          }
-        }
-      });
-    } catch (error) {
-      setIsPlaying(false);
-      setSound(null);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      Alert.alert(
-        t('exercise.audioPlayError'),
-        t('exercise.audioPlayErrorMessage', { error: errorMessage })
-      );
-    }
+    if (!audioUrl || audioUrl.trim() === "" || isPlaying) return;
+    await playAudio(audioUrl);
   };
 
   const handleSelect = useCallback(
@@ -283,75 +116,26 @@ export default React.memo(function ListenAndPick({
         // Mark as completed immediately to prevent multiple calls
         isCompletedRef.current = true;
         setIsCorrect(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-        // Call onComplete with isCorrect = true and the current tryCount
-        onComplete(true, tryCount);
+        // Haptic feedback removed for core logic but could be added back
+        
+        // Use a small delay before completing to let user see success state
+        setTimeout(() => {
+            onComplete();
+        }, 800);
       } else {
         setIsCorrect(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        // Increment tryCount on wrong answer
-        setTryCount(prev => {
-          const next = prev + 1;
-          return next;
-        });
-
         // Show try again modal instead of completing the exercise
         setShowTryAgainModal(true);
+        setTryCount(prev => prev + 1);
       }
     },
-    [isCorrect, exercise.answerId, onComplete, tryCount]
+    [isCorrect, exercise.answerId, onComplete]
   );
-
-  // Validation: Check if answerItem exists and has required properties
-  if (!answerItem) {
-    return (
-      <View style={styles.container}>
-        <Body style={styles.errorText}>
-          Answer item not found (ID: {exercise.answerId})
-        </Body>
-      </View>
-    );
-  }
-
-  if (!answerItem.word) {
-    return (
-      <View style={styles.container}>
-        <Body style={styles.errorText}>
-          Answer item is missing the word property
-        </Body>
-      </View>
-    );
-  }
-
-  if (!answerItem.audioUrl || answerItem.audioUrl.trim() === "") {
-    return (
-      <View style={styles.container}>
-        <Body style={styles.errorText}>Answer item is missing audio URL</Body>
-      </View>
-    );
-  }
-
-  // Validation: Check if all options have imageUrl
-  const optionsWithoutImages = shuffledItems.filter(
-    (item: Item) => !item.imageUrl || item.imageUrl.trim() === ""
-  );
-  if (optionsWithoutImages.length > 0) {
-    return (
-      <View style={styles.container}>
-        <Body style={styles.errorText}>
-          Some options are missing images (IDs:{" "}
-          {optionsWithoutImages.map((i: Item) => i.id).join(", ")})
-        </Body>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       <Title size="small" style={styles.title}>
-        {t('exercise.listenAndPick')}
+        {t("exercise.listenAndPick")}
       </Title>
       <View style={styles.questionContainer}>
         <Body size="large" style={styles.question}>
@@ -365,76 +149,57 @@ export default React.memo(function ListenAndPick({
             size="medium"
             customSize={54}
             style={styles.audioButton}
-            icon="play"
+            icon="volume-high"
             shape="circle"
             iconSize={26}
           />
         )}
       </View>
 
-      {/* Answer Item Card with Audio */}
-      <View style={styles.answerCard}>
-        <Title size="xlarge" style={styles.answerWord}>
-          {answerItem.word}
-        </Title>
-        <DuoButton
-          title=""
-          onPress={playAnswerAudio}
-          color="blue"
-          size="medium"
-          customSize={60}
-          style={styles.audioButton}
-          icon="volume-high"
-          shape="circle"
-          iconSize={28}
-        />
-      </View>
-
-      {/* Option Cards Grid */}
       <View style={styles.content}>
         <View style={styles.grid}>
-          {shuffledItems.map((item: Item) => {
+          {shuffledItems.map((item) => {
             const isSelected = selectedId === item.id;
+            const isCorrectOption = item.id === exercise.answerId;
 
             return (
-              <Animated.View
+              <TouchableOpacity
                 key={item.id}
                 style={[
                   styles.imageCard,
                   isSelected && isCorrect === true && styles.imageCardCorrect,
                   isSelected && isCorrect === false && styles.imageCardWrong,
                 ]}
+                onPress={() => handleSelect(item.id)}
+                activeOpacity={0.7}
+                disabled={isCorrect === true}
               >
-                <TouchableOpacity
-                  style={styles.touchable}
-                  onPress={() => handleSelect(item.id)}
-                  activeOpacity={0.7}
-                  disabled={isCorrect === true}
-                >
-                  {item.imageUrl && (
+                {item.imageUrl && (
+                  <View style={styles.imageWrapper}>
                     <ImageWithLoader
                       source={{ uri: item.imageUrl }}
                       style={styles.image}
                       resizeMode="cover"
                     />
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+                  </View>
+                )}
+              </TouchableOpacity>
             );
           })}
         </View>
       </View>
+
       {/* Try Again Modal */}
       <TryAgainModal
         visible={showTryAgainModal}
         onClose={() => {
           setShowTryAgainModal(false);
-          // Don't reset isCorrect here so the red border remains, 
-          // but allow another selection
+          setSelectedId(null);
+          setIsCorrect(null);
         }}
       />
     </View>
-);
+  );
 });
 
 const styles = StyleSheet.create({
@@ -443,12 +208,13 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "flex-start",
+    paddingTop: 20,
   },
   title: {
     color: "#FF1493",
     textAlign: "center",
     marginBottom: 8,
-    marginTop: -20,
+    marginTop: 0,
   },
   questionContainer: {
     flexDirection: "row",
@@ -464,32 +230,8 @@ const styles = StyleSheet.create({
     maxWidth: "80%",
     fontSize: 28,
   },
-  answerCard: {
-    width: "90%",
-    maxWidth: 360,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-    borderWidth: 2,
-    borderColor: "#E8E8E8",
-  },
-  answerWord: {
-    fontFamily: "FredokaOne",
-    fontSize: 42,
-    color: "#4A4A4A",
-    flex: 1,
-  },
   audioButton: {
-    // Width/Height handled by customSize prop
+    // Styling for audio button
   },
   content: {
     width: "100%",
@@ -499,15 +241,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 24,
+    gap: 20,
     width: "100%",
     maxWidth: 380,
   },
   imageCard: {
-    width: "45%", // Responsive width
+    width: "45%",
     aspectRatio: 1,
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 24,
+    overflow: "hidden",
     borderWidth: 2,
     borderColor: "#E8E8E8",
     shadowColor: "#000",
@@ -516,38 +259,27 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  touchable: {
+  imageWrapper: {
     flex: 1,
-  },
-  imageCardSelected: {
-    borderColor: "#4A90E2",
-    borderWidth: 6,
-    transform: [{ scale: 1.08 }],
-  },
-  imageCardCorrect: {
-    borderColor: "#58CC02", // Match DuoButton green
-    borderWidth: 6,
-    backgroundColor: "#E6FFFA",
-    shadowColor: "#58CC02",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  imageCardWrong: {
-    borderColor: "#FFC107", // Soft yellow
-    borderWidth: 6,
-    backgroundColor: "#FFF9C4", // Light yellow background
   },
   image: {
     width: "100%",
     height: "100%",
-    borderRadius: 18,
   },
-  errorText: {
-    fontSize: 16,
-    color: "#FF4B4B",
-    textAlign: "center",
-    padding: 20,
+  imageCardCorrect: {
+    borderColor: "#58CC02",
+    borderWidth: 6,
+    backgroundColor: "#E6FFFA",
+  },
+  imageCardWrong: {
+    borderColor: "#FFC107",
+    borderWidth: 6,
+    backgroundColor: "#FFF9C4",
+  },
+  correctOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    zIndex: 10,
   },
 });
-

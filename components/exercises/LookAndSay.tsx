@@ -3,15 +3,16 @@ import { Image } from "expo-image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Platform, StyleSheet, View } from "react-native";
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withTiming,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withRepeat,
+    withSequence,
+    withTiming,
 } from "react-native-reanimated";
 import { Exercise } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import { DuoButton } from "../DuoButton";
@@ -94,6 +95,7 @@ export default React.memo(function LookAndSay({
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { play: playAudio, isPlaying: isAudioPlaying } = useAudioCache();
 
   // State for recording playback specifically
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
@@ -273,6 +275,9 @@ export default React.memo(function LookAndSay({
   }, [recordingTime, isRecording, stopRecording]);
 
   const playItemAudio = async () => {
+    // Prevent replaying if already playing
+    if (isAudioPlaying) return;
+
     // Use exercise.questionAudioUrl if available, otherwise fall back to item.audioUrl
     const audioUrl = exercise.questionAudioUrl || item?.audioUrl;
 
@@ -284,117 +289,7 @@ export default React.memo(function LookAndSay({
       return;
     }
 
-    // Validate URL format
-    if (
-      !audioUrl.startsWith("http://") &&
-      !audioUrl.startsWith("https://") &&
-      !audioUrl.startsWith("file://")
-    ) {
-      Alert.alert(t('exercise.invalidUrl'), t('exercise.invalidUrlMessage'));
-      return;
-    }
-
-    try {
-      // Check permissions before playing
-      if (Platform.OS !== "web") {
-        const { status } = await Audio.getPermissionsAsync();
-
-        if (status !== "granted") {
-          const { status: newStatus } = await Audio.requestPermissionsAsync();
-
-          if (newStatus !== "granted") {
-            Alert.alert(
-              t('exercise.permissionRequired'),
-              t('exercise.audioPlaybackPermission')
-            );
-            return;
-          }
-        }
-      }
-
-      // Stop and unload active sound if any
-      if (sound) {
-        try {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-        setSound(null);
-      }
-
-      setIsPlaying(true);
-
-      // Set audio mode for playback - ensure it plays even in silent mode
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          // Android specific: ensure audio plays through speaker/headphones
-          shouldDuckAndroid: false, // Don't duck other audio
-        });
-      } catch (audioModeError) {
-        // Continue anyway - might still work
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioUrl },
-        { shouldPlay: true }
-      );
-
-      setSound(newSound);
-
-      // Get initial status
-      const status = await newSound.getStatusAsync();
-
-      if (status.isLoaded) {
-        if (status.shouldPlay && !status.isPlaying) {
-          await newSound.playAsync();
-        } else if (!status.shouldPlay) {
-          await newSound.playAsync();
-        }
-
-        // Check status again after a brief delay to confirm playback
-        setTimeout(async () => {
-          try {
-            const updatedStatus = await newSound.getStatusAsync();
-            if (updatedStatus.isLoaded) {
-              if (
-                !updatedStatus.isPlaying &&
-                updatedStatus.positionMillis === 0
-              ) {
-                Alert.alert(
-                  t('exercise.audioNotPlaying'),
-                  t('exercise.audioNotPlayingMessage')
-                );
-              }
-            }
-          } catch (e) {
-            // Ignore status check errors
-          }
-        }, 500);
-      }
-
-      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        // Don't process status updates if component is unmounting
-        if (isUnmountingRef.current) return;
-
-        if (status.isLoaded) {
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-          }
-        }
-      });
-    } catch (error) {
-      setIsPlaying(false);
-      setSound(null);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      Alert.alert(
-        t('exercise.audioPlayError'),
-        t('exercise.audioPlayErrorMessage', { error: errorMessage })
-      );
-    }
+    await playAudio(audioUrl);
   };
 
   const togglePlayback = async () => {

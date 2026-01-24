@@ -1,4 +1,3 @@
-import { AVPlaybackStatus, Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, {
     useCallback,
@@ -19,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Colors, Spacing, Typography } from "../../constants";
 import { categories, Exercise, Item } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { PopulatedExercise } from "../../lib/api/exercises";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
@@ -70,53 +70,12 @@ export default React.memo(function SortAndGroup({
 }: SortAndGroupProps) {
   // #region agent log
   const componentId = useRef(Math.random().toString(36).substr(2, 9));
-  const [sound, setSound] = useState<any>(null); // Kept for legacy if needed elsewhere, but questionSound is preferred
-  const [questionSound, setQuestionSound] = useState<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const isUnmountingRef = useRef(false);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.setOnPlaybackStatusUpdate(null);
-        sound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [sound]);
+  const { play: playAudio, isPlaying } = useAudioCache();
+  // No-op for cleanup
 
   const playQuestionAudio = async () => {
-    if (!exercise.questionAudioUrl) return;
-
-    try {
-      if (questionSound) {
-        try {
-          await questionSound.stopAsync();
-          await questionSound.unloadAsync();
-        } catch (e) {}
-        setQuestionSound(null);
-      }
-
-      setIsPlaying(true);
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: exercise.questionAudioUrl },
-        { shouldPlay: true }
-      );
-
-      setQuestionSound(newSound);
-      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if (isUnmountingRef.current) return;
-        if (status.isLoaded) {
-          setIsPlaying(status.isPlaying);
-          if (status.didJustFinish) {
-            setIsPlaying(false);
-          }
-        }
-      });
-    } catch (error) {
-      setIsPlaying(false);
-      console.error("Failed to play question audio:", error);
-    }
+    if (!exercise.questionAudioUrl || isPlaying) return;
+    await playAudio(exercise.questionAudioUrl);
   };
 
   useEffect(() => {

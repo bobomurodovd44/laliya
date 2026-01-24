@@ -28,6 +28,7 @@ import {
     mapPopulatedExerciseToExercise,
     PopulatedExercise,
 } from "../lib/api/exercises";
+import { audioCache } from "../lib/audio-cache";
 import {
     clearExercisesCache,
     getCachedExercises,
@@ -513,6 +514,53 @@ export default function Task() {
           imagePreloader.preloadBatch(nextImageUrls, "normal").catch(() => {
             // Silently fail - images will load normally if prefetch fails
           });
+        }
+      }
+
+      // Preload Audio
+      const audioUrls: string[] = [];
+      const nextAudioUrls: string[] = [];
+
+      // Current exercise audio
+      if (currentApiExercise.questionAudio?.name) {
+        audioUrls.push(currentApiExercise.questionAudio.name);
+      }
+      if (currentApiExercise.answer?.audio?.name) {
+        audioUrls.push(currentApiExercise.answer.audio.name);
+      }
+      
+      if (currentExercise.questionAudioUrl) {
+         audioUrls.push(currentExercise.questionAudioUrl);
+      }
+
+      // Extract audio URLs from options
+      currentApiExercise.options?.forEach(option => {
+        if (option.audio?.name) {
+          audioUrls.push(option.audio.name);
+        }
+      });
+
+      if (audioUrls.length > 0) {
+        audioCache.preloadBatch(Array.from(new Set(audioUrls)), "high").catch(() => {});
+      }
+
+      // Next exercise audio
+      if (nextApiExercise) {
+        if (nextApiExercise.questionAudio?.name) {
+          nextAudioUrls.push(nextApiExercise.questionAudio.name);
+        }
+        if (nextApiExercise.answer?.audio?.name) {
+          nextAudioUrls.push(nextApiExercise.answer.audio.name);
+        }
+        
+        nextApiExercise.options?.forEach(option => {
+          if (option.audio?.name) {
+            nextAudioUrls.push(option.audio.name);
+          }
+        });
+
+        if (nextAudioUrls.length > 0) {
+          audioCache.preloadBatch(Array.from(new Set(nextAudioUrls)), "normal").catch(() => {});
         }
       }
     });

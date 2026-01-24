@@ -1,20 +1,20 @@
-import { Audio as ExpoAudio } from "expo-av";
 import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
+    runOnJS,
+    useAnimatedStyle,
+    useDerivedValue,
+    useSharedValue,
+    withSpring,
 } from "react-native-reanimated";
 import { Exercise } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
-import { Body, Title } from "../Typography";
 import { DuoButton } from "../DuoButton";
+import { Body, Title } from "../Typography";
 
 interface PicturePuzzleProps {
   exercise: Exercise;
@@ -92,7 +92,8 @@ function PuzzleLogic({
   const { t } = useTranslation();
   // Guard to prevent multiple onSolved calls
    const isSolvedRef = useRef(false);
-  const [questionSound, setQuestionSound] = useState<any>(null);
+
+  const { play: playAudio, isPlaying } = useAudioCache();
   const isUnmountingRef = useRef(false);
 
   // Fisher-Yates shuffle algorithm for true randomization
@@ -155,38 +156,11 @@ function PuzzleLogic({
      }
   }, [isSolved]);
 
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      isUnmountingRef.current = true;
-      if (questionSound) {
-        questionSound.setOnPlaybackStatusUpdate(null);
-        questionSound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [questionSound]);
+  // No-op for cleanup
 
   const playQuestionAudio = async () => {
-    if (!questionAudioUrl) return;
-
-    try {
-      if (questionSound) {
-        try {
-          await questionSound.stopAsync();
-          await questionSound.unloadAsync();
-        } catch (e) {}
-        setQuestionSound(null);
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: questionAudioUrl },
-        { shouldPlay: true }
-      );
-
-      setQuestionSound(newSound);
-    } catch (error) {
-      console.error("Failed to play question audio:", error);
-    }
+    if (!questionAudioUrl || isPlaying) return;
+    await playAudio(questionAudioUrl);
   };
 
   // Generate fresh shuffle when imageUrl changes

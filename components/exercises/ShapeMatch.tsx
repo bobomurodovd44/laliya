@@ -1,4 +1,3 @@
-import { Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, {
     useCallback,
@@ -18,11 +17,12 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
-import { Body, Title } from "../Typography";
 import ImageWithLoader from "../common/ImageWithLoader";
 import { DuoButton } from "../DuoButton";
+import { Body, Title } from "../Typography";
 
 interface ShapeMatchProps {
   exercise: Exercise;
@@ -95,7 +95,8 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
   const [exerciseItems, setExerciseItems] = useState<Item[]>([]);
   const [answerItem, setAnswerItem] = useState<Item | null>(null);
   const [tryCount, setTryCount] = useState(0);
-  const [questionSound, setQuestionSound] = useState<any>(null);
+  const { play: playAudio, isPlaying } = useAudioCache();
+
   const isUnmountingRef = useRef(false);
 
   // Get the answer ID from exercise - use ref to ensure it's always current in callbacks
@@ -156,38 +157,11 @@ export default React.memo(function ShapeMatch({ exercise, onComplete }: ShapeMat
     };
   }, [exercise.optionIds, answerId]);
 
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      isUnmountingRef.current = true;
-      if (questionSound) {
-        questionSound.setOnPlaybackStatusUpdate(null);
-        questionSound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [questionSound]);
+  // No-op for cleanup
 
   const playQuestionAudio = async () => {
-    if (!exercise.questionAudioUrl) return;
-
-    try {
-      if (questionSound) {
-        try {
-          await questionSound.stopAsync();
-          await questionSound.unloadAsync();
-        } catch (e) {}
-        setQuestionSound(null);
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: exercise.questionAudioUrl },
-        { shouldPlay: true }
-      );
-
-      setQuestionSound(newSound);
-    } catch (error) {
-      console.error("Failed to play question audio:", error);
-    }
+    if (!exercise.questionAudioUrl || isPlaying) return;
+    await playAudio(exercise.questionAudioUrl);
   };
 
   const CARD_SIZE = useMemo(

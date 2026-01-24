@@ -1,9 +1,9 @@
-import { Audio as ExpoAudio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { Exercise, Item } from "../../data/data";
+import { useAudioCache } from "../../hooks/useAudioCache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import ImageWithLoader from "../common/ImageWithLoader";
@@ -38,9 +38,11 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
   // Ref to track if component is unmounting to avoid false errors
   const isUnmountingRef = useRef(false);
 
-  const [questionSound, setQuestionSound] = useState<any>(null);
+
   const [showTryAgainModal, setShowTryAgainModal] = useState(false);
   const [tryCount, setTryCount] = useState(0);
+  const { play: playAudio, isPlaying } = useAudioCache();
+
 
   // Create stable exercise identifier
   const exerciseId = `${exercise.stageId}-${exercise.order}`;
@@ -76,38 +78,11 @@ export default React.memo(function OddOneOut({ exercise, onComplete }: OddOneOut
     setShuffledItems(shuffled);
   }, [exercise.optionIds]);
 
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      isUnmountingRef.current = true;
-      if (questionSound) {
-        questionSound.setOnPlaybackStatusUpdate(null);
-        questionSound.unloadAsync().catch(() => {});
-      }
-    };
-  }, [questionSound]);
+  // No-op for cleanup
 
   const playQuestionAudio = async () => {
-    if (!exercise.questionAudioUrl) return;
-
-    try {
-      if (questionSound) {
-        try {
-          await questionSound.stopAsync();
-          await questionSound.unloadAsync();
-        } catch (e) {}
-        setQuestionSound(null);
-      }
-
-      const { sound: newSound } = await ExpoAudio.Sound.createAsync(
-        { uri: exercise.questionAudioUrl },
-        { shouldPlay: true }
-      );
-
-      setQuestionSound(newSound);
-    } catch (error) {
-      console.error("Failed to play question audio:", error);
-    }
+    if (!exercise.questionAudioUrl || isPlaying) return;
+    await playAudio(exercise.questionAudioUrl);
   };
 
   const handleSelect = useCallback(

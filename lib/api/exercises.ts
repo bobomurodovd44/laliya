@@ -68,7 +68,9 @@ export interface ExercisesResponse {
  */
 export const fetchExercisesByStageId = async (
   stageId: string,
-  context?: string
+  context?: string,
+  limit: number = 20,
+  skip: number = 0
 ): Promise<PopulatedExercise[]> => {
   try {
     // Log context for debugging if provided
@@ -78,6 +80,8 @@ export const fetchExercisesByStageId = async (
       query: {
         stageId: stageId,
         $sort: { order: 1 },
+        $limit: limit,
+        $skip: skip,
       },
     });
 

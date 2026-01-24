@@ -1,10 +1,10 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { Dimensions, InteractionManager, StyleSheet, View } from "react-native";
 import ConfettiCannon from "react-native-confetti-cannon";
@@ -24,14 +24,14 @@ import { Body } from "../components/Typography";
 import { Colors, Spacing } from "../constants";
 import { Exercise, ExerciseType } from "../data/data";
 import {
-    fetchExercisesByStageId,
-    mapPopulatedExerciseToExercise,
-    PopulatedExercise,
+  fetchExercisesByStageId,
+  mapPopulatedExerciseToExercise,
+  PopulatedExercise,
 } from "../lib/api/exercises";
 import {
-    clearExercisesCache,
-    getCachedExercises,
-    setCachedExercises,
+  clearExercisesCache,
+  getCachedExercises,
+  setCachedExercises,
 } from "../lib/cache/exercises-cache";
 import { getCachedStages } from "../lib/cache/stages-cache";
 import app from "../lib/feathers/feathers-client";
@@ -42,8 +42,8 @@ import { playSound } from "../lib/sound";
 import { useAuthStore } from "../lib/store/auth-store";
 import { uploadAudioMultipart } from "../lib/upload/multipart-upload";
 import {
-    checkStageAccess,
-    getUserMaxStageOrder,
+  checkStageAccess,
+  getUserMaxStageOrder,
 } from "../lib/utils/stage-access";
 
 export default function Task() {
@@ -55,6 +55,33 @@ export default function Task() {
 
   const stageId = params.stageId as string;
   const exerciseOrder = Number(params.exerciseOrder) || 1;
+
+  // Helper function to prefetch next batch of exercises
+  const prefetchNextBatch = useCallback(async (sid: string, currentOrder: number) => {
+    try {
+      // Determine what to prefetch (the next 3 exercises)
+      const nextBatchOrder = currentOrder + 1;
+      
+      // Check if next one is already cached
+      const cached = getCachedExercises(sid);
+      if (cached?.exercises.some(e => e.order === nextBatchOrder)) {
+        return; // Already cached
+      }
+
+      // Fetch in background (limit 3)
+      const limit = 3;
+      const skip = currentOrder; // skip currentOrder to start from next
+      const apiExs = await fetchExercisesByStageId(sid, 'background-prefetch', limit, skip);
+      
+      if (apiExs.length > 0) {
+        const mappedExs: Exercise[] = apiExs.map(ae => mapPopulatedExerciseToExercise(ae).exercise);
+        setCachedExercises(sid, mappedExs, apiExs);
+      }
+    } catch (err) {
+      // Silent fail for background prefetch
+      console.warn("Background prefetch failed:", err);
+    }
+  }, []);
 
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
   const [stageExercises, setStageExercises] = useState<Exercise[]>([]);
@@ -106,42 +133,16 @@ export default function Task() {
       return;
     }
 
-    // Always clear cache when entering a stage (exerciseOrder 1) to ensure fresh data
+    // Always clear cache when entering a stage (exerciseOrder === 1) to ensure fresh data
     if (exerciseOrder === 1) {
-      // #region agent log
-      const oldResetKey = resetKey;
-      // #endregion
       clearExercisesCache(stageId);
-      setCurrentExercise(null);
       setStageExercises([]);
       setApiExercises([]);
+      setCurrentExercise(null);
       setLoading(true);
       setResetKey((prev) => prev + 1);
       currentStageIdRef.current = null;
       recordedAudioUriRef.current = null;
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/1bc58072-684a-48c4-a65b-786846b4a9f2",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "task.tsx:reset-on-entry",
-            message: "Stage entry reset",
-            data: {
-              stageId: stageId,
-              exerciseOrder: exerciseOrder,
-              oldResetKey: oldResetKey,
-              newResetKey: oldResetKey + 1,
-              isCompletedBefore: isCompleted,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            hypothesisId: "H4",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
     }
 
     // Debug logging
@@ -319,21 +320,26 @@ export default function Task() {
       }
 
       // If we have cached data (when navigating between exercises), use it
-      if (cached && exerciseOrder > 1) {
+      if (cached) {
         setStageExercises(cached.exercises);
         setApiExercises(cached.apiExercises);
 
-        const exerciseIndex = exerciseOrder - 1;
-        if (exerciseIndex >= 0 && exerciseIndex < cached.exercises.length) {
-          const exercise = cached.exercises[exerciseIndex];
+        // Find exercise by its order property, not index
+        const exercise = cached.exercises.find((e) => e.order === exerciseOrder);
+        
+        if (exercise) {
+          const apiExerciseIndex = cached.apiExercises.findIndex((e) => e.order === exerciseOrder);
+          const currentApiExercise = cached.apiExercises[apiExerciseIndex];
+
           setCurrentExercise(exercise);
-          setIsLastExercise(exerciseOrder >= cached.exercises.length);
+          // We need total count to know if it's last exercise. 
+          // For now, let's assume if it's in cache, we check if it's the last one in the stage
+          setIsLastExercise(false); // Will be updated later if needed
           isCompletingRef.current = false;
           previousExerciseOrderRef.current = exerciseOrder;
           currentStageIdRef.current = stageId;
           isExerciseActiveRef.current = true;
 
-          const currentApiExercise = cached.apiExercises[exerciseIndex];
           if (currentApiExercise) {
             const { items: exerciseItems } =
               mapPopulatedExerciseToExercise(currentApiExercise);
@@ -341,6 +347,13 @@ export default function Task() {
           }
 
           setLoading(false);
+          
+          // Trigger background fetch for next batch if needed
+          const nextOrder = exerciseOrder + 1;
+          const isNextCached = cached.exercises.some(e => e.order === nextOrder);
+          if (!isNextCached) {
+            prefetchNextBatch(stageId, exerciseOrder);
+          }
           return;
         }
       }
@@ -351,8 +364,10 @@ export default function Task() {
 
       const loadExercises = async () => {
         try {
-          // Fetch exercises from API with context for debugging
-          const apiExercises = await fetchExercisesByStageId(stageId, 'task-page');
+          // Fetch small batch (3 exercises) starting from the current order
+          const limit = 3;
+          const skip = exerciseOrder - 1;
+          const apiExercises = await fetchExercisesByStageId(stageId, 'task-page', limit, skip);
 
           if (apiExercises.length === 0) {
             setError(t("exercise.noExercises"));
@@ -360,56 +375,47 @@ export default function Task() {
             return;
           }
 
-          // Map all exercises
+          // Map fetched exercises
           const mappedExercises: Exercise[] = [];
           apiExercises.forEach((apiExercise) => {
             const { exercise } = mapPopulatedExerciseToExercise(apiExercise);
             mappedExercises.push(exercise);
           });
 
-          // Cache the exercises
+          // Merge into cache
           setCachedExercises(stageId, mappedExercises, apiExercises);
+          
+          // Get the full updated cache
+          const updatedCache = getCachedExercises(stageId);
+          if (updatedCache) {
+            setStageExercises(updatedCache.exercises);
+            setApiExercises(updatedCache.apiExercises);
 
-          setStageExercises(mappedExercises);
-          setApiExercises(apiExercises);
+            const exercise = updatedCache.exercises.find(e => e.order === exerciseOrder);
+            if (!exercise) {
+               setError(t("exercise.exerciseNotFound"));
+               setLoading(false);
+               return;
+            }
 
-          // Find current exercise by array index (exerciseOrder is 1-based, so subtract 1)
-          const exerciseIndex = exerciseOrder - 1;
+            const apiExercise = updatedCache.apiExercises.find(e => e.order === exerciseOrder);
+            if (apiExercise) {
+              const { items: exerciseItems } = mapPopulatedExerciseToExercise(apiExercise);
+              setItems(exerciseItems);
+            }
 
-          if (exerciseIndex < 0 || exerciseIndex >= mappedExercises.length) {
-            setError(
-              `Exercise not found (requested index ${exerciseOrder}, but only ${mappedExercises.length} exercises available)`
-            );
+            setCurrentExercise(exercise);
+            setIsLastExercise(false); // Logic for last exercise needs total stage count
+            setIsCompleted(false);
+            isCompletingRef.current = false;
+            previousExerciseOrderRef.current = exerciseOrder;
+            currentStageIdRef.current = stageId;
+            isExerciseActiveRef.current = true;
             setLoading(false);
-            return;
+
+            // Prefetch next batch in background
+            prefetchNextBatch(stageId, exerciseOrder);
           }
-
-          const exercise = mappedExercises[exerciseIndex];
-
-          if (!exercise) {
-            setError(t("exercise.exerciseNotFound"));
-            setLoading(false);
-            return;
-          }
-
-          // Map and set items for the current exercise
-          const currentApiExercise = apiExercises[exerciseIndex];
-          if (currentApiExercise) {
-            const { items: exerciseItems } =
-              mapPopulatedExerciseToExercise(currentApiExercise);
-            setItems(exerciseItems);
-          }
-
-          setCurrentExercise(exercise);
-          setIsLastExercise(exerciseOrder >= mappedExercises.length);
-          setIsCompleted(false);
-          isCompletingRef.current = false;
-          previousExerciseOrderRef.current = exerciseOrder;
-          // Set current stageId ref to allow rendering
-          currentStageIdRef.current = stageId;
-          // Mark that user is actively working on exercises
-          isExerciseActiveRef.current = true;
-          setLoading(false);
         } catch (err: any) {
           setError(err.message || "Failed to load exercises");
           setLoading(false);
@@ -422,7 +428,7 @@ export default function Task() {
     loadData();
     // Clear stage access cache when stageId or user's currentStageId changes
     // This ensures we re-verify access when these change
-  }, [stageId, exerciseOrder, user?.currentStageId, router, focusTrigger]);
+  }, [stageId, exerciseOrder, user?.currentStageId, router, focusTrigger, prefetchNextBatch]);
 
   // Set wasExerciseActiveRef after exercise loads successfully
   // This prevents the double-run issue in the main useEffect
@@ -750,8 +756,6 @@ export default function Task() {
         }
       }
 
-      // Note: Removed background stage access check after completion
-      // This was causing unwanted redirects when users were actively working on exercises
       // Stage access is already verified on initial load, which is sufficient
     },
     [

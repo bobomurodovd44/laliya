@@ -25,25 +25,25 @@ const CACHE_VERSION = 1;
 export const getCachedExercises = (stageId: string): CachedExercises | null => {
   const cached = exercisesCache.get(stageId);
   if (!cached) return null;
-  
+
   // Check if cache version is outdated
   if (cached.version !== CACHE_VERSION) {
     exercisesCache.delete(stageId);
     return null;
   }
-  
+
   // Check if cache is expired
   const now = Date.now();
   if (now - cached.timestamp > CACHE_EXPIRY) {
     exercisesCache.delete(stageId);
     return null;
   }
-  
+
   return cached;
 };
 
 /**
- * Sets cached exercises for a stage
+ * Sets or merges cached exercises for a stage
  * @param stageId - The stage ID to cache exercises for
  * @param exercises - Mapped exercises array
  * @param apiExercises - Original API exercises array
@@ -53,12 +53,64 @@ export const setCachedExercises = (
   exercises: Exercise[],
   apiExercises: PopulatedExercise[]
 ): void => {
-  exercisesCache.set(stageId, {
-    exercises,
-    apiExercises,
-    timestamp: Date.now(),
-    version: CACHE_VERSION,
-  });
+  const existing = exercisesCache.get(stageId);
+  const now = Date.now();
+
+  if (!existing || existing.version !== CACHE_VERSION || now - existing.timestamp > CACHE_EXPIRY) {
+    // Fresh cache
+    exercisesCache.set(stageId, {
+      exercises: [...exercises],
+      apiExercises: [...apiExercises],
+      timestamp: now,
+      version: CACHE_VERSION,
+    });
+  } else {
+    // Merge cache
+    const mergedExercises = [...existing.exercises];
+    const mergedApiExercises = [...existing.apiExercises];
+
+    // Helper to merge or update arrays based on order
+    exercises.forEach((newEx) => {
+      const index = mergedExercises.findIndex((e) => e.order === newEx.order);
+      if (index !== -1) {
+        mergedExercises[index] = newEx;
+      } else {
+        mergedExercises.push(newEx);
+      }
+    });
+
+    apiExercises.forEach((newApiEx) => {
+      const index = mergedApiExercises.findIndex((e) => e.order === newApiEx.order);
+      if (index !== -1) {
+        mergedApiExercises[index] = newApiEx;
+      } else {
+        mergedApiExercises.push(newApiEx);
+      }
+    });
+
+    // Keep sorted by order
+    mergedExercises.sort((a, b) => a.order - b.order);
+    mergedApiExercises.sort((a, b) => a.order - b.order);
+
+    exercisesCache.set(stageId, {
+      exercises: mergedExercises,
+      apiExercises: mergedApiExercises,
+      timestamp: now,
+      version: CACHE_VERSION,
+    });
+  }
+};
+
+/**
+ * Checks if a specific exercise order is already cached for a stage
+ * @param stageId - The stage ID
+ * @param order - The exercise order to check
+ * @returns boolean
+ */
+export const isExerciseCached = (stageId: string, order: number): boolean => {
+  const cached = getCachedExercises(stageId);
+  if (!cached) return false;
+  return cached.exercises.some((e) => e.order === order);
 };
 
 /**

@@ -234,7 +234,7 @@ export default function Profile() {
 
         <View style={styles.versionContainer}>
           <Body style={styles.versionText}>
-            Versiya 1.0.0
+            Versiya 1.0.1
           </Body>
         </View>
 

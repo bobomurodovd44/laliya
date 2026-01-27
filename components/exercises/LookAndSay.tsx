@@ -12,7 +12,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { Exercise } from "../../data/data";
-import { useAudioCache } from "../../hooks/useAudioCache";
+import { audioCache } from "../../lib/audio-cache";
 import { items } from "../../lib/items-store";
 import { useTranslation } from "../../lib/localization";
 import { DuoButton } from "../DuoButton";
@@ -93,23 +93,17 @@ export default React.memo(function LookAndSay({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const { play: playAudio, isPlaying: isAudioPlaying } = useAudioCache();
-
-  // State for recording playback specifically
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
-
-  // State for recording time limit
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isQuestionPlaying, setIsQuestionPlaying] = useState(false);
+
+  const questionSoundRef = useRef<Audio.Sound | null>(null);
+  const recordedSoundRef = useRef<Audio.Sound | null>(null);
+  const audioOperationRef = useRef(false);
+  const isUnmountingRef = useRef(false);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const MAX_RECORDING_TIME = 15; // 15 seconds
+  const MAX_RECORDING_TIME = 15;
 
-  // Ref to track if component is unmounting to avoid false errors
-  const isUnmountingRef = React.useRef(false);
-
-  // Get item for this exercise
-  // For LookAndSay, use answerId if available, otherwise use the first optionId
   const itemId =
     exercise.answerId ??
     (exercise.optionIds.length > 0 ? exercise.optionIds[0] : undefined);
@@ -118,46 +112,42 @@ export default React.memo(function LookAndSay({
   useEffect(() => {
     return () => {
       isUnmountingRef.current = true;
-      if (sound) {
-        // Remove status update listener before cleanup to prevent false errors
-        sound.setOnPlaybackStatusUpdate(null);
-        // Cleanup sound on unmount - suppress any errors
-        sound.unloadAsync().catch(() => {
-          // Silently ignore cleanup errors - they're expected during unmount
-        });
+      if (questionSoundRef.current) {
+        questionSoundRef.current.setOnPlaybackStatusUpdate(null);
+        questionSoundRef.current.unloadAsync().catch(() => {});
+        questionSoundRef.current = null;
       }
-      // Cleanup recording timer
+      if (recordedSoundRef.current) {
+        recordedSoundRef.current.setOnPlaybackStatusUpdate(null);
+        recordedSoundRef.current.unloadAsync().catch(() => {});
+        recordedSoundRef.current = null;
+      }
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [sound]);
+  }, []);
 
-  // Request permissions and check audio playback capabilities
   useEffect(() => {
-    (async () => {
-      if (Platform.OS !== "web") {
-        // First check if permissions are already granted
-        const { status: currentStatus } = await Audio.getPermissionsAsync();
+    if (questionSoundRef.current) {
+      questionSoundRef.current.setOnPlaybackStatusUpdate(null);
+      questionSoundRef.current.unloadAsync().catch(() => {});
+      questionSoundRef.current = null;
+      setIsQuestionPlaying(false);
+    }
+  }, [exercise.id]);
 
-        // Only request permissions if not already granted
-        if (currentStatus !== "granted") {
-          const { status } = await Audio.requestPermissionsAsync();
-
-          if (status !== "granted") {
-            Alert.alert(
-              t('exercise.permissionRequired'),
-              t('exercise.microphonePermissionNeeded')
-            );
-          }
-        }
-      }
-    })();
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+    }).catch(() => {});
   }, []);
 
   const startRecording = async () => {
+    if (audioOperationRef.current) return;
+    audioOperationRef.current = true;
+
     try {
-      // Check permissions before attempting to record
       if (Platform.OS !== "web") {
         const { status: currentStatus } = await Audio.getPermissionsAsync();
 
@@ -169,25 +159,28 @@ export default React.memo(function LookAndSay({
               t('exercise.permissionRequired'),
               t('exercise.microphonePermissionRequired')
             );
+            audioOperationRef.current = false;
             return;
           }
         }
       }
 
-      // Stop any active sound playback before starting recording
-      if (sound) {
+      if (questionSoundRef.current) {
         try {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-        setSound(null);
-        setIsPlaying(false);
+          await questionSoundRef.current.stopAsync();
+        } catch (e) {}
+        questionSoundRef.current = null;
+        setIsQuestionPlaying(false);
+      }
+
+      if (recordedSoundRef.current) {
+        try {
+          await recordedSoundRef.current.stopAsync();
+        } catch (e) {}
+        recordedSoundRef.current = null;
         setIsPlayingRecording(false);
       }
 
-      // Set audio mode to allow recording
       try {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: true,
@@ -198,23 +191,21 @@ export default React.memo(function LookAndSay({
           t('exercise.audioModeError'),
           t('exercise.audioModeErrorMessage')
         );
+        audioOperationRef.current = false;
         return;
       }
 
-      // Create recording
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
 
       setRecording(newRecording);
       setIsRecording(true);
-      setRecordingTime(0); // Reset timer
+      setRecordingTime(0);
 
-      // Start timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
-          // Auto-stop at MAX_RECORDING_TIME
           if (newTime >= MAX_RECORDING_TIME) {
             if (recordingTimerRef.current) {
               clearInterval(recordingTimerRef.current);
@@ -223,22 +214,18 @@ export default React.memo(function LookAndSay({
           }
           return newTime;
         });
-      }, 1000); // Update every second
+      }, 1000);
     } catch (err) {
-      // Reset state on failure
       setIsRecording(false);
       setRecording(null);
-
-      // Show user-friendly error message
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
       Alert.alert(
         t('exercise.recordingFailed'),
         t('exercise.recordingFailedMessage', { error: errorMessage })
       );
-
       console.error("Failed to start recording:", err);
+    } finally {
+      audioOperationRef.current = false;
     }
   };
 
@@ -275,63 +262,128 @@ export default React.memo(function LookAndSay({
   }, [recordingTime, isRecording, stopRecording]);
 
   const playItemAudio = async () => {
-    // Prevent replaying if already playing
-    if (isAudioPlaying) return;
-
-    // Use exercise.questionAudioUrl if available, otherwise fall back to item.audioUrl
-    const audioUrl = exercise.questionAudioUrl || item?.audioUrl;
-
-    if (!audioUrl || audioUrl.trim() === "") {
-      Alert.alert(
-        t('exercise.audioNotAvailable'),
-        t('exercise.audioFileNotAvailable')
-      );
-      return;
-    }
-
-    await playAudio(audioUrl);
-  };
-
-  const togglePlayback = async () => {
-    // If currently playing recording, stop it
-    if (isPlayingRecording && sound) {
-      try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      } catch (err) {
-        // Error stopping sound
-      }
-      setSound(null);
-      setIsPlayingRecording(false);
-      return;
-    }
-
-    if (!recordedUri) return;
+    if (audioOperationRef.current) return;
+    audioOperationRef.current = true;
 
     try {
-      // Unload any prior sound
-      if (sound) {
-        try {
-          await sound.unloadAsync();
-        } catch (e) {}
+      const audioUrl = exercise.questionAudioUrl || item?.audioUrl;
+
+      if (!audioUrl || audioUrl.trim() === "") {
+        audioOperationRef.current = false;
+        Alert.alert(
+          t('exercise.audioNotAvailable'),
+          t('exercise.audioFileNotAvailable')
+        );
+        return;
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync({
-        uri: recordedUri,
-      });
-      setSound(newSound);
-      setIsPlayingRecording(true);
-      await newSound.playAsync();
+      const localUri = await audioCache.getLocalUri(audioUrl);
 
-      newSound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if (status.isLoaded && status.didJustFinish) {
+      if (!questionSoundRef.current) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: localUri },
+          { shouldPlay: true },
+          (status) => {
+            if (isUnmountingRef.current) return;
+            if (status.isLoaded && status.didJustFinish) {
+              setIsQuestionPlaying(false);
+            }
+          }
+        );
+        questionSoundRef.current = sound;
+        setIsQuestionPlaying(true);
+        audioOperationRef.current = false;
+        return;
+      }
+
+      const sound = questionSoundRef.current;
+      const status = await sound.getStatusAsync();
+
+      if (!status.isLoaded) {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: localUri },
+          { shouldPlay: true },
+          (st) => {
+            if (isUnmountingRef.current) return;
+            if (st.isLoaded && st.didJustFinish) {
+              setIsQuestionPlaying(false);
+            }
+          }
+        );
+        questionSoundRef.current = newSound;
+        setIsQuestionPlaying(true);
+        audioOperationRef.current = false;
+        return;
+      }
+
+      if (status.isPlaying) {
+        await sound.pauseAsync();
+        setIsQuestionPlaying(false);
+      } else if (status.didJustFinish || (status.positionMillis && status.durationMillis && status.positionMillis >= status.durationMillis - 100)) {
+        await sound.setPositionAsync(0);
+        await sound.playAsync();
+        setIsQuestionPlaying(true);
+      } else {
+        await sound.playAsync();
+        setIsQuestionPlaying(true);
+      }
+    } catch (e) {
+      console.warn("Audio playback error:", e);
+    } finally {
+      audioOperationRef.current = false;
+    }
+  };
+
+  const toggleRecordedPlayback = async () => {
+    if (audioOperationRef.current) return;
+    audioOperationRef.current = true;
+
+    try {
+      if (!recordedUri) {
+        audioOperationRef.current = false;
+        return;
+      }
+
+      if (isPlayingRecording && recordedSoundRef.current) {
+        await recordedSoundRef.current.stopAsync();
+        setIsPlayingRecording(false);
+        audioOperationRef.current = false;
+        return;
+      }
+
+      if (!recordedSoundRef.current) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: recordedUri },
+          { shouldPlay: true },
+          (status) => {
+            if (isUnmountingRef.current) return;
+            if (status.isLoaded && status.didJustFinish) {
+              setIsPlayingRecording(false);
+            }
+          }
+        );
+        recordedSoundRef.current = sound;
+        setIsPlayingRecording(true);
+        audioOperationRef.current = false;
+        return;
+      }
+
+      const sound = recordedSoundRef.current;
+      const status = await sound.getStatusAsync();
+
+      if (status.isLoaded) {
+        if (status.isPlaying) {
+          await sound.pauseAsync();
           setIsPlayingRecording(false);
-          // Don't nullify sound immediately if we want to support replay without reload,
-          // but for toggle logic simplicity we reset state.
+        } else {
+          await sound.playAsync();
+          setIsPlayingRecording(true);
         }
-      });
-    } catch (error) {
+      }
+    } catch (e) {
       setIsPlayingRecording(false);
+    } finally {
+      audioOperationRef.current = false;
     }
   };
 
@@ -392,11 +444,11 @@ export default React.memo(function LookAndSay({
             <DuoButton
               title=""
               onPress={playItemAudio}
-              color="blue"
+              color={isQuestionPlaying ? "orange" : "blue"}
               size="medium"
               customSize={60}
               style={styles.audioButton}
-              icon="volume-high"
+              icon={isQuestionPlaying ? "pause" : "volume-high"}
               shape="circle"
               iconSize={28}
             />
@@ -444,7 +496,7 @@ export default React.memo(function LookAndSay({
           <View style={styles.playbackContainer}>
             <DuoButton
               title=""
-              onPress={togglePlayback}
+              onPress={toggleRecordedPlayback}
               color={isPlayingRecording ? "red" : "green"}
               size="medium"
               customSize={70}

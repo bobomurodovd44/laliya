@@ -282,14 +282,18 @@ export default React.memo(function LookAndSay({
       if (!questionSoundRef.current) {
         const { sound } = await Audio.Sound.createAsync(
           { uri: localUri },
-          { shouldPlay: true },
-          (status) => {
-            if (isUnmountingRef.current) return;
-            if (status.isLoaded && status.didJustFinish) {
+          { shouldPlay: true }
+        );
+        
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (isUnmountingRef.current) return;
+          if (status.isLoaded) {
+            if (status.didJustFinish) {
               setIsQuestionPlaying(false);
             }
           }
-        );
+        });
+        
         questionSoundRef.current = sound;
         setIsQuestionPlaying(true);
         audioOperationRef.current = false;
@@ -302,14 +306,16 @@ export default React.memo(function LookAndSay({
       if (!status.isLoaded) {
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: localUri },
-          { shouldPlay: true },
-          (st) => {
-            if (isUnmountingRef.current) return;
-            if (st.isLoaded && st.didJustFinish) {
-              setIsQuestionPlaying(false);
-            }
-          }
+          { shouldPlay: true }
         );
+        
+        newSound.setOnPlaybackStatusUpdate((st) => {
+          if (isUnmountingRef.current) return;
+          if (st.isLoaded && st.didJustFinish) {
+            setIsQuestionPlaying(false);
+          }
+        });
+        
         questionSoundRef.current = newSound;
         setIsQuestionPlaying(true);
         audioOperationRef.current = false;
@@ -434,24 +440,26 @@ export default React.memo(function LookAndSay({
             )}
           </View>
 
-          {/* Footer Area: Word + Play Button */}
+          {/* Footer Area: Word + Floating Play Button */}
           <View style={styles.cardFooter}>
-            <View style={styles.wordContainer}>
-              <Title size="large" style={styles.word} numberOfLines={2}>
+            <View style={styles.wordContainerWithPadding}>
+              <Title size="large" style={styles.word}>
                 {item.word}
               </Title>
             </View>
-            <DuoButton
-              title=""
-              onPress={playItemAudio}
-              color={isQuestionPlaying ? "orange" : "blue"}
-              size="medium"
-              customSize={60}
-              style={styles.audioButton}
-              icon={isQuestionPlaying ? "pause" : "volume-high"}
-              shape="circle"
-              iconSize={28}
-            />
+            <View style={styles.floatingButtonContainer}>
+              <DuoButton
+                title=""
+                onPress={playItemAudio}
+                color={isQuestionPlaying ? "orange" : "blue"}
+                size="medium"
+                customSize={56}
+                style={styles.floatingAudioButton}
+                icon={isQuestionPlaying ? "pause" : "volume-high"}
+                shape="circle"
+                iconSize={24}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -527,7 +535,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   card: {
-    width: "90%",
+    width: "93%",
     maxWidth: 360,
     aspectRatio: 0.8,
     backgroundColor: "white",
@@ -562,28 +570,44 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    position: "relative",
+    paddingRight: 68,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderTopWidth: 2,
     borderTopColor: "#f0f0f0",
-    gap: 12,
+    minHeight: 96,
   },
-  wordContainer: {
+  wordContainerWithPadding: {
     flex: 1,
-    flexShrink: 1,
-    marginRight: 8,
+    paddingLeft: 8,
+    minHeight: 60,
+    justifyContent: "center",
   },
   word: {
     fontFamily: "FredokaOne",
-    fontSize: 36,
+    fontSize: 32,
     color: "#4A4A4A",
-    flexShrink: 1,
+    textAlign: "left",
+    flexWrap: "wrap",
   },
-  audioButton: {
-    // Width/Height handled by customSize prop now
+  floatingButtonContainer: {
+    position: "absolute",
+    right: -8,
+    bottom: -8,
+    width: 64,
+    height: 64,
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  floatingAudioButton: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 16,
+    marginBottom: -16,
+    marginRight: -16,
   },
   controls: {
     width: "100%",
